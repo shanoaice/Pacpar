@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacpar.Alpm", "Pacpar.Alpm\Pacpar.Alpm.csproj", "{04FA07ED-53CE-FB5D-80ED-F458C86ABF99}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacpar.Alpm.Sys", "Pacpar.Alpm.Sys\Pacpar.Alpm.Sys.csproj", "{34D0D54E-9B57-EA2F-E9FF-71A7A5B59661}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pacpar.CLI", "Pacpar.CLI\Pacpar.CLI.csproj", "{D0685D7C-4238-0468-B9D5-0C0480B24AF0}"
 EndProject
@@ -12,10 +12,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{04FA07ED-53CE-FB5D-80ED-F458C86ABF99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{04FA07ED-53CE-FB5D-80ED-F458C86ABF99}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{04FA07ED-53CE-FB5D-80ED-F458C86ABF99}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{04FA07ED-53CE-FB5D-80ED-F458C86ABF99}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34D0D54E-9B57-EA2F-E9FF-71A7A5B59661}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34D0D54E-9B57-EA2F-E9FF-71A7A5B59661}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34D0D54E-9B57-EA2F-E9FF-71A7A5B59661}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34D0D54E-9B57-EA2F-E9FF-71A7A5B59661}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D0685D7C-4238-0468-B9D5-0C0480B24AF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D0685D7C-4238-0468-B9D5-0C0480B24AF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D0685D7C-4238-0468-B9D5-0C0480B24AF0}.Release|Any CPU.ActiveCfg = Release|Any CPU

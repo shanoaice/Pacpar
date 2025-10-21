@@ -429,3 +429,5 @@ FodyWeavers.xsd
 
 # JB IDE
 .idea
+
+.fake
