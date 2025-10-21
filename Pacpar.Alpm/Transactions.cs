@@ -1,4 +1,4 @@
-﻿namespace Pacpar.Alpm.Native
+namespace Pacpar.Alpm.Native
 {
     public class Transactions
     {

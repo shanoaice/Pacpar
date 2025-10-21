@@ -1,4 +1,4 @@
-﻿namespace Pacpar.CLI
+namespace Pacpar.CLI
 {
     internal class Program
     {
