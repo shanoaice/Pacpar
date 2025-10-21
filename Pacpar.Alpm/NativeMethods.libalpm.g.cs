@@ -8,11 +8,11 @@ using System;
 using System.Runtime.InteropServices;
 
 
-namespace Pacpar.Alpm.Native
+namespace Pacpar.Alpm
 {
-    internal static unsafe partial class Alpm
+    internal static unsafe partial class NativeMethods
     {
-        const string __DllName = "alpm";
+        const string __DllName = "libalpm";
 
 
 
