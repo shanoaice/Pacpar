@@ -1,4 +1,4 @@
-namespace Pacpar.Alpm.Sys
+namespace Pacpar.Alpm.Native
 {
   public class AlpmList
   {
