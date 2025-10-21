@@ -1,0 +1,11 @@
+[package]
+name = "libalpm-sys-cs"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[build-dependencies]
+pkg-config = "0.3.31"
+csbindgen = "1.9.6"
+bindgen = "0.72.1"
