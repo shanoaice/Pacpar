@@ -78,7 +78,39 @@ public class AlpmList<T> : IDisposable, IEnumerable<T> where T : IDisposable
 
   public void Dispose()
   {
+    Dispose(disposing: true);
+    GC.SuppressFinalize(this);
+  }
 
+  protected virtual unsafe void Dispose(bool disposing)
+  {
+    if (!_disposed)
+    {
+      if (disposing)
+      {
+        foreach (var item in this)
+        {
+          item.Dispose();
+        }
+      }
+
+      if (_ownsPtr)
+      {
+        var alpmListTemp = _alpmListNative->next;
+        Marshal.FreeHGlobal((IntPtr)_alpmListNative);
+        _alpmListNative = alpmListTemp;
+      }
+
+      NativeMethods.alpm_list_free(_alpmListNative);
+      _alpmListNative = null;
+
+      _disposed = true;
+    }
+  }
+
+  ~AlpmList()
+  {
+    Dispose(disposing: false);
   }
 
   public IEnumerator<T> GetEnumerator() => new AlpmListEnumerator<T>(this);
