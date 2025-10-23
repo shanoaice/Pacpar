@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm
 {
-    internal static unsafe partial class NativeMethods
+    public static unsafe partial class NativeMethods
     {
         const string __DllName = "libalpm";
 
@@ -19,91 +19,91 @@ namespace Pacpar.Alpm
 
 
         [DllImport(__DllName, EntryPoint = "alpm_list_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void alpm_list_free(_alpm_list_t* list);
+        public static extern void alpm_list_free(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_free_inner", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void alpm_list_free_inner(_alpm_list_t* list, delegate* unmanaged[Cdecl]<void*, void> fn_);
+        public static extern void alpm_list_free_inner(_alpm_list_t* list, delegate* unmanaged[Cdecl]<void*, void> fn_);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_add", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_add(_alpm_list_t* list, void* data);
+        public static extern _alpm_list_t* alpm_list_add(_alpm_list_t* list, void* data);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_append", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_append(_alpm_list_t** list, void* data);
+        public static extern _alpm_list_t* alpm_list_append(_alpm_list_t** list, void* data);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_append_strdup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_append_strdup(_alpm_list_t** list, byte* data);
+        public static extern _alpm_list_t* alpm_list_append_strdup(_alpm_list_t** list, byte* data);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_add_sorted", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_add_sorted(_alpm_list_t* list, void* data, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
+        public static extern _alpm_list_t* alpm_list_add_sorted(_alpm_list_t* list, void* data, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_join", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_join(_alpm_list_t* first, _alpm_list_t* second);
+        public static extern _alpm_list_t* alpm_list_join(_alpm_list_t* first, _alpm_list_t* second);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_mmerge", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_mmerge(_alpm_list_t* left, _alpm_list_t* right, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
+        public static extern _alpm_list_t* alpm_list_mmerge(_alpm_list_t* left, _alpm_list_t* right, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_msort", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_msort(_alpm_list_t* list, nuint n, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
+        public static extern _alpm_list_t* alpm_list_msort(_alpm_list_t* list, nuint n, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_remove_item", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_remove_item(_alpm_list_t* haystack, _alpm_list_t* item);
+        public static extern _alpm_list_t* alpm_list_remove_item(_alpm_list_t* haystack, _alpm_list_t* item);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_remove", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_remove(_alpm_list_t* haystack, void* needle, delegate* unmanaged[Cdecl]<void*, void*, int> fn_, void** data);
+        public static extern _alpm_list_t* alpm_list_remove(_alpm_list_t* haystack, void* needle, delegate* unmanaged[Cdecl]<void*, void*, int> fn_, void** data);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_remove_str", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_remove_str(_alpm_list_t* haystack, byte* needle, byte** data);
+        public static extern _alpm_list_t* alpm_list_remove_str(_alpm_list_t* haystack, byte* needle, byte** data);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_remove_dupes", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_remove_dupes(_alpm_list_t* list);
+        public static extern _alpm_list_t* alpm_list_remove_dupes(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_strdup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_strdup(_alpm_list_t* list);
+        public static extern _alpm_list_t* alpm_list_strdup(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_copy", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_copy(_alpm_list_t* list);
+        public static extern _alpm_list_t* alpm_list_copy(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_copy_data", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_copy_data(_alpm_list_t* list, nuint size);
+        public static extern _alpm_list_t* alpm_list_copy_data(_alpm_list_t* list, nuint size);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_reverse", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_reverse(_alpm_list_t* list);
+        public static extern _alpm_list_t* alpm_list_reverse(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_nth", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_nth(_alpm_list_t* list, nuint n);
+        public static extern _alpm_list_t* alpm_list_nth(_alpm_list_t* list, nuint n);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_next(_alpm_list_t* list);
+        public static extern _alpm_list_t* alpm_list_next(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_previous", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_previous(_alpm_list_t* list);
+        public static extern _alpm_list_t* alpm_list_previous(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_last", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_last(_alpm_list_t* list);
+        public static extern _alpm_list_t* alpm_list_last(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_count", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint alpm_list_count(_alpm_list_t* list);
+        public static extern nuint alpm_list_count(_alpm_list_t* list);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_find", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_list_find(_alpm_list_t* haystack, void* needle, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
+        public static extern void* alpm_list_find(_alpm_list_t* haystack, void* needle, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_find_ptr", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_list_find_ptr(_alpm_list_t* haystack, void* needle);
+        public static extern void* alpm_list_find_ptr(_alpm_list_t* haystack, void* needle);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_find_str", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_list_find_str(_alpm_list_t* haystack, byte* needle);
+        public static extern byte* alpm_list_find_str(_alpm_list_t* haystack, byte* needle);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_cmp_unsorted", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_list_cmp_unsorted(_alpm_list_t* left, _alpm_list_t* right, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
+        public static extern int alpm_list_cmp_unsorted(_alpm_list_t* left, _alpm_list_t* right, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_diff_sorted", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void alpm_list_diff_sorted(_alpm_list_t* left, _alpm_list_t* right, delegate* unmanaged[Cdecl]<void*, void*, int> fn_, _alpm_list_t** onlyleft, _alpm_list_t** onlyright);
+        public static extern void alpm_list_diff_sorted(_alpm_list_t* left, _alpm_list_t* right, delegate* unmanaged[Cdecl]<void*, void*, int> fn_, _alpm_list_t** onlyleft, _alpm_list_t** onlyright);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_diff", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_list_diff(_alpm_list_t* lhs, _alpm_list_t* rhs, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
+        public static extern _alpm_list_t* alpm_list_diff(_alpm_list_t* lhs, _alpm_list_t* rhs, delegate* unmanaged[Cdecl]<void*, void*, int> fn_);
 
         [DllImport(__DllName, EntryPoint = "alpm_list_to_array", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_list_to_array(_alpm_list_t* list, nuint n, nuint size);
+        public static extern void* alpm_list_to_array(_alpm_list_t* list, nuint n, nuint size);
 
         /// <summary>
         ///  Determines whether a package filelist contains a given path.
@@ -115,7 +115,7 @@ namespace Pacpar.Alpm
         ///  @return a pointer to the matching file or NULL if not found
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_filelist_contains", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_file_t* alpm_filelist_contains(_alpm_filelist_t* filelist, byte* path);
+        public static extern _alpm_file_t* alpm_filelist_contains(_alpm_filelist_t* filelist, byte* path);
 
         /// <summary>
         ///  Find group members across a list of databases.
@@ -126,7 +126,7 @@ namespace Pacpar.Alpm
         ///  @return the list of alpm_pkg_t * (caller is responsible for alpm_list_free)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_find_group_pkgs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_find_group_pkgs(_alpm_list_t* dbs, byte* name);
+        public static extern _alpm_list_t* alpm_find_group_pkgs(_alpm_list_t* dbs, byte* name);
 
         /// <summary>
         ///  Returns the current error code from the handle.
@@ -134,7 +134,7 @@ namespace Pacpar.Alpm
         ///  @return the current error code of the handle
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_errno", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_errno_t alpm_errno(byte* handle);
+        public static extern _alpm_errno_t alpm_errno(byte* handle);
 
         /// <summary>
         ///  Returns the string corresponding to an error number.
@@ -142,7 +142,7 @@ namespace Pacpar.Alpm
         ///  @return the string relating to the given error code
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_strerror", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_strerror(_alpm_errno_t err);
+        public static extern byte* alpm_strerror(_alpm_errno_t err);
 
         /// <summary>
         ///  Initializes the library.
@@ -154,7 +154,7 @@ namespace Pacpar.Alpm
         ///  @return a context handle on success, NULL on error, err will be set if provided
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_initialize", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_initialize(byte* root, byte* dbpath, _alpm_errno_t* err);
+        public static extern byte* alpm_initialize(byte* root, byte* dbpath, _alpm_errno_t* err);
 
         /// <summary>
         ///  Release the library.
@@ -166,7 +166,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_release(byte* handle);
+        public static extern int alpm_release(byte* handle);
 
         /// <summary>
         ///  Check the PGP signature for the given package file.
@@ -175,7 +175,7 @@ namespace Pacpar.Alpm
         ///  @return 0 if valid, -1 if an error occurred or signature is invalid
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_check_pgp_signature", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_check_pgp_signature(byte* pkg, _alpm_siglist_t* siglist);
+        public static extern int alpm_pkg_check_pgp_signature(byte* pkg, _alpm_siglist_t* siglist);
 
         /// <summary>
         ///  Check the PGP signature for the given database.
@@ -184,7 +184,7 @@ namespace Pacpar.Alpm
         ///  @return 0 if valid, -1 if an error occurred or signature is invalid
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_check_pgp_signature", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_check_pgp_signature(byte* db, _alpm_siglist_t* siglist);
+        public static extern int alpm_db_check_pgp_signature(byte* db, _alpm_siglist_t* siglist);
 
         /// <summary>
         ///  Clean up and free a signature result list.
@@ -194,7 +194,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_siglist_cleanup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_siglist_cleanup(_alpm_siglist_t* siglist);
+        public static extern int alpm_siglist_cleanup(_alpm_siglist_t* siglist);
 
         /// <summary>
         ///  Decode a loaded signature in base64 form.
@@ -204,7 +204,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on failure to properly decode
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_decode_signature", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_decode_signature(byte* base64_data, byte** data, nuint* data_len);
+        public static extern int alpm_decode_signature(byte* base64_data, byte** data, nuint* data_len);
 
         /// <summary>
         ///  Extract the Issuer Key ID from a signature
@@ -217,7 +217,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_extract_keyid", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_extract_keyid(byte* handle, byte* identifier, byte* sig, nuint len, _alpm_list_t** keys);
+        public static extern int alpm_extract_keyid(byte* handle, byte* identifier, byte* sig, nuint len, _alpm_list_t** keys);
 
         /// <summary>
         ///  Checks dependencies and returns missing ones in a list.
@@ -230,7 +230,7 @@ namespace Pacpar.Alpm
         ///  @return an alpm_list_t* of alpm_depmissing_t pointers.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_checkdeps", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_checkdeps(byte* handle, _alpm_list_t* pkglist, _alpm_list_t* remove, _alpm_list_t* upgrade, int reversedeps);
+        public static extern _alpm_list_t* alpm_checkdeps(byte* handle, _alpm_list_t* pkglist, _alpm_list_t* remove, _alpm_list_t* upgrade, int reversedeps);
 
         /// <summary>
         ///  Find a package satisfying a specified dependency.
@@ -240,7 +240,7 @@ namespace Pacpar.Alpm
         ///  @return a alpm_pkg_t* satisfying depstring
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_find_satisfier", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_find_satisfier(_alpm_list_t* pkgs, byte* depstring);
+        public static extern byte* alpm_find_satisfier(_alpm_list_t* pkgs, byte* depstring);
 
         /// <summary>
         ///  Find a package satisfying a specified dependency.
@@ -256,7 +256,7 @@ namespace Pacpar.Alpm
         ///  @return a alpm_pkg_t* satisfying depstring
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_find_dbs_satisfier", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_find_dbs_satisfier(byte* handle, _alpm_list_t* dbs, byte* depstring);
+        public static extern byte* alpm_find_dbs_satisfier(byte* handle, _alpm_list_t* dbs, byte* depstring);
 
         /// <summary>
         ///  Check the package conflicts in a database
@@ -267,7 +267,7 @@ namespace Pacpar.Alpm
         ///  @return an alpm_list_t of alpm_conflict_t
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_checkconflicts", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_checkconflicts(byte* handle, _alpm_list_t* pkglist);
+        public static extern _alpm_list_t* alpm_checkconflicts(byte* handle, _alpm_list_t* pkglist);
 
         /// <summary>
         ///  Returns a newly allocated string representing the dependency information.
@@ -275,7 +275,7 @@ namespace Pacpar.Alpm
         ///  @return a formatted string, e.g. "glibc&gt;=2.12"
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_dep_compute_string", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_dep_compute_string(_alpm_depend_t* dep);
+        public static extern byte* alpm_dep_compute_string(_alpm_depend_t* dep);
 
         /// <summary>
         ///  Return a newly allocated dependency information parsed from a string
@@ -284,35 +284,35 @@ namespace Pacpar.Alpm
         ///  @return a dependency info structure
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_dep_from_string", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_depend_t* alpm_dep_from_string(byte* depstring);
+        public static extern _alpm_depend_t* alpm_dep_from_string(byte* depstring);
 
         /// <summary>
         ///  Free a dependency info structure
         ///  @param dep struct to free
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_dep_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void alpm_dep_free(_alpm_depend_t* dep);
+        public static extern void alpm_dep_free(_alpm_depend_t* dep);
 
         /// <summary>
         ///  Free a fileconflict and its members.
         ///  @param conflict the fileconflict to free
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_fileconflict_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void alpm_fileconflict_free(_alpm_fileconflict_t* conflict);
+        public static extern void alpm_fileconflict_free(_alpm_fileconflict_t* conflict);
 
         /// <summary>
         ///  Free a depmissing and its members
         ///  @param miss the depmissing to free
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_depmissing_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void alpm_depmissing_free(_alpm_depmissing_t* miss);
+        public static extern void alpm_depmissing_free(_alpm_depmissing_t* miss);
 
         /// <summary>
         ///  Free a conflict and its members.
         ///  @param conflict the conflict to free
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_conflict_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void alpm_conflict_free(_alpm_conflict_t* conflict);
+        public static extern void alpm_conflict_free(_alpm_conflict_t* conflict);
 
         /// <summary>
         ///  Get the database of locally installed packages.
@@ -322,7 +322,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to the local database
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_get_localdb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_get_localdb(byte* handle);
+        public static extern byte* alpm_get_localdb(byte* handle);
 
         /// <summary>
         ///  Get the list of sync databases.
@@ -333,7 +333,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal list of alpm_db_t structures
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_get_syncdbs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_get_syncdbs(byte* handle);
+        public static extern _alpm_list_t* alpm_get_syncdbs(byte* handle);
 
         /// <summary>
         ///  Register a sync database of packages.
@@ -346,7 +346,7 @@ namespace Pacpar.Alpm
         ///  @return an alpm_db_t* on success (the value), NULL on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_register_syncdb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_register_syncdb(byte* handle, byte* treename, int level);
+        public static extern byte* alpm_register_syncdb(byte* handle, byte* treename, int level);
 
         /// <summary>
         ///  Unregister all package databases.
@@ -356,7 +356,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_unregister_all_syncdbs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_unregister_all_syncdbs(byte* handle);
+        public static extern int alpm_unregister_all_syncdbs(byte* handle);
 
         /// <summary>
         ///  Unregister a package database.
@@ -366,7 +366,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_unregister", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_unregister(byte* db);
+        public static extern int alpm_db_unregister(byte* db);
 
         /// <summary>
         ///  Get the handle of a package database.
@@ -374,7 +374,7 @@ namespace Pacpar.Alpm
         ///  @return the alpm handle that the package database belongs to
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_handle", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_db_get_handle(byte* db);
+        public static extern byte* alpm_db_get_handle(byte* db);
 
         /// <summary>
         ///  Get the name of a package database.
@@ -382,7 +382,7 @@ namespace Pacpar.Alpm
         ///  @return the name of the package database, NULL on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_name", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_db_get_name(byte* db);
+        public static extern byte* alpm_db_get_name(byte* db);
 
         /// <summary>
         ///  Get the signature verification level for a database.
@@ -392,7 +392,7 @@ namespace Pacpar.Alpm
         ///  @return the signature verification level
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_siglevel", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_get_siglevel(byte* db);
+        public static extern int alpm_db_get_siglevel(byte* db);
 
         /// <summary>
         ///  Check the validity of a database.
@@ -402,7 +402,7 @@ namespace Pacpar.Alpm
         ///  @return 0 if valid, -1 if invalid (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_valid", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_get_valid(byte* db);
+        public static extern int alpm_db_get_valid(byte* db);
 
         /// <summary>
         ///  Get the list of servers assigned to this db.
@@ -410,7 +410,7 @@ namespace Pacpar.Alpm
         ///  @return a char* list of servers
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_servers", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_db_get_servers(byte* db);
+        public static extern _alpm_list_t* alpm_db_get_servers(byte* db);
 
         /// <summary>
         ///  Sets the list of servers for the database to use.
@@ -419,7 +419,7 @@ namespace Pacpar.Alpm
         ///  @param servers a char* list of servers.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_set_servers", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_set_servers(byte* db, _alpm_list_t* servers);
+        public static extern int alpm_db_set_servers(byte* db, _alpm_list_t* servers);
 
         /// <summary>
         ///  Add a download server to a database.
@@ -428,7 +428,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_add_server", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_add_server(byte* db, byte* url);
+        public static extern int alpm_db_add_server(byte* db, byte* url);
 
         /// <summary>
         ///  Remove a download server from a database.
@@ -438,7 +438,7 @@ namespace Pacpar.Alpm
         ///  -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_remove_server", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_remove_server(byte* db, byte* url);
+        public static extern int alpm_db_remove_server(byte* db, byte* url);
 
         /// <summary>
         ///  Get the list of cache servers assigned to this db.
@@ -446,7 +446,7 @@ namespace Pacpar.Alpm
         ///  @return a char* list of servers
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_cache_servers", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_db_get_cache_servers(byte* db);
+        public static extern _alpm_list_t* alpm_db_get_cache_servers(byte* db);
 
         /// <summary>
         ///  Sets the list of cache servers for the database to use.
@@ -455,7 +455,7 @@ namespace Pacpar.Alpm
         ///  @param servers a char* list of servers.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_set_cache_servers", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_set_cache_servers(byte* db, _alpm_list_t* servers);
+        public static extern int alpm_db_set_cache_servers(byte* db, _alpm_list_t* servers);
 
         /// <summary>
         ///  Add a download cache server to a database.
@@ -464,7 +464,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_add_cache_server", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_add_cache_server(byte* db, byte* url);
+        public static extern int alpm_db_add_cache_server(byte* db, byte* url);
 
         /// <summary>
         ///  Remove a download cache server from a database.
@@ -474,7 +474,7 @@ namespace Pacpar.Alpm
         ///  -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_remove_cache_server", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_remove_cache_server(byte* db, byte* url);
+        public static extern int alpm_db_remove_cache_server(byte* db, byte* url);
 
         /// <summary>
         ///  Update package databases.
@@ -506,7 +506,7 @@ namespace Pacpar.Alpm
         ///  1 if all databases are up to to date
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_update", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_update(byte* handle, _alpm_list_t* dbs, int force);
+        public static extern int alpm_db_update(byte* handle, _alpm_list_t* dbs, int force);
 
         /// <summary>
         ///  Get a package entry from a package database.
@@ -517,7 +517,7 @@ namespace Pacpar.Alpm
         ///  @return the package entry on success, NULL on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_pkg", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_db_get_pkg(byte* db, byte* name);
+        public static extern byte* alpm_db_get_pkg(byte* db, byte* name);
 
         /// <summary>
         ///  Get the package cache of a package database.
@@ -526,7 +526,7 @@ namespace Pacpar.Alpm
         ///  @return the list of packages on success, NULL on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_pkgcache", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_db_get_pkgcache(byte* db);
+        public static extern _alpm_list_t* alpm_db_get_pkgcache(byte* db);
 
         /// <summary>
         ///  Get a group entry from a package database.
@@ -537,7 +537,7 @@ namespace Pacpar.Alpm
         ///  @return the groups entry on success, NULL on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_group", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_group_t* alpm_db_get_group(byte* db, byte* name);
+        public static extern _alpm_group_t* alpm_db_get_group(byte* db, byte* name);
 
         /// <summary>
         ///  Get the group cache of a package database.
@@ -545,7 +545,7 @@ namespace Pacpar.Alpm
         ///  @return the list of groups on success, NULL on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_groupcache", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_db_get_groupcache(byte* db);
+        public static extern _alpm_list_t* alpm_db_get_groupcache(byte* db);
 
         /// <summary>
         ///  Searches a database with regular expressions.
@@ -556,7 +556,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_search", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_search(byte* db, _alpm_list_t* needles, _alpm_list_t** ret);
+        public static extern int alpm_db_search(byte* db, _alpm_list_t* needles, _alpm_list_t** ret);
 
         /// <summary>
         ///  Sets the usage of a database.
@@ -565,7 +565,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, or -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_set_usage", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_set_usage(byte* db, int usage);
+        public static extern int alpm_db_set_usage(byte* db, int usage);
 
         /// <summary>
         ///  Gets the usage of a database.
@@ -574,7 +574,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, or -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_get_usage", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_db_get_usage(byte* db, int* usage);
+        public static extern int alpm_db_get_usage(byte* db, int* usage);
 
         /// <summary>
         ///  A printf-like function for logging.
@@ -584,7 +584,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_logaction", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_logaction(byte* handle, byte* prefix, byte* fmt);
+        public static extern int alpm_logaction(byte* handle, byte* prefix, byte* fmt);
 
         /// <summary>
         ///  Returns the callback used for logging.
@@ -592,7 +592,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set log callback
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_logcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, __va_list_tag*, void> alpm_option_get_logcb(byte* handle);
+        public static extern delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, __va_list_tag*, void> alpm_option_get_logcb(byte* handle);
 
         /// <summary>
         ///  Returns the callback used for logging.
@@ -600,7 +600,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set log callback context
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_logcb_ctx", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_option_get_logcb_ctx(byte* handle);
+        public static extern void* alpm_option_get_logcb_ctx(byte* handle);
 
         /// <summary>
         ///  Sets the callback used for logging.
@@ -610,7 +610,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_logcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_logcb(byte* handle, delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, __va_list_tag*, void> cb, void* ctx);
+        public static extern int alpm_option_set_logcb(byte* handle, delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, __va_list_tag*, void> cb, void* ctx);
 
         /// <summary>
         ///  Returns the callback used to report download progress.
@@ -618,7 +618,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set download callback
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_dlcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern delegate* unmanaged[Cdecl]<void*, byte*, _alpm_download_event_type_t, void*, void> alpm_option_get_dlcb(byte* handle);
+        public static extern delegate* unmanaged[Cdecl]<void*, byte*, _alpm_download_event_type_t, void*, void> alpm_option_get_dlcb(byte* handle);
 
         /// <summary>
         ///  Returns the callback used to report download progress.
@@ -626,7 +626,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set download callback context
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_dlcb_ctx", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_option_get_dlcb_ctx(byte* handle);
+        public static extern void* alpm_option_get_dlcb_ctx(byte* handle);
 
         /// <summary>
         ///  Sets the callback used to report download progress.
@@ -636,7 +636,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_dlcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_dlcb(byte* handle, delegate* unmanaged[Cdecl]<void*, byte*, _alpm_download_event_type_t, void*, void> cb, void* ctx);
+        public static extern int alpm_option_set_dlcb(byte* handle, delegate* unmanaged[Cdecl]<void*, byte*, _alpm_download_event_type_t, void*, void> cb, void* ctx);
 
         /// <summary>
         ///  Returns the downloading callback.
@@ -644,7 +644,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set fetch callback
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_fetchcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern delegate* unmanaged[Cdecl]<void*, byte*, byte*, int, int> alpm_option_get_fetchcb(byte* handle);
+        public static extern delegate* unmanaged[Cdecl]<void*, byte*, byte*, int, int> alpm_option_get_fetchcb(byte* handle);
 
         /// <summary>
         ///  Returns the downloading callback.
@@ -652,7 +652,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set fetch callback context
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_fetchcb_ctx", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_option_get_fetchcb_ctx(byte* handle);
+        public static extern void* alpm_option_get_fetchcb_ctx(byte* handle);
 
         /// <summary>
         ///  Sets the downloading callback.
@@ -662,7 +662,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_fetchcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_fetchcb(byte* handle, delegate* unmanaged[Cdecl]<void*, byte*, byte*, int, int> cb, void* ctx);
+        public static extern int alpm_option_set_fetchcb(byte* handle, delegate* unmanaged[Cdecl]<void*, byte*, byte*, int, int> cb, void* ctx);
 
         /// <summary>
         ///  Returns the callback used for events.
@@ -670,7 +670,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set event callback
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_eventcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern delegate* unmanaged[Cdecl]<void*, _alpm_event_t*, void> alpm_option_get_eventcb(byte* handle);
+        public static extern delegate* unmanaged[Cdecl]<void*, _alpm_event_t*, void> alpm_option_get_eventcb(byte* handle);
 
         /// <summary>
         ///  Returns the callback used for events.
@@ -678,7 +678,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set event callback context
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_eventcb_ctx", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_option_get_eventcb_ctx(byte* handle);
+        public static extern void* alpm_option_get_eventcb_ctx(byte* handle);
 
         /// <summary>
         ///  Sets the callback used for events.
@@ -688,7 +688,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_eventcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_eventcb(byte* handle, delegate* unmanaged[Cdecl]<void*, _alpm_event_t*, void> cb, void* ctx);
+        public static extern int alpm_option_set_eventcb(byte* handle, delegate* unmanaged[Cdecl]<void*, _alpm_event_t*, void> cb, void* ctx);
 
         /// <summary>
         ///  Returns the callback used for questions.
@@ -696,7 +696,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set question callback
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_questioncb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern delegate* unmanaged[Cdecl]<void*, _alpm_question_t*, void> alpm_option_get_questioncb(byte* handle);
+        public static extern delegate* unmanaged[Cdecl]<void*, _alpm_question_t*, void> alpm_option_get_questioncb(byte* handle);
 
         /// <summary>
         ///  Returns the callback used for questions.
@@ -704,7 +704,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set question callback context
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_questioncb_ctx", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_option_get_questioncb_ctx(byte* handle);
+        public static extern void* alpm_option_get_questioncb_ctx(byte* handle);
 
         /// <summary>
         ///  Sets the callback used for questions.
@@ -714,7 +714,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_questioncb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_questioncb(byte* handle, delegate* unmanaged[Cdecl]<void*, _alpm_question_t*, void> cb, void* ctx);
+        public static extern int alpm_option_set_questioncb(byte* handle, delegate* unmanaged[Cdecl]<void*, _alpm_question_t*, void> cb, void* ctx);
 
         /// <summary>
         /// Returns the callback used for operation progress.
@@ -722,7 +722,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set progress callback
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_progresscb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern delegate* unmanaged[Cdecl]<void*, _alpm_progress_t, byte*, int, nuint, nuint, void> alpm_option_get_progresscb(byte* handle);
+        public static extern delegate* unmanaged[Cdecl]<void*, _alpm_progress_t, byte*, int, nuint, nuint, void> alpm_option_get_progresscb(byte* handle);
 
         /// <summary>
         /// Returns the callback used for operation progress.
@@ -730,7 +730,7 @@ namespace Pacpar.Alpm
         ///  @return the currently set progress callback context
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_progresscb_ctx", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_option_get_progresscb_ctx(byte* handle);
+        public static extern void* alpm_option_get_progresscb_ctx(byte* handle);
 
         /// <summary>
         ///  Sets the callback used for operation progress.
@@ -740,21 +740,21 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_progresscb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_progresscb(byte* handle, delegate* unmanaged[Cdecl]<void*, _alpm_progress_t, byte*, int, nuint, nuint, void> cb, void* ctx);
+        public static extern int alpm_option_set_progresscb(byte* handle, delegate* unmanaged[Cdecl]<void*, _alpm_progress_t, byte*, int, nuint, nuint, void> cb, void* ctx);
 
         /// <summary>
         ///  Returns the root path. Read-only.
         ///  @param handle the context handle
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_root", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_option_get_root(byte* handle);
+        public static extern byte* alpm_option_get_root(byte* handle);
 
         /// <summary>
         ///  Returns the path to the database directory. Read-only.
         ///  @param handle the context handle
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_dbpath", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_option_get_dbpath(byte* handle);
+        public static extern byte* alpm_option_get_dbpath(byte* handle);
 
         /// <summary>
         ///  Get the name of the database lock file. Read-only.
@@ -763,7 +763,7 @@ namespace Pacpar.Alpm
         ///  @param handle the context handle
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_lockfile", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_option_get_lockfile(byte* handle);
+        public static extern byte* alpm_option_get_lockfile(byte* handle);
 
         /// <summary>
         ///  Gets the currently configured cachedirs,
@@ -771,7 +771,7 @@ namespace Pacpar.Alpm
         ///  @return a char* list of cache directories
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_cachedirs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_cachedirs(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_cachedirs(byte* handle);
 
         /// <summary>
         ///  Sets the cachedirs.
@@ -781,7 +781,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_cachedirs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_cachedirs(byte* handle, _alpm_list_t* cachedirs);
+        public static extern int alpm_option_set_cachedirs(byte* handle, _alpm_list_t* cachedirs);
 
         /// <summary>
         ///  Append a cachedir to the configured cachedirs.
@@ -790,7 +790,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_cachedir", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_cachedir(byte* handle, byte* cachedir);
+        public static extern int alpm_option_add_cachedir(byte* handle, byte* cachedir);
 
         /// <summary>
         ///  Remove a cachedir from the configured cachedirs.
@@ -799,7 +799,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_cachedir", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_cachedir(byte* handle, byte* cachedir);
+        public static extern int alpm_option_remove_cachedir(byte* handle, byte* cachedir);
 
         /// <summary>
         ///  Gets the currently configured hookdirs,
@@ -807,7 +807,7 @@ namespace Pacpar.Alpm
         ///  @return a char* list of hook directories
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_hookdirs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_hookdirs(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_hookdirs(byte* handle);
 
         /// <summary>
         ///  Sets the hookdirs.
@@ -817,7 +817,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_hookdirs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_hookdirs(byte* handle, _alpm_list_t* hookdirs);
+        public static extern int alpm_option_set_hookdirs(byte* handle, _alpm_list_t* hookdirs);
 
         /// <summary>
         ///  Append a hookdir to the configured hookdirs.
@@ -826,7 +826,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_hookdir", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_hookdir(byte* handle, byte* hookdir);
+        public static extern int alpm_option_add_hookdir(byte* handle, byte* hookdir);
 
         /// <summary>
         ///  Remove a hookdir from the configured hookdirs.
@@ -835,7 +835,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_hookdir", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_hookdir(byte* handle, byte* hookdir);
+        public static extern int alpm_option_remove_hookdir(byte* handle, byte* hookdir);
 
         /// <summary>
         ///  Gets the currently configured overwritable files,
@@ -843,7 +843,7 @@ namespace Pacpar.Alpm
         ///  @return a char* list of overwritable file globs
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_overwrite_files", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_overwrite_files(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_overwrite_files(byte* handle);
 
         /// <summary>
         ///  Sets the overwritable files.
@@ -853,7 +853,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_overwrite_files", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_overwrite_files(byte* handle, _alpm_list_t* globs);
+        public static extern int alpm_option_set_overwrite_files(byte* handle, _alpm_list_t* globs);
 
         /// <summary>
         ///  Append an overwritable file to the configured overwritable files.
@@ -862,7 +862,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_overwrite_file", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_overwrite_file(byte* handle, byte* glob);
+        public static extern int alpm_option_add_overwrite_file(byte* handle, byte* glob);
 
         /// <summary>
         ///  Remove a file glob from the configured overwritable files globs.
@@ -873,7 +873,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_overwrite_file", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_overwrite_file(byte* handle, byte* glob);
+        public static extern int alpm_option_remove_overwrite_file(byte* handle, byte* glob);
 
         /// <summary>
         ///  Gets the filepath to the currently set logfile.
@@ -881,7 +881,7 @@ namespace Pacpar.Alpm
         ///  @return the path to the logfile
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_logfile", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_option_get_logfile(byte* handle);
+        public static extern byte* alpm_option_get_logfile(byte* handle);
 
         /// <summary>
         ///  Sets the logfile path.
@@ -890,7 +890,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_logfile", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_logfile(byte* handle, byte* logfile);
+        public static extern int alpm_option_set_logfile(byte* handle, byte* logfile);
 
         /// <summary>
         ///  Returns the path to libalpm's GnuPG home directory.
@@ -898,7 +898,7 @@ namespace Pacpar.Alpm
         ///  @return the path to libalpms's GnuPG home directory
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_gpgdir", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_option_get_gpgdir(byte* handle);
+        public static extern byte* alpm_option_get_gpgdir(byte* handle);
 
         /// <summary>
         ///  Sets the path to libalpm's GnuPG home directory.
@@ -906,14 +906,14 @@ namespace Pacpar.Alpm
         ///  @param gpgdir the gpgdir to set
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_gpgdir", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_gpgdir(byte* handle, byte* gpgdir);
+        public static extern int alpm_option_set_gpgdir(byte* handle, byte* gpgdir);
 
         /// <summary>
         ///  Returns the user to switch to for sensitive operations.
         ///  @return the user name
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_sandboxuser", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_option_get_sandboxuser(byte* handle);
+        public static extern byte* alpm_option_get_sandboxuser(byte* handle);
 
         /// <summary>
         ///  Sets the user to switch to for sensitive operations.
@@ -921,7 +921,7 @@ namespace Pacpar.Alpm
         ///  @param sandboxuser the user to set
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_sandboxuser", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_sandboxuser(byte* handle, byte* sandboxuser);
+        public static extern int alpm_option_set_sandboxuser(byte* handle, byte* sandboxuser);
 
         /// <summary>
         ///  Returns whether to use syslog (0 is FALSE, TRUE otherwise).
@@ -929,7 +929,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_usesyslog", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_get_usesyslog(byte* handle);
+        public static extern int alpm_option_get_usesyslog(byte* handle);
 
         /// <summary>
         ///  Sets whether to use syslog (0 is FALSE, TRUE otherwise).
@@ -937,7 +937,7 @@ namespace Pacpar.Alpm
         ///  @param usesyslog whether to use the syslog (0 is FALSE, TRUE otherwise)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_usesyslog", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_usesyslog(byte* handle, int usesyslog);
+        public static extern int alpm_option_set_usesyslog(byte* handle, int usesyslog);
 
         /// <summary>
         ///  Get the list of no-upgrade files
@@ -945,7 +945,7 @@ namespace Pacpar.Alpm
         ///  @return the char* list of no-upgrade files
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_noupgrades", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_noupgrades(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_noupgrades(byte* handle);
 
         /// <summary>
         ///  Add a file to the no-upgrade list
@@ -954,7 +954,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_noupgrade", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_noupgrade(byte* handle, byte* path);
+        public static extern int alpm_option_add_noupgrade(byte* handle, byte* path);
 
         /// <summary>
         ///  Sets the list of no-upgrade files
@@ -964,7 +964,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_noupgrades", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_noupgrades(byte* handle, _alpm_list_t* noupgrade);
+        public static extern int alpm_option_set_noupgrades(byte* handle, _alpm_list_t* noupgrade);
 
         /// <summary>
         ///  Remove an entry from the no-upgrade list
@@ -973,7 +973,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_noupgrade", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_noupgrade(byte* handle, byte* path);
+        public static extern int alpm_option_remove_noupgrade(byte* handle, byte* path);
 
         /// <summary>
         ///  Test if a path matches any of the globs in the no-upgrade list
@@ -983,7 +983,7 @@ namespace Pacpar.Alpm
         ///  positive is the  match was inverted
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_match_noupgrade", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_match_noupgrade(byte* handle, byte* path);
+        public static extern int alpm_option_match_noupgrade(byte* handle, byte* path);
 
         /// <summary>
         ///  Get the list of no-extract files
@@ -991,7 +991,7 @@ namespace Pacpar.Alpm
         ///  @return the char* list of no-extract files
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_noextracts", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_noextracts(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_noextracts(byte* handle);
 
         /// <summary>
         ///  Add a file to the no-extract list
@@ -1000,7 +1000,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_noextract", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_noextract(byte* handle, byte* path);
+        public static extern int alpm_option_add_noextract(byte* handle, byte* path);
 
         /// <summary>
         ///  Sets the list of no-extract files
@@ -1010,7 +1010,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_noextracts", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_noextracts(byte* handle, _alpm_list_t* noextract);
+        public static extern int alpm_option_set_noextracts(byte* handle, _alpm_list_t* noextract);
 
         /// <summary>
         ///  Remove an entry from the no-extract list
@@ -1019,7 +1019,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_noextract", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_noextract(byte* handle, byte* path);
+        public static extern int alpm_option_remove_noextract(byte* handle, byte* path);
 
         /// <summary>
         ///  Test if a path matches any of the globs in the no-extract list
@@ -1029,7 +1029,7 @@ namespace Pacpar.Alpm
         ///  positive is the  match was inverted
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_match_noextract", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_match_noextract(byte* handle, byte* path);
+        public static extern int alpm_option_match_noextract(byte* handle, byte* path);
 
         /// <summary>
         ///  Get the list of ignored packages
@@ -1037,7 +1037,7 @@ namespace Pacpar.Alpm
         ///  @return the char* list of ignored packages
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_ignorepkgs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_ignorepkgs(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_ignorepkgs(byte* handle);
 
         /// <summary>
         ///  Add a file to the ignored package list
@@ -1046,7 +1046,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_ignorepkg", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_ignorepkg(byte* handle, byte* pkg);
+        public static extern int alpm_option_add_ignorepkg(byte* handle, byte* pkg);
 
         /// <summary>
         ///  Sets the list of packages to ignore
@@ -1056,7 +1056,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_ignorepkgs", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_ignorepkgs(byte* handle, _alpm_list_t* ignorepkgs);
+        public static extern int alpm_option_set_ignorepkgs(byte* handle, _alpm_list_t* ignorepkgs);
 
         /// <summary>
         ///  Remove an entry from the ignorepkg list
@@ -1065,7 +1065,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_ignorepkg", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_ignorepkg(byte* handle, byte* pkg);
+        public static extern int alpm_option_remove_ignorepkg(byte* handle, byte* pkg);
 
         /// <summary>
         ///  Get the list of ignored groups
@@ -1073,7 +1073,7 @@ namespace Pacpar.Alpm
         ///  @return the char* list of ignored groups
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_ignoregroups", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_ignoregroups(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_ignoregroups(byte* handle);
 
         /// <summary>
         ///  Add a file to the ignored group list
@@ -1082,7 +1082,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_ignoregroup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_ignoregroup(byte* handle, byte* grp);
+        public static extern int alpm_option_add_ignoregroup(byte* handle, byte* grp);
 
         /// <summary>
         ///  Sets the list of groups to ignore
@@ -1092,7 +1092,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_ignoregroups", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_ignoregroups(byte* handle, _alpm_list_t* ignoregrps);
+        public static extern int alpm_option_set_ignoregroups(byte* handle, _alpm_list_t* ignoregrps);
 
         /// <summary>
         ///  Remove an entry from the ignoregroup list
@@ -1101,7 +1101,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_ignoregroup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_ignoregroup(byte* handle, byte* grp);
+        public static extern int alpm_option_remove_ignoregroup(byte* handle, byte* grp);
 
         /// <summary>
         ///  Gets the list of dependencies that are assumed to be met
@@ -1109,7 +1109,7 @@ namespace Pacpar.Alpm
         ///  @return a list of alpm_depend_t*
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_assumeinstalled", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_assumeinstalled(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_assumeinstalled(byte* handle);
 
         /// <summary>
         ///  Add a depend to the assumed installed list
@@ -1118,7 +1118,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_assumeinstalled", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_assumeinstalled(byte* handle, _alpm_depend_t* dep);
+        public static extern int alpm_option_add_assumeinstalled(byte* handle, _alpm_depend_t* dep);
 
         /// <summary>
         ///  Sets the list of dependencies that are assumed to be met
@@ -1128,7 +1128,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_assumeinstalled", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_assumeinstalled(byte* handle, _alpm_list_t* deps);
+        public static extern int alpm_option_set_assumeinstalled(byte* handle, _alpm_list_t* deps);
 
         /// <summary>
         ///  Remove an entry from the assume installed list
@@ -1137,7 +1137,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_assumeinstalled", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_assumeinstalled(byte* handle, _alpm_depend_t* dep);
+        public static extern int alpm_option_remove_assumeinstalled(byte* handle, _alpm_depend_t* dep);
 
         /// <summary>
         ///  Returns the allowed physical architectures.
@@ -1145,7 +1145,7 @@ namespace Pacpar.Alpm
         ///  @return the list of physical architectures (caller is responsible for alpm_list_free)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_physical_architectures", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_physical_architectures(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_physical_architectures(byte* handle);
 
         /// <summary>
         ///  Returns the allowed package architecture.
@@ -1153,7 +1153,7 @@ namespace Pacpar.Alpm
         ///  @return the configured package architectures
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_architectures", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_option_get_architectures(byte* handle);
+        public static extern _alpm_list_t* alpm_option_get_architectures(byte* handle);
 
         /// <summary>
         ///  Adds an allowed package architecture.
@@ -1161,7 +1161,7 @@ namespace Pacpar.Alpm
         ///  @param arch the architecture to set
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_add_architecture", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_add_architecture(byte* handle, byte* arch);
+        public static extern int alpm_option_add_architecture(byte* handle, byte* arch);
 
         /// <summary>
         ///  Sets the allowed package architecture.
@@ -1169,7 +1169,7 @@ namespace Pacpar.Alpm
         ///  @param arches the architecture to set
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_architectures", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_architectures(byte* handle, _alpm_list_t* arches);
+        public static extern int alpm_option_set_architectures(byte* handle, _alpm_list_t* arches);
 
         /// <summary>
         ///  Removes an allowed package architecture.
@@ -1177,7 +1177,7 @@ namespace Pacpar.Alpm
         ///  @param arch the architecture to remove
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_remove_architecture", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_remove_architecture(byte* handle, byte* arch);
+        public static extern int alpm_option_remove_architecture(byte* handle, byte* arch);
 
         /// <summary>
         ///  Get whether or not checking for free space before installing packages is enabled.
@@ -1185,7 +1185,7 @@ namespace Pacpar.Alpm
         ///  @return 0 if disabled, 1 if enabled
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_checkspace", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_get_checkspace(byte* handle);
+        public static extern int alpm_option_get_checkspace(byte* handle);
 
         /// <summary>
         ///  Enable/disable checking free space before installing packages.
@@ -1193,7 +1193,7 @@ namespace Pacpar.Alpm
         ///  @param checkspace 0 for disabled, 1 for enabled
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_checkspace", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_checkspace(byte* handle, int checkspace);
+        public static extern int alpm_option_set_checkspace(byte* handle, int checkspace);
 
         /// <summary>
         ///  Gets the configured database extension.
@@ -1201,7 +1201,7 @@ namespace Pacpar.Alpm
         ///  @return the configured database extension
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_dbext", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_option_get_dbext(byte* handle);
+        public static extern byte* alpm_option_get_dbext(byte* handle);
 
         /// <summary>
         ///  Sets the database extension.
@@ -1210,7 +1210,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_dbext", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_dbext(byte* handle, byte* dbext);
+        public static extern int alpm_option_set_dbext(byte* handle, byte* dbext);
 
         /// <summary>
         ///  Get the default siglevel.
@@ -1218,7 +1218,7 @@ namespace Pacpar.Alpm
         ///  @return a \link alpm_siglevel_t \endlink bitfield of the siglevel
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_default_siglevel", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_get_default_siglevel(byte* handle);
+        public static extern int alpm_option_get_default_siglevel(byte* handle);
 
         /// <summary>
         ///  Set the default siglevel.
@@ -1227,7 +1227,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_default_siglevel", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_default_siglevel(byte* handle, int level);
+        public static extern int alpm_option_set_default_siglevel(byte* handle, int level);
 
         /// <summary>
         ///  Get the configured local file siglevel.
@@ -1235,7 +1235,7 @@ namespace Pacpar.Alpm
         ///  @return a \link alpm_siglevel_t \endlink bitfield of the siglevel
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_local_file_siglevel", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_get_local_file_siglevel(byte* handle);
+        public static extern int alpm_option_get_local_file_siglevel(byte* handle);
 
         /// <summary>
         ///  Set the local file siglevel.
@@ -1244,7 +1244,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_local_file_siglevel", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_local_file_siglevel(byte* handle, int level);
+        public static extern int alpm_option_set_local_file_siglevel(byte* handle, int level);
 
         /// <summary>
         ///  Get the configured remote file siglevel.
@@ -1252,7 +1252,7 @@ namespace Pacpar.Alpm
         ///  @return a \link alpm_siglevel_t \endlink bitfield of the siglevel
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_remote_file_siglevel", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_get_remote_file_siglevel(byte* handle);
+        public static extern int alpm_option_get_remote_file_siglevel(byte* handle);
 
         /// <summary>
         ///  Set the remote file siglevel.
@@ -1261,7 +1261,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_remote_file_siglevel", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_remote_file_siglevel(byte* handle, int level);
+        public static extern int alpm_option_set_remote_file_siglevel(byte* handle, int level);
 
         /// <summary>
         ///  Enables/disables the download timeout.
@@ -1270,7 +1270,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_disable_dl_timeout", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_disable_dl_timeout(byte* handle, ushort disable_dl_timeout);
+        public static extern int alpm_option_set_disable_dl_timeout(byte* handle, ushort disable_dl_timeout);
 
         /// <summary>
         ///  Gets the number of parallel streams to download database and package files.
@@ -1278,7 +1278,7 @@ namespace Pacpar.Alpm
         ///  @return the number of parallel streams to download database and package files
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_get_parallel_downloads", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_get_parallel_downloads(byte* handle);
+        public static extern int alpm_option_get_parallel_downloads(byte* handle);
 
         /// <summary>
         ///  Sets number of parallel streams to download database and package files.
@@ -1287,7 +1287,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_parallel_downloads", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_parallel_downloads(byte* handle, uint num_streams);
+        public static extern int alpm_option_set_parallel_downloads(byte* handle, uint num_streams);
 
         /// <summary>
         ///  Enables/disables the sandbox.
@@ -1296,7 +1296,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_option_set_disable_sandbox(byte* handle, ushort disable_sandbox);
+        public static extern int alpm_option_set_disable_sandbox(byte* handle, ushort disable_sandbox);
 
         /// <summary>
         ///  Create a package from a file.
@@ -1314,7 +1314,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_load", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_load(byte* handle, byte* filename, int full, int level, byte** pkg);
+        public static extern int alpm_pkg_load(byte* handle, byte* filename, int full, int level, byte** pkg);
 
         /// <summary>
         ///  Fetch a list of remote packages.
@@ -1327,7 +1327,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success or -1 on failure
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_fetch_pkgurl", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_fetch_pkgurl(byte* handle, _alpm_list_t* urls, _alpm_list_t** fetched);
+        public static extern int alpm_fetch_pkgurl(byte* handle, _alpm_list_t* urls, _alpm_list_t** fetched);
 
         /// <summary>
         ///  Find a package in a list by name.
@@ -1336,7 +1336,7 @@ namespace Pacpar.Alpm
         ///  @return a pointer to the package if found or NULL
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_find", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_find(_alpm_list_t* haystack, byte* needle);
+        public static extern byte* alpm_pkg_find(_alpm_list_t* haystack, byte* needle);
 
         /// <summary>
         ///  Free a package.
@@ -1346,7 +1346,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_free(byte* pkg);
+        public static extern int alpm_pkg_free(byte* pkg);
 
         /// <summary>
         ///  Check the integrity (with md5) of a package from the sync cache.
@@ -1354,7 +1354,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_checkmd5sum", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_checkmd5sum(byte* pkg);
+        public static extern int alpm_pkg_checkmd5sum(byte* pkg);
 
         /// <summary>
         ///  Compare two version strings and determine which one is 'newer'.
@@ -1372,7 +1372,7 @@ namespace Pacpar.Alpm
         ///  that do not include the pkgrel.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_vercmp", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_vercmp(byte* a, byte* b);
+        public static extern int alpm_pkg_vercmp(byte* a, byte* b);
 
         /// <summary>
         ///  Computes the list of packages requiring a given package.
@@ -1382,7 +1382,7 @@ namespace Pacpar.Alpm
         ///  @return the list of packages requiring pkg
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_compute_requiredby", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_compute_requiredby(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_compute_requiredby(byte* pkg);
 
         /// <summary>
         ///  Computes the list of packages optionally requiring a given package.
@@ -1392,7 +1392,7 @@ namespace Pacpar.Alpm
         ///  @return the list of packages optionally requiring pkg
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_compute_optionalfor", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_compute_optionalfor(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_compute_optionalfor(byte* pkg);
 
         /// <summary>
         ///  Test if a package should be ignored.
@@ -1403,7 +1403,7 @@ namespace Pacpar.Alpm
         ///  @return 1 if the package should be ignored, 0 otherwise
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_should_ignore", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_should_ignore(byte* handle, byte* pkg);
+        public static extern int alpm_pkg_should_ignore(byte* handle, byte* pkg);
 
         /// <summary>
         ///  Gets the handle of a package
@@ -1411,7 +1411,7 @@ namespace Pacpar.Alpm
         ///  @return the alpm handle that the package belongs to
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_handle", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_handle(byte* pkg);
+        public static extern byte* alpm_pkg_get_handle(byte* pkg);
 
         /// <summary>
         ///  Gets the name of the file from which the package was loaded.
@@ -1419,7 +1419,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_filename", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_filename(byte* pkg);
+        public static extern byte* alpm_pkg_get_filename(byte* pkg);
 
         /// <summary>
         ///  Returns the package base name.
@@ -1427,7 +1427,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_base", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_base(byte* pkg);
+        public static extern byte* alpm_pkg_get_base(byte* pkg);
 
         /// <summary>
         ///  Returns the package name.
@@ -1435,7 +1435,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_name", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_name(byte* pkg);
+        public static extern byte* alpm_pkg_get_name(byte* pkg);
 
         /// <summary>
         ///  Returns the package version as a string.
@@ -1445,21 +1445,21 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_version", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_version(byte* pkg);
+        public static extern byte* alpm_pkg_get_version(byte* pkg);
 
         /// <summary>
         ///  Returns the origin of the package.
         ///  @return an alpm_pkgfrom_t constant, -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_origin", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_pkgfrom_t alpm_pkg_get_origin(byte* pkg);
+        public static extern _alpm_pkgfrom_t alpm_pkg_get_origin(byte* pkg);
 
         /// <summary>
         ///  Returns the installed db of the package.
         ///  @return an alpm_pkgfrom_t constant, -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_installed_db", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_installed_db(byte* pkg);
+        public static extern byte* alpm_pkg_get_installed_db(byte* pkg);
 
         /// <summary>
         ///  Returns the package description.
@@ -1467,7 +1467,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_desc", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_desc(byte* pkg);
+        public static extern byte* alpm_pkg_get_desc(byte* pkg);
 
         /// <summary>
         ///  Returns the package URL.
@@ -1475,7 +1475,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_url", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_url(byte* pkg);
+        public static extern byte* alpm_pkg_get_url(byte* pkg);
 
         /// <summary>
         ///  Returns the build timestamp of the package.
@@ -1483,7 +1483,7 @@ namespace Pacpar.Alpm
         ///  @return the timestamp of the build time
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_builddate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern long alpm_pkg_get_builddate(byte* pkg);
+        public static extern long alpm_pkg_get_builddate(byte* pkg);
 
         /// <summary>
         ///  Returns the install timestamp of the package.
@@ -1491,7 +1491,7 @@ namespace Pacpar.Alpm
         ///  @return the timestamp of the install time
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_installdate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern long alpm_pkg_get_installdate(byte* pkg);
+        public static extern long alpm_pkg_get_installdate(byte* pkg);
 
         /// <summary>
         ///  Returns the packager's name.
@@ -1499,7 +1499,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_packager", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_packager(byte* pkg);
+        public static extern byte* alpm_pkg_get_packager(byte* pkg);
 
         /// <summary>
         ///  Returns the package's MD5 checksum as a string.
@@ -1508,7 +1508,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_md5sum", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_md5sum(byte* pkg);
+        public static extern byte* alpm_pkg_get_md5sum(byte* pkg);
 
         /// <summary>
         ///  Returns the package's SHA256 checksum as a string.
@@ -1517,7 +1517,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_sha256sum", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_sha256sum(byte* pkg);
+        public static extern byte* alpm_pkg_get_sha256sum(byte* pkg);
 
         /// <summary>
         ///  Returns the architecture for which the package was built.
@@ -1525,7 +1525,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_arch", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_arch(byte* pkg);
+        public static extern byte* alpm_pkg_get_arch(byte* pkg);
 
         /// <summary>
         ///  Returns the size of the package. This is only available for sync database
@@ -1534,7 +1534,7 @@ namespace Pacpar.Alpm
         ///  @return the size of the package in bytes.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_size", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern CLong alpm_pkg_get_size(byte* pkg);
+        public static extern CLong alpm_pkg_get_size(byte* pkg);
 
         /// <summary>
         ///  Returns the installed size of the package.
@@ -1542,7 +1542,7 @@ namespace Pacpar.Alpm
         ///  @return the total size of files installed by the package.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_isize", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern CLong alpm_pkg_get_isize(byte* pkg);
+        public static extern CLong alpm_pkg_get_isize(byte* pkg);
 
         /// <summary>
         ///  Returns the package installation reason.
@@ -1550,7 +1550,7 @@ namespace Pacpar.Alpm
         ///  @return an enum member giving the install reason.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_reason", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_pkgreason_t alpm_pkg_get_reason(byte* pkg);
+        public static extern _alpm_pkgreason_t alpm_pkg_get_reason(byte* pkg);
 
         /// <summary>
         ///  Returns the list of package licenses.
@@ -1558,7 +1558,7 @@ namespace Pacpar.Alpm
         ///  @return a pointer to an internal list of strings.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_licenses", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_licenses(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_licenses(byte* pkg);
 
         /// <summary>
         ///  Returns the list of package groups.
@@ -1566,7 +1566,7 @@ namespace Pacpar.Alpm
         ///  @return a pointer to an internal list of strings.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_groups", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_groups(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_groups(byte* pkg);
 
         /// <summary>
         ///  Returns the list of package dependencies as alpm_depend_t.
@@ -1574,7 +1574,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal list of alpm_depend_t structures.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_depends", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_depends(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_depends(byte* pkg);
 
         /// <summary>
         ///  Returns the list of package optional dependencies.
@@ -1582,7 +1582,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal list of alpm_depend_t structures.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_optdepends", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_optdepends(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_optdepends(byte* pkg);
 
         /// <summary>
         ///  Returns a list of package check dependencies
@@ -1590,7 +1590,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal list of alpm_depend_t structures.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_checkdepends", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_checkdepends(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_checkdepends(byte* pkg);
 
         /// <summary>
         ///  Returns a list of package make dependencies
@@ -1598,7 +1598,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal list of alpm_depend_t structures.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_makedepends", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_makedepends(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_makedepends(byte* pkg);
 
         /// <summary>
         ///  Returns the list of packages conflicting with pkg.
@@ -1606,7 +1606,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal list of alpm_depend_t structures.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_conflicts", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_conflicts(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_conflicts(byte* pkg);
 
         /// <summary>
         ///  Returns the list of packages provided by pkg.
@@ -1614,7 +1614,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal list of alpm_depend_t structures.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_provides", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_provides(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_provides(byte* pkg);
 
         /// <summary>
         ///  Returns the list of packages to be replaced by pkg.
@@ -1622,7 +1622,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal list of alpm_depend_t structures.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_replaces", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_replaces(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_replaces(byte* pkg);
 
         /// <summary>
         ///  Returns the list of files installed by pkg.
@@ -1633,7 +1633,7 @@ namespace Pacpar.Alpm
         ///  package file objects
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_files", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_filelist_t* alpm_pkg_get_files(byte* pkg);
+        public static extern _alpm_filelist_t* alpm_pkg_get_files(byte* pkg);
 
         /// <summary>
         ///  Returns the list of files backed up when installing pkg.
@@ -1641,7 +1641,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to a list of alpm_backup_t objects
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_backup", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_backup(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_backup(byte* pkg);
 
         /// <summary>
         ///  Returns the database containing pkg.
@@ -1651,7 +1651,7 @@ namespace Pacpar.Alpm
         ///  @return a pointer to the DB containing pkg, or NULL.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_db", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_db(byte* pkg);
+        public static extern byte* alpm_pkg_get_db(byte* pkg);
 
         /// <summary>
         ///  Returns the base64 encoded package signature.
@@ -1659,7 +1659,7 @@ namespace Pacpar.Alpm
         ///  @return a reference to an internal string
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_base64_sig", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_pkg_get_base64_sig(byte* pkg);
+        public static extern byte* alpm_pkg_get_base64_sig(byte* pkg);
 
         /// <summary>
         ///  Extracts package signature either from embedded package signature
@@ -1672,7 +1672,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, negative number on error.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_sig", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_get_sig(byte* pkg, byte** sig, nuint* sig_len);
+        public static extern int alpm_pkg_get_sig(byte* pkg, byte** sig, nuint* sig_len);
 
         /// <summary>
         ///  Returns the method used to validate a package during install.
@@ -1680,7 +1680,7 @@ namespace Pacpar.Alpm
         ///  @return an enum member giving the validation method
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_validation", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_get_validation(byte* pkg);
+        public static extern int alpm_pkg_get_validation(byte* pkg);
 
         /// <summary>
         ///  Gets the extended data field of a package.
@@ -1688,14 +1688,14 @@ namespace Pacpar.Alpm
         ///  @return a reference to a list of alpm_pkg_xdata_t objects
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_xdata", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_pkg_get_xdata(byte* pkg);
+        public static extern _alpm_list_t* alpm_pkg_get_xdata(byte* pkg);
 
         /// <summary>
         ///  Returns whether the package has an install scriptlet.
         ///  @return 0 if FALSE, TRUE otherwise
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_has_scriptlet", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_has_scriptlet(byte* pkg);
+        public static extern int alpm_pkg_has_scriptlet(byte* pkg);
 
         /// <summary>
         ///  Returns the size of the files that will be downloaded to install a
@@ -1704,7 +1704,7 @@ namespace Pacpar.Alpm
         ///  @return the size of the download
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_download_size", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern CLong alpm_pkg_download_size(byte* newpkg);
+        public static extern CLong alpm_pkg_download_size(byte* newpkg);
 
         /// <summary>
         ///  Set install reason for a package in the local database.
@@ -1715,7 +1715,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_set_reason", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_set_reason(byte* pkg, _alpm_pkgreason_t reason);
+        public static extern int alpm_pkg_set_reason(byte* pkg, _alpm_pkgreason_t reason);
 
         /// <summary>
         ///  Open a package changelog for reading.
@@ -1725,7 +1725,7 @@ namespace Pacpar.Alpm
         ///  @return a 'file stream' to the package changelog
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_changelog_open", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void* alpm_pkg_changelog_open(byte* pkg);
+        public static extern void* alpm_pkg_changelog_open(byte* pkg);
 
         /// <summary>
         ///  Read data from an open changelog 'file stream'.
@@ -1739,7 +1739,7 @@ namespace Pacpar.Alpm
         ///  error occurred.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_changelog_read", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint alpm_pkg_changelog_read(void* ptr, nuint size, byte* pkg, void* fp);
+        public static extern nuint alpm_pkg_changelog_read(void* ptr, nuint size, byte* pkg, void* fp);
 
         /// <summary>
         ///  Close a package changelog for reading.
@@ -1748,7 +1748,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_changelog_close", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_changelog_close(byte* pkg, void* fp);
+        public static extern int alpm_pkg_changelog_close(byte* pkg, void* fp);
 
         /// <summary>
         ///  Open a package mtree file for reading.
@@ -1756,7 +1756,7 @@ namespace Pacpar.Alpm
         ///  @return an archive structure for the package mtree file
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_mtree_open", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern archive* alpm_pkg_mtree_open(byte* pkg);
+        public static extern archive* alpm_pkg_mtree_open(byte* pkg);
 
         /// <summary>
         ///  Read next entry from a package mtree file.
@@ -1766,7 +1766,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, 1 if end of archive is reached, -1 otherwise.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_mtree_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_mtree_next(byte* pkg, archive* archive, archive_entry** entry);
+        public static extern int alpm_pkg_mtree_next(byte* pkg, archive* archive, archive_entry** entry);
 
         /// <summary>
         ///  Close a package mtree file.
@@ -1774,7 +1774,7 @@ namespace Pacpar.Alpm
         ///  @param archive the archive to close
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_mtree_close", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_pkg_mtree_close(byte* pkg, archive* archive);
+        public static extern int alpm_pkg_mtree_close(byte* pkg, archive* archive);
 
         /// <summary>
         ///  Returns the bitfield of flags for the current transaction.
@@ -1782,7 +1782,7 @@ namespace Pacpar.Alpm
         ///  @return the bitfield of transaction flags
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_trans_get_flags", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_trans_get_flags(byte* handle);
+        public static extern int alpm_trans_get_flags(byte* handle);
 
         /// <summary>
         ///  Returns a list of packages added by the transaction.
@@ -1790,7 +1790,7 @@ namespace Pacpar.Alpm
         ///  @return a list of alpm_pkg_t structures
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_trans_get_add", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_trans_get_add(byte* handle);
+        public static extern _alpm_list_t* alpm_trans_get_add(byte* handle);
 
         /// <summary>
         ///  Returns the list of packages removed by the transaction.
@@ -1798,7 +1798,7 @@ namespace Pacpar.Alpm
         ///  @return a list of alpm_pkg_t structures
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_trans_get_remove", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern _alpm_list_t* alpm_trans_get_remove(byte* handle);
+        public static extern _alpm_list_t* alpm_trans_get_remove(byte* handle);
 
         /// <summary>
         ///  Initialize the transaction.
@@ -1807,7 +1807,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_trans_init", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_trans_init(byte* handle, int flags);
+        public static extern int alpm_trans_init(byte* handle, int flags);
 
         /// <summary>
         ///  Prepare a transaction.
@@ -1817,7 +1817,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_trans_prepare", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_trans_prepare(byte* handle, _alpm_list_t** data);
+        public static extern int alpm_trans_prepare(byte* handle, _alpm_list_t** data);
 
         /// <summary>
         ///  Commit a transaction.
@@ -1827,7 +1827,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_trans_commit", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_trans_commit(byte* handle, _alpm_list_t** data);
+        public static extern int alpm_trans_commit(byte* handle, _alpm_list_t** data);
 
         /// <summary>
         ///  Interrupt a transaction.
@@ -1835,7 +1835,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_trans_interrupt", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_trans_interrupt(byte* handle);
+        public static extern int alpm_trans_interrupt(byte* handle);
 
         /// <summary>
         ///  Release a transaction.
@@ -1843,7 +1843,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_trans_release", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_trans_release(byte* handle);
+        public static extern int alpm_trans_release(byte* handle);
 
         /// <summary>
         ///  Search for packages to upgrade and add them to the transaction.
@@ -1852,7 +1852,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_sync_sysupgrade", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_sync_sysupgrade(byte* handle, int enable_downgrade);
+        public static extern int alpm_sync_sysupgrade(byte* handle, int enable_downgrade);
 
         /// <summary>
         ///  Add a package to the transaction.
@@ -1863,7 +1863,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_add_pkg", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_add_pkg(byte* handle, byte* pkg);
+        public static extern int alpm_add_pkg(byte* handle, byte* pkg);
 
         /// <summary>
         ///  Add a package removal to the transaction.
@@ -1872,7 +1872,7 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_remove_pkg", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_remove_pkg(byte* handle, byte* pkg);
+        public static extern int alpm_remove_pkg(byte* handle, byte* pkg);
 
         /// <summary>
         ///  Check for new version of pkg in syncdbs.
@@ -1883,7 +1883,7 @@ namespace Pacpar.Alpm
         ///  See \link alpm_db_update \endlink to update a database.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_sync_get_new_version", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_sync_get_new_version(byte* pkg, _alpm_list_t* dbs_sync);
+        public static extern byte* alpm_sync_get_new_version(byte* pkg, _alpm_list_t* dbs_sync);
 
         /// <summary>
         ///  Get the md5 sum of file.
@@ -1891,7 +1891,7 @@ namespace Pacpar.Alpm
         ///  @return the checksum on success, NULL on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_compute_md5sum", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_compute_md5sum(byte* filename);
+        public static extern byte* alpm_compute_md5sum(byte* filename);
 
         /// <summary>
         ///  Get the sha256 sum of file.
@@ -1899,7 +1899,7 @@ namespace Pacpar.Alpm
         ///  @return the checksum on success, NULL on error
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_compute_sha256sum", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_compute_sha256sum(byte* filename);
+        public static extern byte* alpm_compute_sha256sum(byte* filename);
 
         /// <summary>
         ///  Remove the database lock file
@@ -1909,21 +1909,21 @@ namespace Pacpar.Alpm
         ///  @note Safe to call from inside signal handlers.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_unlock", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_unlock(byte* handle);
+        public static extern int alpm_unlock(byte* handle);
 
         /// <summary>
         ///  Get the version of library.
         ///  @return the library version, e.g. "6.0.4"
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_version", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern byte* alpm_version();
+        public static extern byte* alpm_version();
 
         /// <summary>
         ///  Get the capabilities of the library.
         ///  @return a bitmask of the capabilities
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_capabilities", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_capabilities();
+        public static extern int alpm_capabilities();
 
         /// <summary>
         ///  Drop privileges by switching to a different user.
@@ -1933,25 +1933,25 @@ namespace Pacpar.Alpm
         ///  @return 0 on success, -1 on failure
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_sandbox_setup_child", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int alpm_sandbox_setup_child(byte* handle, byte* sandboxuser, byte* sandbox_path);
+        public static extern int alpm_sandbox_setup_child(byte* handle, byte* sandboxuser, byte* sandbox_path);
 
 
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct archive
+    public unsafe partial struct archive
     {
         public fixed byte _unused[1];
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct archive_entry
+    public unsafe partial struct archive_entry
     {
         public fixed byte _unused[1];
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_list_t
+    public unsafe partial struct _alpm_list_t
     {
         public void* data;
         public _alpm_list_t* prev;
@@ -1962,7 +1962,7 @@ namespace Pacpar.Alpm
     ///  File in a package
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_file_t
+    public unsafe partial struct _alpm_file_t
     {
         /// <summary>
         ///  Name of the file
@@ -1982,7 +1982,7 @@ namespace Pacpar.Alpm
     ///  Package filelist container
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_filelist_t
+    public unsafe partial struct _alpm_filelist_t
     {
         /// <summary>
         ///  Amount of files in the array
@@ -1998,7 +1998,7 @@ namespace Pacpar.Alpm
     ///  Package group
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_group_t
+    public unsafe partial struct _alpm_group_t
     {
         /// <summary>
         ///  group name
@@ -2014,7 +2014,7 @@ namespace Pacpar.Alpm
     ///  A PGP key
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_pgpkey_t
+    public unsafe partial struct _alpm_pgpkey_t
     {
         /// <summary>
         ///  The actual key data
@@ -2068,7 +2068,7 @@ namespace Pacpar.Alpm
     ///  signature.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_sigresult_t
+    public unsafe partial struct _alpm_sigresult_t
     {
         /// <summary>
         ///  The key of the signature
@@ -2089,7 +2089,7 @@ namespace Pacpar.Alpm
     ///  array of results. The array is of size count.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_siglist_t
+    public unsafe partial struct _alpm_siglist_t
     {
         /// <summary>
         ///  The amount of results in the array
@@ -2108,7 +2108,7 @@ namespace Pacpar.Alpm
     ///  but also conflicts and providers.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_depend_t
+    public unsafe partial struct _alpm_depend_t
     {
         /// <summary>
         ///   Name of the provider to satisfy this dependency
@@ -2136,7 +2136,7 @@ namespace Pacpar.Alpm
     ///  Missing dependency.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_depmissing_t
+    public unsafe partial struct _alpm_depmissing_t
     {
         /// <summary>
         ///  Name of the package that has the dependency
@@ -2157,7 +2157,7 @@ namespace Pacpar.Alpm
     ///  A conflict that has occurred between two packages.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_conflict_t
+    public unsafe partial struct _alpm_conflict_t
     {
         /// <summary>
         ///  The first package
@@ -2181,7 +2181,7 @@ namespace Pacpar.Alpm
     ///  by that package.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_fileconflict_t
+    public unsafe partial struct _alpm_fileconflict_t
     {
         /// <summary>
         ///  The name of the package that caused the conflict
@@ -2205,7 +2205,7 @@ namespace Pacpar.Alpm
     ///  An event that may represent any event.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_any_t
+    public unsafe partial struct _alpm_event_any_t
     {
         /// <summary>
         ///  Type of event
@@ -2217,7 +2217,7 @@ namespace Pacpar.Alpm
     ///  A package operation event occurred.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_package_operation_t
+    public unsafe partial struct _alpm_event_package_operation_t
     {
         /// <summary>
         ///  Type of event
@@ -2241,7 +2241,7 @@ namespace Pacpar.Alpm
     ///  An optional dependency was removed.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_optdep_removal_t
+    public unsafe partial struct _alpm_event_optdep_removal_t
     {
         /// <summary>
         ///  Type of event
@@ -2261,7 +2261,7 @@ namespace Pacpar.Alpm
     ///  A scriptlet was ran.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_scriptlet_info_t
+    public unsafe partial struct _alpm_event_scriptlet_info_t
     {
         /// <summary>
         ///  Type of event
@@ -2279,7 +2279,7 @@ namespace Pacpar.Alpm
     ///  The database is registered but has not been downloaded
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_database_missing_t
+    public unsafe partial struct _alpm_event_database_missing_t
     {
         /// <summary>
         ///  Type of event
@@ -2295,7 +2295,7 @@ namespace Pacpar.Alpm
     ///  A package was downloaded.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_pkgdownload_t
+    public unsafe partial struct _alpm_event_pkgdownload_t
     {
         /// <summary>
         ///  Type of event
@@ -2311,7 +2311,7 @@ namespace Pacpar.Alpm
     ///  A pacnew file was created.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_pacnew_created_t
+    public unsafe partial struct _alpm_event_pacnew_created_t
     {
         /// <summary>
         ///  Type of event
@@ -2339,7 +2339,7 @@ namespace Pacpar.Alpm
     ///  A pacsave file was created.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_pacsave_created_t
+    public unsafe partial struct _alpm_event_pacsave_created_t
     {
         /// <summary>
         ///  Type of event
@@ -2359,7 +2359,7 @@ namespace Pacpar.Alpm
     ///  pre/post transaction hooks are to be ran.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_hook_t
+    public unsafe partial struct _alpm_event_hook_t
     {
         /// <summary>
         ///  Type of event
@@ -2375,7 +2375,7 @@ namespace Pacpar.Alpm
     ///  A pre/post transaction hook was ran.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_hook_run_t
+    public unsafe partial struct _alpm_event_hook_run_t
     {
         /// <summary>
         ///  Type of event
@@ -2403,7 +2403,7 @@ namespace Pacpar.Alpm
     ///  Packages downloading about to start.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_event_pkg_retrieve_t
+    public unsafe partial struct _alpm_event_pkg_retrieve_t
     {
         /// <summary>
         ///  Type of event
@@ -2427,7 +2427,7 @@ namespace Pacpar.Alpm
     ///  to access event-specific data.
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
-    internal unsafe partial struct _alpm_event_t
+    public unsafe partial struct _alpm_event_t
     {
         /// <summary>
         ///  Type of event it's always safe to access this.
@@ -2495,7 +2495,7 @@ namespace Pacpar.Alpm
     ///  A question that can represent any other question.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_question_any_t
+    public unsafe partial struct _alpm_question_any_t
     {
         /// <summary>
         ///  Type of question
@@ -2511,7 +2511,7 @@ namespace Pacpar.Alpm
     ///  Should target in ignorepkg be installed anyway?
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_question_install_ignorepkg_t
+    public unsafe partial struct _alpm_question_install_ignorepkg_t
     {
         /// <summary>
         ///  Type of question
@@ -2531,7 +2531,7 @@ namespace Pacpar.Alpm
     ///  Should a package be replaced?
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_question_replace_t
+    public unsafe partial struct _alpm_question_replace_t
     {
         /// <summary>
         ///  Type of question
@@ -2559,7 +2559,7 @@ namespace Pacpar.Alpm
     ///  Should a conflicting package be removed?
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_question_conflict_t
+    public unsafe partial struct _alpm_question_conflict_t
     {
         /// <summary>
         ///  Type of question
@@ -2579,7 +2579,7 @@ namespace Pacpar.Alpm
     ///  Should a corrupted package be deleted?
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_question_corrupted_t
+    public unsafe partial struct _alpm_question_corrupted_t
     {
         /// <summary>
         ///  Type of question
@@ -2603,7 +2603,7 @@ namespace Pacpar.Alpm
     ///  Should unresolvable targets be removed from the transaction?
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_question_remove_pkgs_t
+    public unsafe partial struct _alpm_question_remove_pkgs_t
     {
         /// <summary>
         ///  Type of question
@@ -2623,7 +2623,7 @@ namespace Pacpar.Alpm
     ///  Provider selection
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_question_select_provider_t
+    public unsafe partial struct _alpm_question_select_provider_t
     {
         /// <summary>
         ///  Type of question
@@ -2647,7 +2647,7 @@ namespace Pacpar.Alpm
     ///  Should a key be imported?
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct _alpm_question_import_key_t
+    public unsafe partial struct _alpm_question_import_key_t
     {
         /// <summary>
         ///  Type of question
@@ -2675,7 +2675,7 @@ namespace Pacpar.Alpm
     ///  to access question-specific data.
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
-    internal unsafe partial struct _alpm_question_t
+    public unsafe partial struct _alpm_question_t
     {
         /// <summary>
         ///  The type of question. It's always safe to access this.
@@ -2726,7 +2726,7 @@ namespace Pacpar.Alpm
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct __va_list_tag
+    public unsafe partial struct __va_list_tag
     {
         public uint gp_offset;
         public uint fp_offset;
@@ -2738,7 +2738,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  libalpm's error type
     /// </summary>
-    internal enum _alpm_errno_t : uint
+    public enum _alpm_errno_t : uint
     {
         /// <summary>
         ///  No error
@@ -2965,7 +2965,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  PGP signature verification status return codes
     /// </summary>
-    internal enum _alpm_sigstatus_t : uint
+    public enum _alpm_sigstatus_t : uint
     {
         /// <summary>
         ///  Signature is valid
@@ -2996,7 +2996,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  The trust level of a PGP key
     /// </summary>
-    internal enum _alpm_sigvalidity_t : uint
+    public enum _alpm_sigvalidity_t : uint
     {
         /// <summary>
         ///  The signature is fully trusted
@@ -3019,7 +3019,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  Types of version constraints in dependency specs.
     /// </summary>
-    internal enum _alpm_depmod_t : uint
+    public enum _alpm_depmod_t : uint
     {
         /// <summary>
         ///  No version constraint
@@ -3052,7 +3052,7 @@ namespace Pacpar.Alpm
     ///  Whether the conflict results from a file existing on the filesystem, or with
     ///  another target in the transaction.
     /// </summary>
-    internal enum _alpm_fileconflicttype_t : uint
+    public enum _alpm_fileconflicttype_t : uint
     {
         /// <summary>
         ///  The conflict results with a another target in the transaction
@@ -3067,7 +3067,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  Type of events.
     /// </summary>
-    internal enum _alpm_event_type_t : uint
+    public enum _alpm_event_type_t : uint
     {
         /// <summary>
         ///  Dependencies will be computed for a package.
@@ -3228,7 +3228,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  An enum over the kind of package operations.
     /// </summary>
-    internal enum _alpm_package_operation_t : uint
+    public enum _alpm_package_operation_t : uint
     {
         /// <summary>
         ///  Package (to be) installed. (No oldpkg)
@@ -3255,7 +3255,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  Kind of hook.
     /// </summary>
-    internal enum _alpm_hook_when_t : uint
+    public enum _alpm_hook_when_t : uint
     {
         ALPM_HOOK_PRE_TRANSACTION = 1,
         ALPM_HOOK_POST_TRANSACTION = 2,
@@ -3267,7 +3267,7 @@ namespace Pacpar.Alpm
     ///  so a frontend can use a bitmask map to supply preselected answers to the
     ///  different types of questions.
     /// </summary>
-    internal enum _alpm_question_type_t : uint
+    public enum _alpm_question_type_t : uint
     {
         /// <summary>
         ///  Should target in ignorepkg be installed anyway?
@@ -3302,7 +3302,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  An enum over different kinds of progress alerts.
     /// </summary>
-    internal enum _alpm_progress_t : uint
+    public enum _alpm_progress_t : uint
     {
         /// <summary>
         ///  Package install
@@ -3350,7 +3350,7 @@ namespace Pacpar.Alpm
     ///  File download events.
     ///  These events are reported by ALPM via download callback.
     /// </summary>
-    internal enum _alpm_download_event_type_t : uint
+    public enum _alpm_download_event_type_t : uint
     {
         /// <summary>
         ///  A download was started
@@ -3373,7 +3373,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  Logging Levels
     /// </summary>
-    internal enum _alpm_loglevel_t : uint
+    public enum _alpm_loglevel_t : uint
     {
         /// <summary>
         ///  Error
@@ -3396,7 +3396,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  Package install reasons.
     /// </summary>
-    internal enum _alpm_pkgreason_t : uint
+    public enum _alpm_pkgreason_t : uint
     {
         /// <summary>
         ///  Explicitly requested by the user.
@@ -3415,7 +3415,7 @@ namespace Pacpar.Alpm
     /// <summary>
     ///  Location a package object was loaded from.
     /// </summary>
-    internal enum _alpm_pkgfrom_t : uint
+    public enum _alpm_pkgfrom_t : uint
     {
         /// <summary>
         ///  Loaded from a file via \link alpm_pkg_load \endlink
