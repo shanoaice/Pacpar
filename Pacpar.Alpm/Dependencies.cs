@@ -3,9 +3,11 @@ using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm;
 
-public class AlpmDepend
+public unsafe class AlpmDepend(_alpm_depend_t* backingStruct)
 {
-  internal unsafe _alpm_depend_t* _backing_struct;
+  internal unsafe _alpm_depend_t* _backing_struct = backingStruct;
+
+  public static AlpmDepend Factory(void* ptr) => new((_alpm_depend_t*)ptr);
 
   private string? _description;
   private string? _name;
