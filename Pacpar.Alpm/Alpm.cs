@@ -19,6 +19,8 @@ public class Alpm : IDisposable
   public unsafe IntPtr Handle => (IntPtr)_handle;
   public unsafe _alpm_errno_t Errno => *errno;
 
+  public unsafe string? GetCurrentError() => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_strerror(Errno));
+
   public void Dispose()
   {
     Dispose(true);
