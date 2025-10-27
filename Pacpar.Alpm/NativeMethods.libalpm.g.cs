@@ -1995,6 +1995,22 @@ namespace Pacpar.Alpm
     }
 
     /// <summary>
+    ///  Local package or package file backup entry
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe partial struct _alpm_backup_t
+    {
+        /// <summary>
+        ///  Name of the file (without .pacsave extension)
+        /// </summary>
+        public byte* name;
+        /// <summary>
+        ///  Hash of the filename (used internally)
+        /// </summary>
+        public byte* hash;
+    }
+
+    /// <summary>
     ///  Package group
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
