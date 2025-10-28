@@ -1,27 +1,30 @@
 using System.Collections;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm;
 
 public unsafe class Backup(_alpm_backup_t* _backing_struct)
 {
-  public static Backup Factory(void* ptr) => new((_alpm_backup_t*)ptr);
+  public unsafe static Backup Factory(void* ptr) => new((_alpm_backup_t*)ptr);
+
+  public unsafe static AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => new(ptr, &Factory);
 
   private string? name;
 
-  public string? Name => name ??= Marshal.PtrToStringAnsi((nint)_backing_struct->name);
+  public unsafe string? Name => name ??= Marshal.PtrToStringAnsi((nint)_backing_struct->name);
 }
 
 public unsafe class File(_alpm_file_t* _backing_struct)
 {
-  public static File Factory(void* ptr) => new((_alpm_file_t*)ptr);
+  public unsafe static File Factory(void* ptr) => new((_alpm_file_t*)ptr);
 
   public readonly uint Mode = _backing_struct->mode;
   public readonly CLong Size = _backing_struct->size;
 
   private string? name;
 
-  public string? Name => name ??= Marshal.PtrToStringAnsi((nint)_backing_struct->name);
+  public unsafe string? Name => name ??= Marshal.PtrToStringAnsi((nint)_backing_struct->name);
 }
 
 public unsafe class FileList(_alpm_filelist_t* _backing_struct) : IReadOnlyList<File>
