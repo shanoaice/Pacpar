@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .csharp_class_name("NativeMethods")
         .csharp_class_accessibility("public")
         .csharp_namespace("Pacpar.Alpm")
-        .always_included_types(["_alpm_backup_t"])
+        .always_included_types(["_alpm_backup_t", "_alpm_pkgvalidation_t"])
         .generate_csharp_file("../NativeMethods.libalpm.g.cs")?;
 
     Ok(())

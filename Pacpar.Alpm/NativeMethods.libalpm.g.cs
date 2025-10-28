@@ -3447,5 +3447,32 @@ namespace Pacpar.Alpm
         ALPM_PKG_FROM_SYNCDB = 3,
     }
 
+    /// <summary>
+    ///  Method used to validate a package.
+    /// </summary>
+    public enum _alpm_pkgvalidation_t : uint
+    {
+        /// <summary>
+        ///  The package's validation type is unknown
+        /// </summary>
+        ALPM_PKG_VALIDATION_UNKNOWN = 0,
+        /// <summary>
+        ///  The package does not have any validation
+        /// </summary>
+        ALPM_PKG_VALIDATION_NONE = 1,
+        /// <summary>
+        ///  The package is validated with md5
+        /// </summary>
+        ALPM_PKG_VALIDATION_MD5SUM = 2,
+        /// <summary>
+        ///  The package is validated with sha256
+        /// </summary>
+        ALPM_PKG_VALIDATION_SHA256SUM = 4,
+        /// <summary>
+        ///  The package is validated with a PGP signature
+        /// </summary>
+        ALPM_PKG_VALIDATION_SIGNATURE = 8,
+    }
+
 
 }
