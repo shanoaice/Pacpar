@@ -78,7 +78,8 @@ public unsafe class Package(byte* _backing_struct, bool fromDatabase = true) : I
 
   internal byte* LibraryHandle => NativeMethods.alpm_pkg_get_handle(_backing_struct);
 
-  public static Package Factory(void* ptr) => new((byte*)ptr);
+  public static Package FactoryFromDatabase(void* ptr) => new((byte*)ptr);
+  public static Package FactoryNotFromDatabase(void* ptr) => new((byte*)ptr, false);
 
   public static unsafe Package Load(Alpm library, string filename, bool full, int level)
   {

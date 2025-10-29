@@ -1,5 +1,4 @@
 #pragma warning disable SYSLIB1054
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm;
