@@ -1,7 +1,7 @@
 namespace Pacpar.Alpm;
 
 
-public class ErrorHandler
+public static class ErrorHandler
 {
   public static Exception? GetException(_alpm_errno_t errno)
   {

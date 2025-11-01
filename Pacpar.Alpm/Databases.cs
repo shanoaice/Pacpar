@@ -22,7 +22,17 @@ public unsafe class Databases(byte* backing_struct)
 
   public AlpmStringList GetCacheServers() => new(NativeMethods.alpm_db_get_cache_servers(_backing_struct));
 
-  // TODO: GROUP, GROUP_CACHE
+  public Group GetGroup(string name) => new(NativeMethods.alpm_db_get_group(_backing_struct, (byte*)Marshal.StringToHGlobalAnsi(name)));
+
+  public AlpmList<Group> GetGroupCache()
+  {
+    var groupCache = NativeMethods.alpm_db_get_groupcache(_backing_struct);
+    if ((nint)groupCache == IntPtr.Zero)
+    {
+      throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
+    }
+    return new(groupCache, &Group.Factory);
+  }
 
   public nint Handle => (nint)NativeMethods.alpm_db_get_handle(_backing_struct);
 
