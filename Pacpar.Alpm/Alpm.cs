@@ -5,7 +5,7 @@ namespace Pacpar.Alpm;
 public class Alpm : IDisposable
 {
   // opaque handle to libalpm, details not exposed
-  private unsafe byte* _handle = (byte*)IntPtr.Zero;
+  private unsafe byte* _handle;
   internal unsafe _alpm_errno_t* errno = (_alpm_errno_t*)IntPtr.Zero;
   private bool _disposed = false;
 
@@ -22,6 +22,7 @@ public class Alpm : IDisposable
   public unsafe string? GetCurrentErrorString() => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_strerror(Errno));
 
   public Exception? GetCurrentError() => ErrorHandler.GetException(Errno);
+
   public unsafe Package LoadPackage(string filename, bool full, int level)
   {
     byte** pkg = (byte**)Marshal.AllocHGlobal(sizeof(nint));
@@ -32,6 +33,8 @@ public class Alpm : IDisposable
     }
     return new(*pkg, false);
   }
+
+  public Transactions BeginTransaction(TransactionFlags flags) => new(this, flags);
 
   public void Dispose()
   {

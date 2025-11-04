@@ -1,5 +1,19 @@
 namespace Pacpar.Alpm;
 
+/// <summary>
+/// Represents exceptions during package handling (transactions).
+/// The corresponding package is available via the <see cref="Package"/> property.
+/// The corresponding errno is available via <see cref="Exception.InnerException"/>, in formatted exception form,
+/// or via <see cref="Errno"/>, in raw errno form.
+/// </summary>
+/// <param name="message"></param>
+/// <param name="package"></param>
+/// <param name="errnoException"></param>
+public class PackageException(string message, Package package, _alpm_errno_t errno) : Exception(message, ErrorHandler.GetException(errno))
+{
+  public Package Package => package;
+  public _alpm_errno_t Errno => errno;
+}
 
 public static class ErrorHandler
 {

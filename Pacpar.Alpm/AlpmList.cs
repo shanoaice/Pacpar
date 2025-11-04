@@ -11,13 +11,11 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
 {
   internal unsafe _alpm_list_t* _alpmListNative;
   private unsafe readonly delegate*<void*, T> _factory;
-
-  private readonly bool _ownsPtr = false;
   protected bool _disposed = false;
 
   /// <summary>
   /// Wraps an existing alpm_list_t* owned by libalpm (accross FFI boundaries).
-  /// *Note*: This is intended for internal wrapping only. 
+  /// *Note*: This is intended for internal wrapping only.
   /// </summary>
   /// <param name="alpmList">existing alpm_list_t*</param>
   /// <param name="factory">factory function to covert void* to T</param>
@@ -29,8 +27,8 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
   }
 
   /// <summary>
-  /// Creates and wraps a new alpm_list_t* list head, owned by dotnet. 
-  /// Note that subsequent list is probably owned across FFI boundraies 
+  /// Creates and wraps a new alpm_list_t* list head, owned by dotnet.
+  /// Note that subsequent list is probably owned across FFI boundraies
   /// when sent to libalpm for item dumping, thus we only own the head.
   /// The data is also probably owned by libalpm.
   /// </summary>
@@ -38,9 +36,7 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
   public unsafe AlpmList(delegate*<void*, T> factory)
   {
     _factory = factory;
-    var alpmListSize = Marshal.SizeOf<_alpm_list_t>();
-    _alpmListNative = (_alpm_list_t*)Marshal.AllocHGlobal(alpmListSize);
-    _ownsPtr = true;
+    _alpmListNative = (_alpm_list_t*)IntPtr.Zero;
   }
 
   public class AlpmListEnumerator<TEnum>(AlpmList<TEnum> _alpmList) : IEnumerator<TEnum>
@@ -91,13 +87,6 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
         // dispose managed state (managed objects)
       }
 
-      if (_ownsPtr)
-      {
-        var alpmListTemp = _alpmListNative->next;
-        Marshal.FreeHGlobal((IntPtr)_alpmListNative);
-        _alpmListNative = alpmListTemp;
-      }
-
       NativeMethods.alpm_list_free(_alpmListNative);
       _alpmListNative = null;
 
@@ -132,7 +121,27 @@ public unsafe class AlpmStringList : AlpmList<string>
   private static unsafe string StringFactory(void* data) => Marshal.PtrToStringAnsi((nint)data) ?? string.Empty;
 }
 
-public class AlpmDisposableList<T> : AlpmList<T>, IDisposable where T : IDisposable
+public unsafe class AlpmUnmanagedStringList : AlpmStringList
+{
+  public AlpmUnmanagedStringList() : base()
+  {
+  }
+
+  public AlpmUnmanagedStringList(_alpm_list_t* alpmList) : base(alpmList)
+  {
+  }
+
+  protected override void Dispose(bool disposing)
+  {
+    if (!_disposed)
+    {
+      NativeMethods.alpm_list_free_inner(_alpmListNative, &Utils.CFreeExtern);
+    }
+    base.Dispose(disposing);
+  }
+}
+
+public class AlpmDisposableList<T> : AlpmList<T> where T : IDisposable
 {
   public unsafe AlpmDisposableList(delegate*<void*, T> factory) : base(factory)
   {
