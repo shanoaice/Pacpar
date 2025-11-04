@@ -1,4 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -6,5 +8,20 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
+
+  <PropertyGroup>
+    <BuildDependsOn>
+    GenerateBindings;$(BuildDependsOn)
+    </BuildDependsOn>
+  </PropertyGroup>
+
+  <Target Name="GenerateBindings">
+    <Exec Command="cargo build -p libalpm-sys-cs" ConsoleToMsBuild="true"/>
+    <ItemGroup>
+      <Compile Include="NativeMethods.libalpm.g.cs" />
+    </ItemGroup>
+  </Target>
 
 </Project>
