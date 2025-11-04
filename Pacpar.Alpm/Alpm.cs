@@ -22,6 +22,16 @@ public class Alpm : IDisposable
   public unsafe string? GetCurrentErrorString() => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_strerror(Errno));
 
   public Exception? GetCurrentError() => ErrorHandler.GetException(Errno);
+  public unsafe Package LoadPackage(string filename, bool full, int level)
+  {
+    byte** pkg = (byte**)Marshal.AllocHGlobal(sizeof(nint));
+    var err = NativeMethods.alpm_pkg_load(_handle, (byte*)Marshal.StringToHGlobalAnsi(filename), full ? 1 : 0, level, pkg);
+    if (err != 0)
+    {
+      throw GetCurrentError()!;
+    }
+    return new(*pkg, false);
+  }
 
   public void Dispose()
   {

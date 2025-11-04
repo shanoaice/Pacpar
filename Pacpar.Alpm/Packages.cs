@@ -73,6 +73,7 @@ public enum PackageValidation : uint
 
 public unsafe class Package(byte* _backing_struct, bool fromDatabase = true) : IDisposable
 {
+  internal readonly byte* _backing_struct = _backing_struct;
   private bool _disposed = false;
   public readonly bool FromDatabase = fromDatabase;
 
@@ -80,17 +81,6 @@ public unsafe class Package(byte* _backing_struct, bool fromDatabase = true) : I
 
   public static Package FactoryFromDatabase(void* ptr) => new((byte*)ptr);
   public static Package FactoryNotFromDatabase(void* ptr) => new((byte*)ptr, false);
-
-  public static unsafe Package Load(Alpm library, string filename, bool full, int level)
-  {
-    byte** pkg = (byte**)Marshal.AllocHGlobal(sizeof(nint));
-    var err = NativeMethods.alpm_pkg_load((byte*)library.Handle, (byte*)Marshal.StringToHGlobalAnsi(filename), full ? 1 : 0, level, pkg);
-    if (err != 0)
-    {
-      throw ErrorHandler.GetException(library.Errno)!;
-    }
-    return new Package(*pkg, false);
-  }
 
   public void Dispose()
   {
