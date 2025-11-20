@@ -19,9 +19,6 @@
 
   <Target Name="GenerateBindings">
     <Exec Command="cargo build -p libalpm-sys-cs" ConsoleToMsBuild="true"/>
-    <ItemGroup>
-      <Compile Include="NativeMethods.libalpm.g.cs" />
-    </ItemGroup>
   </Target>
 
 </Project>
