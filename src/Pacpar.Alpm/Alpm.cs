@@ -14,9 +14,24 @@ public class Alpm : IDisposable
     errno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
     *errno = _alpm_errno_t.ALPM_ERR_OK;
     _handle = NativeMethods.alpm_initialize((byte*)Marshal.StringToHGlobalAnsi(root), (byte*)Marshal.StringToHGlobalAnsi(dbpath), errno);
+    Options = new(_handle);
   }
 
+  /// <summary>
+  /// Exposes methods to set libalpm options.
+  /// </summary>
+  public AlpmOptions Options { get; }
+
+  /// <summary>
+  /// The IntPtr version of the handle to libalpm, allows
+  ///  passing around without unsafe.
+  ///  DO NOT MODIFY IT IN ANY WAYS WHEN PASSING AROUND. BAD THINGS WILL HAPPEN!
+  /// </summary>
   public unsafe IntPtr Handle => (IntPtr)_handle;
+
+  /// <summary>
+  /// The current errno of libalpm
+  /// </summary>
   public unsafe _alpm_errno_t Errno => *errno;
 
   public unsafe string? GetCurrentErrorString() => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_strerror(Errno));
