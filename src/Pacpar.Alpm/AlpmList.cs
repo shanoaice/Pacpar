@@ -1,7 +1,15 @@
 using System.Collections;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm;
+
+public enum AlpmStringListAllocPattern
+{
+  NoFree = 0,
+  FFI = 1,
+  DotNet = 2,
+}
 
 /// <summary>
 /// Wraps an alpm_list_t from libalpm.
@@ -110,15 +118,39 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
 
 public unsafe class AlpmStringList : AlpmList<string>
 {
-  public AlpmStringList(_alpm_list_t* alpmList) : base(alpmList, &StringFactory)
+  private readonly AlpmStringListAllocPattern allocPattern;
+
+  public AlpmStringList(_alpm_list_t* alpmList, AlpmStringListAllocPattern allocPattern = AlpmStringListAllocPattern.NoFree) : base(alpmList, &StringFactory)
   {
+    this.allocPattern = allocPattern;
   }
 
-  public AlpmStringList() : base(&StringFactory)
+  public AlpmStringList(AlpmStringListAllocPattern allocPattern = AlpmStringListAllocPattern.NoFree) : base(&StringFactory)
   {
+    this.allocPattern = allocPattern;
   }
 
-  private static unsafe string StringFactory(void* data) => Marshal.PtrToStringAnsi((nint)data) ?? string.Empty;
+  protected override void Dispose(bool disposing)
+  {
+    if (!_disposed)
+    {
+      switch (allocPattern)
+      {
+        case AlpmStringListAllocPattern.FFI:
+          NativeMethods.alpm_list_free_inner(_alpmListNative, &MemoryManagement.CFreeExtern);
+          break;
+        case AlpmStringListAllocPattern.DotNet:
+          NativeMethods.alpm_list_free_inner(_alpmListNative, &MemoryManagement.UnmanagedFreeExtern);
+          break;
+        default:
+          // No-op for NoFree or any other case
+          break;
+      }
+    }
+    base.Dispose(disposing);
+  }
+
+  private static string StringFactory(void* data) => Marshal.PtrToStringAnsi((nint)data) ?? string.Empty;
 }
 
 public unsafe class AlpmUnmanagedStringList : AlpmStringList
@@ -135,7 +167,7 @@ public unsafe class AlpmUnmanagedStringList : AlpmStringList
   {
     if (!_disposed)
     {
-      NativeMethods.alpm_list_free_inner(_alpmListNative, &Utils.CFreeExtern);
+      NativeMethods.alpm_list_free_inner(_alpmListNative, &MemoryManagement.CFreeExtern);
     }
     base.Dispose(disposing);
   }

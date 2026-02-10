@@ -35,7 +35,7 @@ public unsafe class Signature(byte* sig, int len) : IDisposable
       {
         // dispose managed state (managed objects)
       }
-      Utils.CFree(sig); // hope this binds to the correct malloc-free
+      MemoryManagement.CFree(sig); // hope this binds to the correct malloc-free
       _disposed = true;
     }
   }

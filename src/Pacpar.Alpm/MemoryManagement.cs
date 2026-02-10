@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm;
 
-public static class Utils
+internal static class MemoryManagement
 {
   [DllImport("libc", EntryPoint = "free", CallingConvention = CallingConvention.Cdecl)]
   internal extern unsafe static void CFree(void* ptr);
@@ -12,4 +12,10 @@ public static class Utils
   [DllImport("libc", EntryPoint = "free", CallingConvention = CallingConvention.Cdecl)]
   [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
   internal extern unsafe static void CFreeExtern(void* ptr);
+
+  [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+  internal unsafe static void UnmanagedFreeExtern(void* ptr)
+  {
+    Marshal.FreeHGlobal((nint)ptr);
+  }
 }

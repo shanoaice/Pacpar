@@ -138,9 +138,9 @@ public class Transactions : IDisposable
     }
   }
 
-  public unsafe AlpmUnmanagedStringList Commit()
+  public unsafe AlpmStringList Commit()
   {
-    var errorMessages = new AlpmUnmanagedStringList();
+    var errorMessages = new AlpmStringList(AlpmStringListAllocPattern.FFI);
     fixed (_alpm_list_t** list = &errorMessages._alpmListNative)
     {
       var err = NativeMethods.alpm_trans_commit((byte*)library.Handle, list);
