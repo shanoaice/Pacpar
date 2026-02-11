@@ -4,10 +4,30 @@ using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm;
 
+/// <summary>
+/// Indicates the allocation pattern of strings wrapped by AlpmStringList
+/// </summary>
 public enum AlpmStringListAllocPattern
 {
+  /// <summary>
+  /// Indicates that we do not free any of the content,
+  /// usually happens when the the contents is responsible by
+  /// the caller who passes in the list.
+  /// </summary>
   NoFree = 0,
+
+  /// <summary>
+  /// Indicates that we should free the content
+  /// by the allocator across FFI boundary, i.e. the C free().
+  /// Usually happens when callee is responsible of freeing the content.
+  /// </summary>
   FFI = 1,
+
+  /// <summary>
+  /// Indicates that we should free the content
+  /// by the .NET CLR Unmanaged Allocator.
+  /// Usually happens when we created the list ourselves.
+  /// </summary>
   DotNet = 2,
 }
 
