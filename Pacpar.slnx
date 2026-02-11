@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Pacpar.Alpm/Pacpar.Alpm.csproj" />
+  <Project Path="src/Pacpar.CLI/Pacpar.CLI.csproj" />
+</Solution>
