@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using Pacpar.Alpm.Bindings;
+using Pacpar.Alpm.list;
 
 namespace Pacpar.Alpm;
 

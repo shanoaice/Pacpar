@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using Pacpar.Alpm.list;
 
 namespace Pacpar.Alpm;
 
@@ -75,7 +76,7 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
   private string? _causingPkg;
   public readonly unsafe Depend? Depend = new(backingStruct->depend);
   private string? _target;
-  
+
   private bool _disposed;
 
   public unsafe string? CausingPkg
@@ -94,7 +95,7 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
       return _target;
     }
   }
-  
+
   public void Dispose()
   {
     GC.SuppressFinalize(this);
@@ -127,7 +128,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
   private string? _ctarget;
   private string? _file;
   private string? _target;
-  
+
   private bool _disposed;
 
   public unsafe string? Ctarget
@@ -154,7 +155,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
       return _target;
     }
   }
-  
+
   public void Dispose()
   {
     GC.SuppressFinalize(this);
@@ -186,7 +187,7 @@ public unsafe class Conflict(_alpm_conflict_t* backing_struct) : IDisposable
   public unsafe Package Package1 = new(backing_struct->package1);
   public unsafe Package Package2 = new(backing_struct->package2);
   public unsafe Depend Reason = new(backing_struct->reason);
-  
+
   private bool _disposed;
 
   public void Dispose()

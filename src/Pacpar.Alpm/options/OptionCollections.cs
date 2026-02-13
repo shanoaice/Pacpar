@@ -1,7 +1,8 @@
 using System.Collections;
 using System.Runtime.InteropServices;
+using Pacpar.Alpm.list;
 
-namespace Pacpar.Alpm;
+namespace Pacpar.Alpm.options;
 
 internal class ArchitectureOptionCollection : ICollection<string>
 {

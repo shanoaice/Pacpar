@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Runtime.InteropServices;
 
-namespace Pacpar.Alpm;
+namespace Pacpar.Alpm.list;
 
 /// <summary>
 /// Indicates the allocation pattern of strings wrapped by AlpmStringList

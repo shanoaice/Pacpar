@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using Pacpar.Alpm.Bindings;
+using Pacpar.Alpm.list;
 
 namespace Pacpar.Alpm;
 
@@ -190,7 +192,7 @@ public unsafe class Package(byte* _backing_struct, bool fromDatabase = true) : I
 
   public FileList Files => new(NativeMethods.alpm_pkg_get_files(_backing_struct));
 
-  public AlpmList<Backup> Backup => Pacpar.Alpm.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(_backing_struct));
+  public AlpmList<Backup> Backup => Bindings.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(_backing_struct));
 
   // TODO: DB
 

@@ -1,8 +1,8 @@
 using System.Collections;
-using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using Pacpar.Alpm.list;
 
-namespace Pacpar.Alpm;
+namespace Pacpar.Alpm.Bindings;
 
 public unsafe class Backup(_alpm_backup_t* _backing_struct)
 {

@@ -1,3 +1,5 @@
+using Pacpar.Alpm.list;
+
 namespace Pacpar.Alpm;
 
 /// <summary>
