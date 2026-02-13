@@ -78,16 +78,29 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
     _ownsList = true;
   }
 
+  protected void ThrowIfDisposed()
+  {
+    if (Disposed) throw new ObjectDisposedException(GetType().FullName);
+  }
+
   private sealed class AlpmListEnumerator<TEnum>(AlpmList<TEnum> alpmList, bool disposeParent = false)
     : IEnumerator<TEnum>
   {
     private unsafe _alpm_list_t* _alpmListNative = alpmList.AlpmListNative;
     private bool _disposed;
 
-    public unsafe TEnum Current => alpmList._factory(_alpmListNative->data);
+    public unsafe TEnum Current
+    {
+      get
+      {
+        if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+        return alpmList._factory(_alpmListNative->data);
+      }
+    }
 
     public unsafe bool MoveNext()
     {
+      if (_disposed) throw new ObjectDisposedException(GetType().FullName);
       var next = NativeMethods.alpm_list_next(_alpmListNative);
       if ((IntPtr)next == IntPtr.Zero) return false;
       _alpmListNative = next;
@@ -96,6 +109,7 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
 
     public unsafe void Reset()
     {
+      if (_disposed) throw new ObjectDisposedException(GetType().FullName);
       _alpmListNative = alpmList.AlpmListNative;
     }
 
@@ -149,15 +163,37 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
     Dispose(disposing: false);
   }
 
-  public IEnumerator<T> GetEnumerator() => new AlpmListEnumerator<T>(this);
+  public IEnumerator<T> GetEnumerator()
+  {
+    ThrowIfDisposed();
+    return new AlpmListEnumerator<T>(this);
+  }
 
-  public IEnumerator<T> GetOwningEnumerator() => new AlpmListEnumerator<T>(this, true);
+  public IEnumerator<T> GetOwningEnumerator()
+  {
+    ThrowIfDisposed();
+    return new AlpmListEnumerator<T>(this, true);
+  }
 
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-  public unsafe int Count => (int)NativeMethods.alpm_list_count(AlpmListNative);
+  public unsafe int Count
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return (int)NativeMethods.alpm_list_count(AlpmListNative);
+    }
+  }
 
-  public unsafe T this[int index] => _factory(NativeMethods.alpm_list_nth(AlpmListNative, (nuint)index));
+  public unsafe T this[int index]
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _factory(NativeMethods.alpm_list_nth(AlpmListNative, (nuint)index));
+    }
+  }
 }
 
 public unsafe class AlpmStringList : AlpmList<string>

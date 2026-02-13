@@ -20,6 +20,11 @@ public class Alpm : IDisposable
     Options = new(_handle);
   }
 
+  private void ThrowIfDisposed()
+  {
+    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+  }
+
   /// <summary>
   /// Exposes methods to set libalpm options.
   /// </summary>
@@ -30,19 +35,42 @@ public class Alpm : IDisposable
   ///  passing around without unsafe.
   ///  DO NOT MODIFY IT IN ANY WAYS WHEN PASSING AROUND. BAD THINGS WILL HAPPEN!
   /// </summary>
-  public unsafe IntPtr Handle => (IntPtr)_handle;
+  public unsafe IntPtr Handle
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return (IntPtr)_handle;
+    }
+  }
 
   /// <summary>
   /// The current errno of libalpm
   /// </summary>
-  public unsafe _alpm_errno_t Errno => *_errno;
+  public unsafe _alpm_errno_t Errno
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return *_errno;
+    }
+  }
 
-  public unsafe string? GetCurrentErrorString() => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_strerror(Errno));
+  public unsafe string? GetCurrentErrorString()
+  {
+    ThrowIfDisposed();
+    return Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_strerror(Errno));
+  }
 
-  public Exception? GetCurrentError() => ErrorHandler.GetException(Errno);
+  public Exception? GetCurrentError()
+  {
+    ThrowIfDisposed();
+    return ErrorHandler.GetException(Errno);
+  }
 
   public unsafe Package LoadPackage(string filename, bool full, int level)
   {
+    ThrowIfDisposed();
     byte** pkg = (byte**)Marshal.AllocHGlobal(sizeof(nint));
     var err = NativeMethods.alpm_pkg_load(_handle, (byte*)Marshal.StringToHGlobalAnsi(filename), full ? 1 : 0, level, pkg);
     if (err != 0)
@@ -52,7 +80,11 @@ public class Alpm : IDisposable
     return new(*pkg, false);
   }
 
-  public Transactions BeginTransaction(TransactionFlags flags) => new(this, flags);
+  public Transactions BeginTransaction(TransactionFlags flags)
+  {
+    ThrowIfDisposed();
+    return new(this, flags);
+  }
 
   public void Dispose()
   {

@@ -91,8 +91,14 @@ public class Transactions : IDisposable
     }
   }
 
+  private void ThrowIfDisposed()
+  {
+    if (_released) throw new ObjectDisposedException(GetType().FullName);
+  }
+
   public unsafe AlpmList<DepMissing> Prepare()
   {
+    ThrowIfDisposed();
     var depmissing = new AlpmList<DepMissing>(&DepMissing.Factory);
     fixed (_alpm_list_t** list = &depmissing.AlpmListNative)
     {
@@ -107,6 +113,7 @@ public class Transactions : IDisposable
 
   public unsafe void AddPackage(Package pkg)
   {
+    ThrowIfDisposed();
     var err = NativeMethods.alpm_add_pkg((byte*)_library.Handle, pkg.BackingStruct);
     if (err != 0)
     {
@@ -116,6 +123,7 @@ public class Transactions : IDisposable
 
   public unsafe void RemovePackage(Package pkg)
   {
+    ThrowIfDisposed();
     var err = NativeMethods.alpm_remove_pkg((byte*)_library.Handle, pkg.BackingStruct);
     if (err != 0)
     {
@@ -125,6 +133,7 @@ public class Transactions : IDisposable
 
   public unsafe void SystemUpgrade(bool enableDowngrade)
   {
+    ThrowIfDisposed();
     var err = NativeMethods.alpm_sync_sysupgrade((byte*)_library.Handle, enableDowngrade ? 1 : 0);
     if (err != 0)
     {
@@ -134,6 +143,7 @@ public class Transactions : IDisposable
 
   public unsafe void Interrupt()
   {
+    ThrowIfDisposed();
     var err = NativeMethods.alpm_trans_interrupt((byte*)_library.Handle);
     if (err != 0)
     {
@@ -143,6 +153,7 @@ public class Transactions : IDisposable
 
   public unsafe AlpmStringList Commit()
   {
+    ThrowIfDisposed();
     var errorMessages = new AlpmStringList(AlpmStringListAllocPattern.FFI);
     fixed (_alpm_list_t** list = &errorMessages.AlpmListNative)
     {
@@ -155,11 +166,23 @@ public class Transactions : IDisposable
     }
   }
 
-  public unsafe AlpmList<Package> GetAddedPackages() => new(NativeMethods.alpm_trans_get_add((byte*)_library.Handle), &Package.FactoryFromDatabase);
+  public unsafe AlpmList<Package> GetAddedPackages()
+  {
+    ThrowIfDisposed();
+    return new(NativeMethods.alpm_trans_get_add((byte*)_library.Handle), &Package.FactoryFromDatabase);
+  }
 
-  public unsafe TransactionFlags GetFlags() => (TransactionFlags)NativeMethods.alpm_trans_get_flags((byte*)_library.Handle);
+  public unsafe TransactionFlags GetFlags()
+  {
+    ThrowIfDisposed();
+    return (TransactionFlags)NativeMethods.alpm_trans_get_flags((byte*)_library.Handle);
+  }
 
-  public unsafe AlpmList<Package> GetRemovedPackages() => new(NativeMethods.alpm_trans_get_remove((byte*)_library.Handle), &Package.FactoryFromDatabase);
+  public unsafe AlpmList<Package> GetRemovedPackages()
+  {
+    ThrowIfDisposed();
+    return new(NativeMethods.alpm_trans_get_remove((byte*)_library.Handle), &Package.FactoryFromDatabase);
+  }
 
   public void Dispose()
   {
@@ -185,4 +208,3 @@ public class Transactions : IDisposable
     }
   }
 }
-

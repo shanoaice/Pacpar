@@ -18,10 +18,16 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
 
   private bool _disposed;
 
+  protected void ThrowIfDisposed()
+  {
+    throw new ObjectDisposedException(GetType().FullName);
+  }
+
   public string? Description
   {
     get
     {
+      ThrowIfDisposed();
       _description ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->desc);
       return _description;
     }
@@ -30,6 +36,7 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
   {
     get
     {
+      ThrowIfDisposed();
       _name ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->name);
       return _name;
     }
@@ -38,6 +45,7 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
   {
     get
     {
+      ThrowIfDisposed();
       _version ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->version);
       return _version;
     }
@@ -79,10 +87,16 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
 
   private bool _disposed;
 
+  protected void ThrowIfDisposed()
+  {
+    throw new ObjectDisposedException(GetType().FullName);
+  }
+
   public string? CausingPkg
   {
     get
     {
+      ThrowIfDisposed();
       _causingPkg ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->causingpkg);
       return _causingPkg;
     }
@@ -91,6 +105,7 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
   {
     get
     {
+      ThrowIfDisposed();
       _target ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
       return _target;
     }
@@ -131,10 +146,16 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
 
   private bool _disposed;
 
+  protected void ThrowIfDisposed()
+  {
+    throw new ObjectDisposedException(GetType().FullName);
+  }
+
   public string? Ctarget
   {
     get
     {
+      ThrowIfDisposed();
       _ctarget ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->ctarget);
       return _ctarget;
     }
@@ -143,6 +164,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
   {
     get
     {
+      ThrowIfDisposed();
       _file ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->file);
       return _file;
     }
@@ -151,6 +173,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
   {
     get
     {
+      ThrowIfDisposed();
       _target ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
       return _target;
     }
@@ -189,6 +212,12 @@ public unsafe class Conflict(_alpm_conflict_t* backingStruct) : IDisposable
   public Depend Reason = new(backingStruct->reason);
 
   private bool _disposed;
+
+  protected void ThrowIfDisposed()
+  {
+    throw new ObjectDisposedException(GetType().FullName);
+  }
+
 
   public void Dispose()
   {

@@ -18,7 +18,19 @@ public unsafe class Signature(byte* sig, int len) : IDisposable
   // ReSharper disable once RedundantDefaultMemberInitializer
   private bool _disposed = false;
 
-  public Span<byte> AsSpan => new(sig, len);
+  private void ThrowIfDisposed()
+  {
+    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+  }
+
+  public Span<byte> AsSpan
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return new(sig, len);
+    }
+  }
 
   public void Dispose()
   {
@@ -79,7 +91,19 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
   private bool _disposed = false;
   public readonly bool FromDatabase = fromDatabase;
 
-  internal byte* LibraryHandle => NativeMethods.alpm_pkg_get_handle(BackingStruct);
+  private void ThrowIfDisposed()
+  {
+    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+  }
+
+  internal byte* LibraryHandle
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return NativeMethods.alpm_pkg_get_handle(BackingStruct);
+    }
+  }
 
   public static Package FactoryFromDatabase(void* ptr) => new((byte*)ptr);
   public static Package FactoryNotFromDatabase(void* ptr) => new((byte*)ptr, false);
@@ -117,97 +141,318 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
   }
 
   private string? _name;
-  public string Name => _name ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_name(BackingStruct))!;
+  public string Name
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _name ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_name(BackingStruct))!;
+    }
+  }
 
-  public bool CheckMd5Sum() => NativeMethods.alpm_pkg_checkmd5sum(BackingStruct) == 0;
+  public bool CheckMd5Sum()
+  {
+    ThrowIfDisposed();
+    return NativeMethods.alpm_pkg_checkmd5sum(BackingStruct) == 0;
+  }
 
-  public bool ShouldIgnore() => NativeMethods.alpm_pkg_should_ignore(LibraryHandle, BackingStruct) != 0;
+  public bool ShouldIgnore()
+  {
+    ThrowIfDisposed();
+    return NativeMethods.alpm_pkg_should_ignore(LibraryHandle, BackingStruct) != 0;
+  }
 
   private string? _filename;
-  public string? Filename => _filename ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
+  public string? Filename
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _filename ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
+    }
+  }
 
   private string? _base;
-  public string? Base => _base ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
+  public string? Base
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _base ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
+    }
+  }
 
-  public readonly Version Version = new(NativeMethods.alpm_pkg_get_version(backingStruct));
+  public Version Version
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return new(NativeMethods.alpm_pkg_get_version(BackingStruct));
+    }
+  }
 
-  public _alpm_pkgfrom_t Origin => NativeMethods.alpm_pkg_get_origin(BackingStruct);
+  public _alpm_pkgfrom_t Origin
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return NativeMethods.alpm_pkg_get_origin(BackingStruct);
+    }
+  }
 
   private string? _desc;
-  public string? Description => _desc ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
+  public string? Description
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _desc ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
+    }
+  }
 
   private string? _url;
-  public string? Url => _url ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
+  public string? Url
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _url ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
+    }
+  }
 
-  public DateTimeOffset BuildDate => DateTimeOffset.FromUnixTimeSeconds(NativeMethods.alpm_pkg_get_builddate(BackingStruct));
+  public DateTimeOffset BuildDate
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return DateTimeOffset.FromUnixTimeSeconds(NativeMethods.alpm_pkg_get_builddate(BackingStruct));
+    }
+  }
 
   public DateTimeOffset? InstallDate
   {
     get
     {
+      ThrowIfDisposed();
       var date = NativeMethods.alpm_pkg_get_installdate(BackingStruct);
       return date == 0 ? null : DateTimeOffset.FromUnixTimeSeconds(date);
     }
   }
 
   private string? _packager;
-  public string? Packager => _packager ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
+  public string? Packager
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _packager ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
+    }
+  }
 
   private string? _md5Sum;
-  public string? Md5Sum => _md5Sum ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
+  public string? Md5Sum
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _md5Sum ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
+    }
+  }
 
   private string? _sha256Sum;
-  public string? Sha256Sum => _sha256Sum ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
+  public string? Sha256Sum
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _sha256Sum ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
+    }
+  }
 
   private string? _arch;
-  public string? Arch => _arch ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
+  public string? Arch
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _arch ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
+    }
+  }
 
-  public CLong Size => NativeMethods.alpm_pkg_get_size(BackingStruct);
+  public CLong Size
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return NativeMethods.alpm_pkg_get_size(BackingStruct);
+    }
+  }
 
-  public CLong InstalledSize => NativeMethods.alpm_pkg_get_isize(BackingStruct);
+  public CLong InstalledSize
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return NativeMethods.alpm_pkg_get_isize(BackingStruct);
+    }
+  }
 
-  public _alpm_pkgreason_t Reason => NativeMethods.alpm_pkg_get_reason(BackingStruct);
+  public _alpm_pkgreason_t Reason
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return NativeMethods.alpm_pkg_get_reason(BackingStruct);
+    }
+  }
 
-  public PackageValidation Validation => (PackageValidation)NativeMethods.alpm_pkg_get_validation(BackingStruct);
+  public PackageValidation Validation
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return (PackageValidation)NativeMethods.alpm_pkg_get_validation(BackingStruct);
+    }
+  }
 
-  public AlpmStringList Licenses => new(NativeMethods.alpm_pkg_get_licenses(BackingStruct));
+  public AlpmStringList Licenses
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return new(NativeMethods.alpm_pkg_get_licenses(BackingStruct));
+    }
+  }
 
-  public AlpmStringList Groups => new(NativeMethods.alpm_pkg_get_groups(BackingStruct));
+  public AlpmStringList Groups
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return new(NativeMethods.alpm_pkg_get_groups(BackingStruct));
+    }
+  }
 
-  public AlpmDisposableList<Depend> Depends => Depend.ListFactory(NativeMethods.alpm_pkg_get_depends(BackingStruct));
+  public AlpmDisposableList<Depend> Depends
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_depends(BackingStruct));
+    }
+  }
 
-  public AlpmDisposableList<Depend> OptionalDepends => Depend.ListFactory(NativeMethods.alpm_pkg_get_optdepends(BackingStruct));
+  public AlpmDisposableList<Depend> OptionalDepends
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_optdepends(BackingStruct));
+    }
+  }
 
-  public AlpmDisposableList<Depend> CheckDepends => Depend.ListFactory(NativeMethods.alpm_pkg_get_checkdepends(BackingStruct));
+  public AlpmDisposableList<Depend> CheckDepends
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_checkdepends(BackingStruct));
+    }
+  }
 
-  public AlpmDisposableList<Depend> MakeDepends => Depend.ListFactory(NativeMethods.alpm_pkg_get_makedepends(BackingStruct));
+  public AlpmDisposableList<Depend> MakeDepends
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_makedepends(BackingStruct));
+    }
+  }
 
-  public AlpmDisposableList<Depend> Conflicts => Depend.ListFactory(NativeMethods.alpm_pkg_get_conflicts(BackingStruct));
+  public AlpmDisposableList<Depend> Conflicts
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_conflicts(BackingStruct));
+    }
+  }
 
-  public AlpmDisposableList<Depend> Provides => Depend.ListFactory(NativeMethods.alpm_pkg_get_provides(BackingStruct));
+  public AlpmDisposableList<Depend> Provides
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_provides(BackingStruct));
+    }
+  }
 
-  public AlpmDisposableList<Depend> Replaces => Depend.ListFactory(NativeMethods.alpm_pkg_get_replaces(BackingStruct));
+  public AlpmDisposableList<Depend> Replaces
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_replaces(BackingStruct));
+    }
+  }
 
-  public FileList Files => new(NativeMethods.alpm_pkg_get_files(BackingStruct));
+  public FileList Files
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return new(NativeMethods.alpm_pkg_get_files(BackingStruct));
+    }
+  }
 
-  public AlpmList<Backup> Backup => Bindings.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(BackingStruct));
+  public AlpmList<Backup> Backup
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return Pacpar.Alpm.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(BackingStruct));
+    }
+  }
 
   // TODO: DB
 
   // TODO: CHANGELOG
 
-  public AlpmStringList GetRequiredBy() => new(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct));
+  public AlpmStringList GetRequiredBy()
+  {
+    ThrowIfDisposed();
+    return new(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct));
+  }
 
-  public AlpmStringList GetOptionalFor() => new(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct));
+  public AlpmStringList GetOptionalFor()
+  {
+    ThrowIfDisposed();
+    return new(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct));
+  }
 
   private string? _base64Sig;
-  public string? Base64Signature => _base64Sig ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
+  public string? Base64Signature
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return _base64Sig ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
+    }
+  }
 
-  public bool HasScriptlet => NativeMethods.alpm_pkg_has_scriptlet(BackingStruct) != 0;
+  public bool HasScriptlet
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return NativeMethods.alpm_pkg_has_scriptlet(BackingStruct) != 0;
+    }
+  }
 
   private Signature? _signature;
   public Signature GetSignature()
   {
+    ThrowIfDisposed();
     if (_signature == null)
     {
       var bufferPtr = (byte**)Marshal.AllocHGlobal(sizeof(byte*));
