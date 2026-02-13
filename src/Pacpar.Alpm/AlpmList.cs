@@ -11,24 +11,32 @@ public enum AlpmStringListAllocPattern
 {
   /// <summary>
   /// Indicates that we do not free any of the content,
-  /// usually happens when the the contents is responsible by
-  /// the caller who passes in the list.
+  /// not even the list itself. usually happens when the caller
+  /// manages the list. This is also the default.
   /// </summary>
-  NoFree = 0,
+  NO_FREE = 0,
+
+  /// <summary>
+  /// Indicate that we will free the list itself,
+  /// but not the inner string content, usually happens
+  /// when the content should be freed by the caller
+  /// who passes in the list.
+  /// </summary>
+  NO_FREE_INNER = 1,
 
   /// <summary>
   /// Indicates that we should free the content
   /// by the allocator across FFI boundary, i.e. the C free().
   /// Usually happens when callee is responsible of freeing the content.
   /// </summary>
-  FFI = 1,
+  FFI = 2,
 
   /// <summary>
   /// Indicates that we should free the content
   /// by the .NET CLR Unmanaged Allocator.
   /// Usually happens when we created the list ourselves.
   /// </summary>
-  DotNet = 2,
+  DOT_NET = 3,
 }
 
 /// <summary>
@@ -37,9 +45,10 @@ public enum AlpmStringListAllocPattern
 /// <typeparam name="T"></typeparam>
 public class AlpmList<T> : IDisposable, IReadOnlyList<T>
 {
-  internal unsafe _alpm_list_t* _alpmListNative;
-  private unsafe readonly delegate*<void*, T> _factory;
-  protected bool _disposed = false;
+  internal unsafe _alpm_list_t* AlpmListNative;
+  private readonly unsafe delegate*<void*, T> _factory;
+  protected bool Disposed = false;
+  protected readonly bool FreeList;
 
   /// <summary>
   /// Wraps an existing alpm_list_t* owned by libalpm (accross FFI boundaries).
@@ -47,11 +56,11 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
   /// </summary>
   /// <param name="alpmList">existing alpm_list_t*</param>
   /// <param name="factory">factory function to covert void* to T</param>
-
-  internal unsafe AlpmList(_alpm_list_t* alpmList, delegate*<void*, T> factory)
+  internal unsafe AlpmList(_alpm_list_t* alpmList, delegate*<void*, T> factory, bool freeList = true)
   {
-    _alpmListNative = alpmList;
+    AlpmListNative = alpmList;
     _factory = factory;
+    FreeList = freeList;
   }
 
   /// <summary>
@@ -64,32 +73,30 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
   public unsafe AlpmList(delegate*<void*, T> factory)
   {
     _factory = factory;
-    _alpmListNative = (_alpm_list_t*)IntPtr.Zero;
+    AlpmListNative = (_alpm_list_t*)IntPtr.Zero;
+    FreeList = true;
   }
 
-  public class AlpmListEnumerator<TEnum>(AlpmList<TEnum> _alpmList) : IEnumerator<TEnum>
+  public class AlpmListEnumerator<TEnum>(AlpmList<TEnum> alpmList) : IEnumerator<TEnum>
   {
-    private unsafe _alpm_list_t* _alpmList_native = _alpmList._alpmListNative;
+    private unsafe _alpm_list_t* _alpmListNative = alpmList.AlpmListNative;
 
     public unsafe TEnum Current
     {
-      get
-      {
-        return _alpmList._factory(_alpmList_native->data);
-      }
+      get { return alpmList._factory(_alpmListNative->data); }
     }
 
     public unsafe bool MoveNext()
     {
-      var next = NativeMethods.alpm_list_next(_alpmList_native);
+      var next = NativeMethods.alpm_list_next(_alpmListNative);
       if ((IntPtr)next == IntPtr.Zero) return false;
-      _alpmList_native = next;
+      _alpmListNative = next;
       return true;
     }
 
     public unsafe void Reset()
     {
-      _alpmList_native = _alpmList._alpmListNative;
+      _alpmListNative = alpmList.AlpmListNative;
     }
 
     public void Dispose()
@@ -108,17 +115,17 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
 
   protected virtual unsafe void Dispose(bool disposing)
   {
-    if (!_disposed)
+    if (!Disposed)
     {
       if (disposing)
       {
         // dispose managed state (managed objects)
       }
 
-      NativeMethods.alpm_list_free(_alpmListNative);
-      _alpmListNative = null;
+      if (FreeList) NativeMethods.alpm_list_free(AlpmListNative);
+      AlpmListNative = null;
 
-      _disposed = true;
+      Disposed = true;
     }
   }
 
@@ -131,66 +138,50 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
 
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-  public unsafe int Count => (int)NativeMethods.alpm_list_count(_alpmListNative);
+  public unsafe int Count => (int)NativeMethods.alpm_list_count(AlpmListNative);
 
-  public unsafe T this[int index] => _factory(NativeMethods.alpm_list_nth(_alpmListNative, (nuint)index));
+  public unsafe T this[int index] => _factory(NativeMethods.alpm_list_nth(AlpmListNative, (nuint)index));
 }
 
 public unsafe class AlpmStringList : AlpmList<string>
 {
   private readonly AlpmStringListAllocPattern allocPattern;
 
-  public AlpmStringList(_alpm_list_t* alpmList, AlpmStringListAllocPattern allocPattern = AlpmStringListAllocPattern.NoFree) : base(alpmList, &StringFactory)
+  public AlpmStringList(_alpm_list_t* alpmList,
+    AlpmStringListAllocPattern allocPattern = AlpmStringListAllocPattern.NO_FREE) : base(alpmList, &StringFactory,
+    allocPattern != AlpmStringListAllocPattern.NO_FREE)
   {
     this.allocPattern = allocPattern;
   }
 
-  public AlpmStringList(AlpmStringListAllocPattern allocPattern = AlpmStringListAllocPattern.NoFree) : base(&StringFactory)
+  public AlpmStringList(AlpmStringListAllocPattern allocPattern = AlpmStringListAllocPattern.NO_FREE) : base(
+    &StringFactory)
   {
     this.allocPattern = allocPattern;
   }
 
   protected override void Dispose(bool disposing)
   {
-    if (!_disposed)
+    if (!Disposed)
     {
       switch (allocPattern)
       {
         case AlpmStringListAllocPattern.FFI:
-          NativeMethods.alpm_list_free_inner(_alpmListNative, &MemoryManagement.CFreeExtern);
+          NativeMethods.alpm_list_free_inner(AlpmListNative, &MemoryManagement.CFreeExtern);
           break;
-        case AlpmStringListAllocPattern.DotNet:
-          NativeMethods.alpm_list_free_inner(_alpmListNative, &MemoryManagement.UnmanagedFreeExtern);
+        case AlpmStringListAllocPattern.DOT_NET:
+          NativeMethods.alpm_list_free_inner(AlpmListNative, &MemoryManagement.UnmanagedFreeExtern);
           break;
         default:
           // No-op for NoFree or any other case
           break;
       }
     }
+
     base.Dispose(disposing);
   }
 
   private static string StringFactory(void* data) => Marshal.PtrToStringAnsi((nint)data) ?? string.Empty;
-}
-
-public unsafe class AlpmUnmanagedStringList : AlpmStringList
-{
-  public AlpmUnmanagedStringList() : base()
-  {
-  }
-
-  public AlpmUnmanagedStringList(_alpm_list_t* alpmList) : base(alpmList)
-  {
-  }
-
-  protected override void Dispose(bool disposing)
-  {
-    if (!_disposed)
-    {
-      NativeMethods.alpm_list_free_inner(_alpmListNative, &MemoryManagement.CFreeExtern);
-    }
-    base.Dispose(disposing);
-  }
 }
 
 public class AlpmDisposableList<T> : AlpmList<T> where T : IDisposable
@@ -205,13 +196,14 @@ public class AlpmDisposableList<T> : AlpmList<T> where T : IDisposable
 
   protected override void Dispose(bool disposing)
   {
-    if ((!_disposed) && disposing)
+    if ((!Disposed) && disposing)
     {
       foreach (var item in this)
       {
         item.Dispose();
       }
     }
+
     base.Dispose(disposing);
   }
 }

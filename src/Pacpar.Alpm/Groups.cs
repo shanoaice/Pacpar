@@ -11,5 +11,5 @@ public unsafe class Group(_alpm_group_t* _backing_struct)
 
   public unsafe AlpmDisposableList<Package> Packages => new(_backing_struct->packages, &Package.FactoryFromDatabase);
 
-  public unsafe AlpmDisposableList<Package> FindGroupPackages(AlpmList<Databases> dbs) => new(NativeMethods.alpm_find_group_pkgs(dbs._alpmListNative, (byte*)Marshal.StringToHGlobalAnsi(Name)), &Package.FactoryFromDatabase);
+  public unsafe AlpmDisposableList<Package> FindGroupPackages(AlpmList<Databases> dbs) => new(NativeMethods.alpm_find_group_pkgs(dbs.AlpmListNative, (byte*)Marshal.StringToHGlobalAnsi(Name)), &Package.FactoryFromDatabase);
 }

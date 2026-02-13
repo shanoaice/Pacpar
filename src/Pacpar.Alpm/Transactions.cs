@@ -91,7 +91,7 @@ public class Transactions : IDisposable
   public unsafe AlpmList<DepMissing> Prepare()
   {
     var depmissing = new AlpmList<DepMissing>(&DepMissing.Factory);
-    fixed (_alpm_list_t** list = &depmissing._alpmListNative)
+    fixed (_alpm_list_t** list = &depmissing.AlpmListNative)
     {
       var err = NativeMethods.alpm_trans_prepare((byte*)library.Handle, list);
       if (err != 0)
@@ -141,7 +141,7 @@ public class Transactions : IDisposable
   public unsafe AlpmStringList Commit()
   {
     var errorMessages = new AlpmStringList(AlpmStringListAllocPattern.FFI);
-    fixed (_alpm_list_t** list = &errorMessages._alpmListNative)
+    fixed (_alpm_list_t** list = &errorMessages.AlpmListNative)
     {
       var err = NativeMethods.alpm_trans_commit((byte*)library.Handle, list);
       if (err != 0)
