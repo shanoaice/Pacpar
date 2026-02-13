@@ -29,12 +29,12 @@ public unsafe class File(_alpm_file_t* backingStruct)
 
 public unsafe class FileList(_alpm_filelist_t* backingStruct) : IReadOnlyList<File>
 {
-  private readonly File[] _files = new File[backingStruct->count];
+  private readonly File?[] _files = new File[backingStruct->count];
 
   private readonly int _count = (int)backingStruct->count;
   int IReadOnlyCollection<File>.Count => _count;
 
-  public File this[int index] => _files[index] ??= new(backingStruct->files + index * sizeof(_alpm_file_t));
+  public File this[int index] => _files[index] ??= new File(backingStruct->files + index);
 
   private class FileListEnumerator(FileList fileList) : IEnumerator<File>
   {
