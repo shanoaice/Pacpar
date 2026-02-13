@@ -1,4 +1,3 @@
-using System;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.list;
 
@@ -6,11 +5,11 @@ namespace Pacpar.Alpm;
 
 public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
 {
-  internal unsafe _alpm_depend_t* _backing_struct = backingStruct;
+  internal readonly _alpm_depend_t* BackingStruct = backingStruct;
 
-  public static unsafe Depend Factory(void* ptr) => new((_alpm_depend_t*)ptr);
+  public static Depend Factory(void* ptr) => new((_alpm_depend_t*)ptr);
 
-  public static unsafe AlpmDisposableList<Depend> ListFactory(_alpm_list_t* alpmList) => new(alpmList, &Factory);
+  public static AlpmDisposableList<Depend> ListFactory(_alpm_list_t* alpmList) => new(alpmList, &Factory);
 
   private string? _description;
   private string? _name;
@@ -18,32 +17,32 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
 
   private bool _disposed;
 
-  public unsafe string? Description
+  public string? Description
   {
     get
     {
-      _description ??= Marshal.PtrToStringUTF8((IntPtr)_backing_struct->desc);
+      _description ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->desc);
       return _description;
     }
   }
-  public unsafe string? Name
+  public string? Name
   {
     get
     {
-      _name ??= Marshal.PtrToStringUTF8((IntPtr)_backing_struct->name);
+      _name ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->name);
       return _name;
     }
   }
-  public unsafe string? Version
+  public string? Version
   {
     get
     {
-      _version ??= Marshal.PtrToStringUTF8((IntPtr)_backing_struct->version);
+      _version ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->version);
       return _version;
     }
   }
 
-  public unsafe _alpm_depmod_t Depmod => _backing_struct->mod_;
+  public _alpm_depmod_t Depmod => BackingStruct->mod_;
 
   public void Dispose()
   {
@@ -59,7 +58,7 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
       {
         // dispose managed state (managed objects)
       }
-      NativeMethods.alpm_dep_free(_backing_struct);
+      NativeMethods.alpm_dep_free(BackingStruct);
       _disposed = true;
     }
   }
@@ -69,29 +68,29 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
 
 public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
 {
-  internal unsafe _alpm_depmissing_t* _backing_struct = backingStruct;
+  internal _alpm_depmissing_t* BackingStruct = backingStruct;
 
   public static DepMissing Factory(void* ptr) => new((_alpm_depmissing_t*)ptr);
 
   private string? _causingPkg;
-  public readonly unsafe Depend? Depend = new(backingStruct->depend);
+  public readonly Depend? Depend = new(backingStruct->depend);
   private string? _target;
 
   private bool _disposed;
 
-  public unsafe string? CausingPkg
+  public string? CausingPkg
   {
     get
     {
-      _causingPkg ??= Marshal.PtrToStringUTF8((IntPtr)_backing_struct->causingpkg);
+      _causingPkg ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->causingpkg);
       return _causingPkg;
     }
   }
-  public unsafe string? Target
+  public string? Target
   {
     get
     {
-      _target ??= Marshal.PtrToStringUTF8((IntPtr)_backing_struct->target);
+      _target ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
       return _target;
     }
   }
@@ -111,7 +110,7 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
         // dispose managed state (managed objects)
         Depend?.Dispose();
       }
-      NativeMethods.alpm_depmissing_free(_backing_struct);
+      NativeMethods.alpm_depmissing_free(BackingStruct);
       _disposed = true;
     }
   }
@@ -121,7 +120,7 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
 
 public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposable
 {
-  internal unsafe _alpm_fileconflict_t* _backing_struct = backingStruct;
+  internal _alpm_fileconflict_t* BackingStruct = backingStruct;
 
   public static FileConflict Factory(void* ptr) => new((_alpm_fileconflict_t*)ptr);
 
@@ -131,27 +130,27 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
 
   private bool _disposed;
 
-  public unsafe string? Ctarget
+  public string? Ctarget
   {
     get
     {
-      _ctarget ??= Marshal.PtrToStringUTF8((IntPtr)_backing_struct->ctarget);
+      _ctarget ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->ctarget);
       return _ctarget;
     }
   }
-  public unsafe string? File
+  public string? File
   {
     get
     {
-      _file ??= Marshal.PtrToStringUTF8((IntPtr)_backing_struct->file);
+      _file ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->file);
       return _file;
     }
   }
-  public unsafe string? Target
+  public string? Target
   {
     get
     {
-      _target ??= Marshal.PtrToStringUTF8((IntPtr)_backing_struct->target);
+      _target ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
       return _target;
     }
   }
@@ -170,7 +169,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
       {
         // dispose managed state (managed objects)
       }
-      NativeMethods.alpm_fileconflict_free(_backing_struct);
+      NativeMethods.alpm_fileconflict_free(BackingStruct);
       _disposed = true;
     }
   }
@@ -178,15 +177,15 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
   ~FileConflict() => Dispose(disposing: false);
 }
 
-public unsafe class Conflict(_alpm_conflict_t* backing_struct) : IDisposable
+public unsafe class Conflict(_alpm_conflict_t* backingStruct) : IDisposable
 {
-  internal unsafe _alpm_conflict_t* _backing_struct = backing_struct;
+  internal _alpm_conflict_t* BackingStruct = backingStruct;
 
   public static Conflict Factory(void* ptr) => new((_alpm_conflict_t*)ptr);
 
-  public unsafe Package Package1 = new(backing_struct->package1);
-  public unsafe Package Package2 = new(backing_struct->package2);
-  public unsafe Depend Reason = new(backing_struct->reason);
+  public Package Package1 = new(backingStruct->package1);
+  public Package Package2 = new(backingStruct->package2);
+  public Depend Reason = new(backingStruct->reason);
 
   private bool _disposed;
 
@@ -207,7 +206,7 @@ public unsafe class Conflict(_alpm_conflict_t* backing_struct) : IDisposable
         Package2.Dispose();
         Reason.Dispose();
       }
-      NativeMethods.alpm_conflict_free(_backing_struct);
+      NativeMethods.alpm_conflict_free(BackingStruct);
       _disposed = true;
     }
   }

@@ -4,31 +4,30 @@ using Pacpar.Alpm.list;
 
 namespace Pacpar.Alpm;
 
-public unsafe class Databases(byte* backing_struct)
+public unsafe class Databases(byte* backingStruct)
 {
-  protected byte* _backing_struct = backing_struct;
   private string? _name;
-  public string Name => _name ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_db_get_name(_backing_struct))!;
+  public string Name => _name ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_db_get_name(backingStruct))!;
 
   public Package GetPackage(string name)
   {
-    var name_cstr = Marshal.StringToHGlobalAnsi(name);
-    var pkg = NativeMethods.alpm_db_get_pkg(_backing_struct, (byte*)name_cstr);
-    Marshal.FreeHGlobal(name_cstr);
-    return new Package(pkg, true);
+    var nameCstr = Marshal.StringToHGlobalAnsi(name);
+    var pkg = NativeMethods.alpm_db_get_pkg(backingStruct, (byte*)nameCstr);
+    Marshal.FreeHGlobal(nameCstr);
+    return new Package(pkg);
   }
 
-  public AlpmDisposableList<Package> GetPackageCache() => new(NativeMethods.alpm_db_get_pkgcache(_backing_struct), &Package.FactoryFromDatabase);
+  public AlpmDisposableList<Package> GetPackageCache() => new(NativeMethods.alpm_db_get_pkgcache(backingStruct), &Package.FactoryFromDatabase);
 
-  public AlpmStringList GetServers() => new(NativeMethods.alpm_db_get_servers(_backing_struct));
+  public AlpmStringList GetServers() => new(NativeMethods.alpm_db_get_servers(backingStruct));
 
-  public AlpmStringList GetCacheServers() => new(NativeMethods.alpm_db_get_cache_servers(_backing_struct));
+  public AlpmStringList GetCacheServers() => new(NativeMethods.alpm_db_get_cache_servers(backingStruct));
 
-  public Group GetGroup(string name) => new(NativeMethods.alpm_db_get_group(_backing_struct, (byte*)Marshal.StringToHGlobalAnsi(name)));
+  public Group GetGroup(string name) => new(NativeMethods.alpm_db_get_group(backingStruct, (byte*)Marshal.StringToHGlobalAnsi(name)));
 
   public AlpmList<Group> GetGroupCache()
   {
-    var groupCache = NativeMethods.alpm_db_get_groupcache(_backing_struct);
+    var groupCache = NativeMethods.alpm_db_get_groupcache(backingStruct);
     if ((nint)groupCache == IntPtr.Zero)
     {
       throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
@@ -36,15 +35,15 @@ public unsafe class Databases(byte* backing_struct)
     return new(groupCache, &Group.Factory);
   }
 
-  public nint Handle => (nint)NativeMethods.alpm_db_get_handle(_backing_struct);
+  public nint Handle => (nint)NativeMethods.alpm_db_get_handle(backingStruct);
 
-  public SigLevel SigLevel => (SigLevel)NativeMethods.alpm_db_get_siglevel(_backing_struct);
+  public SigLevel SigLevel => (SigLevel)NativeMethods.alpm_db_get_siglevel(backingStruct);
 
   // TODO: USAGE
 
   public (bool, Exception?) Validate()
   {
-    var valid = NativeMethods.alpm_db_get_valid(_backing_struct);
+    var valid = NativeMethods.alpm_db_get_valid(backingStruct);
     if (valid != 0) return (false, ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle)));
     return (true, null);
   }

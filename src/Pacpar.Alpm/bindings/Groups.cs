@@ -3,14 +3,15 @@ using Pacpar.Alpm.list;
 
 namespace Pacpar.Alpm.Bindings;
 
-public unsafe class Group(_alpm_group_t* _backing_struct)
+public unsafe class Group(_alpm_group_t* backingStruct)
 {
-  public static unsafe Group Factory(void* ptr) => new((_alpm_group_t*)ptr);
+  public static Group Factory(void* ptr) => new((_alpm_group_t*)ptr);
 
   private string? _name;
-  public unsafe string Name => _name ??= Marshal.PtrToStringAnsi((nint)_backing_struct->name)!;
+  // ReSharper disable once MemberCanBePrivate.Global
+  public string Name => _name ??= Marshal.PtrToStringAnsi((nint)backingStruct->name)!;
 
-  public unsafe AlpmDisposableList<Package> Packages => new(_backing_struct->packages, &Package.FactoryFromDatabase);
+  public AlpmDisposableList<Package> Packages => new(backingStruct->packages, &Package.FactoryFromDatabase);
 
-  public unsafe AlpmDisposableList<Package> FindGroupPackages(AlpmList<Databases> dbs) => new(NativeMethods.alpm_find_group_pkgs(dbs.AlpmListNative, (byte*)Marshal.StringToHGlobalAnsi(Name)), &Package.FactoryFromDatabase);
+  public AlpmDisposableList<Package> FindGroupPackages(AlpmList<Databases> dbs) => new(NativeMethods.alpm_find_group_pkgs(dbs.AlpmListNative, (byte*)Marshal.StringToHGlobalAnsi(Name)), &Package.FactoryFromDatabase);
 }

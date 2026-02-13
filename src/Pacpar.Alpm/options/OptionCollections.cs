@@ -100,20 +100,20 @@ internal class AssumeInstalledOptionCollection : ICollection<Depend>
 
   public unsafe void Add(Depend item)
   {
-    var err = NativeMethods.alpm_option_add_assumeinstalled(_handle, item._backing_struct);
+    var err = NativeMethods.alpm_option_add_assumeinstalled(_handle, item.BackingStruct);
     if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
   }
 
   public unsafe bool Contains(Depend item)
   {
-    var itemPtr = item._backing_struct;
+    var itemPtr = item.BackingStruct;
     var optionsList = NativeMethods.alpm_option_get_assumeinstalled(_handle);
     return NativeMethods.alpm_list_find_ptr(optionsList, itemPtr) == itemPtr;
   }
 
   public unsafe bool Remove(Depend item)
   {
-    var itemPtr = item._backing_struct;
+    var itemPtr = item.BackingStruct;
     var err = NativeMethods.alpm_option_remove_assumeinstalled(_handle, itemPtr);
     return err == 0;
   }

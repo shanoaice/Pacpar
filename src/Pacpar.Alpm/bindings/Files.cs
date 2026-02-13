@@ -4,46 +4,47 @@ using Pacpar.Alpm.list;
 
 namespace Pacpar.Alpm.Bindings;
 
-public unsafe class Backup(_alpm_backup_t* _backing_struct)
+public unsafe class Backup(_alpm_backup_t* backingStruct)
 {
-  public unsafe static Backup Factory(void* ptr) => new((_alpm_backup_t*)ptr);
+  public static Backup Factory(void* ptr) => new((_alpm_backup_t*)ptr);
 
-  public unsafe static AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => new(ptr, &Factory);
+  public static AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => new(ptr, &Factory);
 
-  private string? name;
+  private string? _name;
 
-  public unsafe string? Name => name ??= Marshal.PtrToStringAnsi((nint)_backing_struct->name);
+  public string? Name => _name ??= Marshal.PtrToStringAnsi((nint)backingStruct->name);
 }
 
-public unsafe class File(_alpm_file_t* _backing_struct)
+public unsafe class File(_alpm_file_t* backingStruct)
 {
-  public unsafe static File Factory(void* ptr) => new((_alpm_file_t*)ptr);
+  public static File Factory(void* ptr) => new((_alpm_file_t*)ptr);
 
-  public readonly uint Mode = _backing_struct->mode;
-  public readonly CLong Size = _backing_struct->size;
+  public readonly uint Mode = backingStruct->mode;
+  public readonly CLong Size = backingStruct->size;
 
-  private string? name;
+  private string? _name;
 
-  public unsafe string? Name => name ??= Marshal.PtrToStringAnsi((nint)_backing_struct->name);
+  public string? Name => _name ??= Marshal.PtrToStringAnsi((nint)backingStruct->name);
 }
 
-public unsafe class FileList(_alpm_filelist_t* _backing_struct) : IReadOnlyList<File>
+public unsafe class FileList(_alpm_filelist_t* backingStruct) : IReadOnlyList<File>
 {
-  private readonly File[] _files = new File[_backing_struct->count];
+  private readonly File[] _files = new File[backingStruct->count];
 
-  public readonly int Count = (int)_backing_struct->count;
-  int IReadOnlyCollection<File>.Count => Count;
+  private readonly int _count = (int)backingStruct->count;
+  int IReadOnlyCollection<File>.Count => _count;
 
-  public File this[int index] => _files[index] ??= new(_backing_struct->files + index * sizeof(_alpm_file_t));
+  public File this[int index] => _files[index] ??= new(backingStruct->files + index * sizeof(_alpm_file_t));
 
-  public class FileListEnumerator(FileList fileList) : IEnumerator<File>
+  private class FileListEnumerator(FileList fileList) : IEnumerator<File>
   {
+    // ReSharper disable once RedundantDefaultMemberInitializer
     private int _index = 0;
     public File Current => fileList[_index];
 
     object IEnumerator.Current => Current;
 
-    public bool MoveNext() => _index++ < fileList.Count;
+    public bool MoveNext() => _index++ < fileList._count;
     public void Reset() => _index = 0;
     public void Dispose()
     {

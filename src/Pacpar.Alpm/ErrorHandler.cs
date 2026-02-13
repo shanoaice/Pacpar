@@ -1,3 +1,5 @@
+#pragma warning disable CA2208
+#pragma warning disable NotResolvedInText
 namespace Pacpar.Alpm;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace Pacpar.Alpm;
 /// </summary>
 /// <param name="message"></param>
 /// <param name="package"></param>
-/// <param name="errnoException"></param>
+/// <param name="errno"></param>
 public class PackageException(string message, Package package, _alpm_errno_t errno) : Exception(message, ErrorHandler.GetException(errno))
 {
   public Package Package => package;
@@ -35,7 +37,7 @@ public static class ErrorHandler
       _alpm_errno_t.ALPM_ERR_DB_OPEN => new IOException("Failed to open database"),
       _alpm_errno_t.ALPM_ERR_DB_CREATE => new IOException("Failed to create database"),
       _alpm_errno_t.ALPM_ERR_DB_NULL => new ArgumentNullException("database"),
-      _alpm_errno_t.ALPM_ERR_DB_NOT_NULL => new ArgumentException("database", "database should be null"),
+      _alpm_errno_t.ALPM_ERR_DB_NOT_NULL => new ArgumentException("database should be null", "database"),
       _alpm_errno_t.ALPM_ERR_DB_NOT_FOUND => new FileNotFoundException("database not found"),
       _alpm_errno_t.ALPM_ERR_DB_INVALID => new InvalidOperationException("database is invalid"),
       _alpm_errno_t.ALPM_ERR_DB_INVALID_SIG => new InvalidOperationException("database signature is invalid"),

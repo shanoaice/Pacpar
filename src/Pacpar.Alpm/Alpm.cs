@@ -6,14 +6,16 @@ public class Alpm : IDisposable
 {
   // opaque handle to libalpm, details not exposed
   private unsafe byte* _handle;
-  internal unsafe _alpm_errno_t* errno = (_alpm_errno_t*)IntPtr.Zero;
+  // ReSharper disable once MemberCanBePrivate.Global
+  private readonly unsafe _alpm_errno_t* _errno;
+  // ReSharper disable once RedundantDefaultMemberInitializer
   private bool _disposed = false;
 
   public unsafe Alpm(string root, string dbpath)
   {
-    errno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
-    *errno = _alpm_errno_t.ALPM_ERR_OK;
-    _handle = NativeMethods.alpm_initialize((byte*)Marshal.StringToHGlobalAnsi(root), (byte*)Marshal.StringToHGlobalAnsi(dbpath), errno);
+    _errno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
+    *_errno = _alpm_errno_t.ALPM_ERR_OK;
+    _handle = NativeMethods.alpm_initialize((byte*)Marshal.StringToHGlobalAnsi(root), (byte*)Marshal.StringToHGlobalAnsi(dbpath), _errno);
     Options = new(_handle);
   }
 
@@ -32,7 +34,7 @@ public class Alpm : IDisposable
   /// <summary>
   /// The current errno of libalpm
   /// </summary>
-  public unsafe _alpm_errno_t Errno => *errno;
+  public unsafe _alpm_errno_t Errno => *_errno;
 
   public unsafe string? GetCurrentErrorString() => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_strerror(Errno));
 
@@ -71,7 +73,7 @@ public class Alpm : IDisposable
       _ = NativeMethods.alpm_release(_handle);
       _handle = (byte*)IntPtr.Zero;
 
-      Marshal.FreeHGlobal((nint)errno);
+      Marshal.FreeHGlobal((nint)_errno);
       _disposed = true;
     }
   }
