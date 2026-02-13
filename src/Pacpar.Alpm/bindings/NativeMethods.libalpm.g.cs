@@ -8,7 +8,7 @@ using System;
 using System.Runtime.InteropServices;
 
 
-namespace Pacpar.Alpm
+namespace Pacpar.Alpm.Bindings
 {
     public static unsafe partial class NativeMethods
     {
@@ -172,7 +172,7 @@ namespace Pacpar.Alpm
         ///  Check the PGP signature for the given package file.
         ///  @param pkg the package to check
         ///  @param siglist a pointer to storage for signature results
-        ///  @return 0 if valid, -1 if an error occurred or signature is invalid
+        ///  @return 0 on success, -1 if an error occurred or signature is missing
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_check_pgp_signature", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int alpm_pkg_check_pgp_signature(byte* pkg, _alpm_siglist_t* siglist);
@@ -181,7 +181,7 @@ namespace Pacpar.Alpm
         ///  Check the PGP signature for the given database.
         ///  @param db the database to check
         ///  @param siglist a pointer to storage for signature results
-        ///  @return 0 if valid, -1 if an error occurred or signature is invalid
+        ///  @return 0 on success, -1 if an error occurred or signature is missing
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_db_check_pgp_signature", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int alpm_db_check_pgp_signature(byte* db, _alpm_siglist_t* siglist);
@@ -1264,6 +1264,14 @@ namespace Pacpar.Alpm
         public static extern int alpm_option_set_remote_file_siglevel(byte* handle, int level);
 
         /// <summary>
+        ///  Get the download timeout state
+        ///  @param handle the context handle
+        ///  @return 0 for enabled, 1 for disabled
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "alpm_option_get_disable_dl_timeout", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int alpm_option_get_disable_dl_timeout(byte* handle);
+
+        /// <summary>
         ///  Enables/disables the download timeout.
         ///  @param handle the context handle
         ///  @param disable_dl_timeout 0 for enabled, 1 for disabled
@@ -1290,13 +1298,55 @@ namespace Pacpar.Alpm
         public static extern int alpm_option_set_parallel_downloads(byte* handle, uint num_streams);
 
         /// <summary>
-        ///  Enables/disables the sandbox.
+        ///  Get the state of the sandbox
+        ///  @param handle the context handle
+        ///  @return 0 for enabled, 1 if any component is disabled, 2 if completely disabled
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "alpm_option_get_disable_sandbox", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int alpm_option_get_disable_sandbox(byte* handle);
+
+        /// <summary>
+        ///  Enables/disables all components of the sandbox.
         ///  @param handle the context handle
         ///  @param disable_sandbox 0 for enabled, 1 for disabled
         ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int alpm_option_set_disable_sandbox(byte* handle, ushort disable_sandbox);
+
+        /// <summary>
+        ///  Get the state of the filesystem part of the sandbox
+        ///  @param handle the context handle
+        ///  @return 0 for enabled, 1 for disabled
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "alpm_option_get_disable_sandbox_filesystem", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int alpm_option_get_disable_sandbox_filesystem(byte* handle);
+
+        /// <summary>
+        ///  Enables/disables the filesystem part of the sandbox.
+        ///  @param handle the context handle
+        ///  @param disable_sandbox_filesystem 0 for enabled, 1 for disabled
+        ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox_filesystem", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int alpm_option_set_disable_sandbox_filesystem(byte* handle, ushort disable_sandbox_filesystem);
+
+        /// <summary>
+        ///  Get the state of the syscalls part of the sandbox
+        ///  @param handle the context handle
+        ///  @return 0 for enabled, 1 for disabled
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "alpm_option_get_disable_sandbox_syscalls", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int alpm_option_get_disable_sandbox_syscalls(byte* handle);
+
+        /// <summary>
+        ///  Enables/disables the syscalls part of the sandbox.
+        ///  @param handle the context handle
+        ///  @param disable_sandbox_syscalls 0 for enabled, 1 for disabled
+        ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox_syscalls", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int alpm_option_set_disable_sandbox_syscalls(byte* handle, ushort disable_sandbox_syscalls);
 
         /// <summary>
         ///  Create a package from a file.
@@ -1930,10 +1980,11 @@ namespace Pacpar.Alpm
         ///  @param handle the context handle
         ///  @param sandboxuser the user to switch to
         ///  @param sandbox_path if non-NULL, restrict writes to this filesystem path
+        ///  @param restrict_syscalls whether to deny access to a list of dangerous syscalls
         ///  @return 0 on success, -1 on failure
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_sandbox_setup_child", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int alpm_sandbox_setup_child(byte* handle, byte* sandboxuser, byte* sandbox_path);
+        public static extern int alpm_sandbox_setup_child(byte* handle, byte* sandboxuser, byte* sandbox_path, [MarshalAs(UnmanagedType.U1)] bool restrict_syscalls);
 
 
     }
@@ -2068,15 +2119,6 @@ namespace Pacpar.Alpm
         ///  has the key been revoked
         /// </summary>
         public uint revoked;
-        /// <summary>
-        ///  A character representing the  encryption algorithm used by the public key
-        /// 
-        ///  ? = unknown
-        ///  R = RSA
-        ///  D = DSA
-        ///  E = EDDSA
-        /// </summary>
-        public byte pubkey_algo;
     }
 
     /// <summary>
@@ -2949,33 +2991,37 @@ namespace Pacpar.Alpm
         /// </summary>
         ALPM_ERR_FILE_CONFLICTS = 47,
         /// <summary>
+        ///  Download setup failed
+        /// </summary>
+        ALPM_ERR_RETRIEVE_PREPARE = 48,
+        /// <summary>
         ///  Download failed
         /// </summary>
-        ALPM_ERR_RETRIEVE = 48,
+        ALPM_ERR_RETRIEVE = 49,
         /// <summary>
         ///  Invalid Regex
         /// </summary>
-        ALPM_ERR_INVALID_REGEX = 49,
+        ALPM_ERR_INVALID_REGEX = 50,
         /// <summary>
         ///  Error in libarchive
         /// </summary>
-        ALPM_ERR_LIBARCHIVE = 50,
+        ALPM_ERR_LIBARCHIVE = 51,
         /// <summary>
         ///  Error in libcurl
         /// </summary>
-        ALPM_ERR_LIBCURL = 51,
+        ALPM_ERR_LIBCURL = 52,
         /// <summary>
         ///  Error in external download program
         /// </summary>
-        ALPM_ERR_EXTERNAL_DOWNLOAD = 52,
+        ALPM_ERR_EXTERNAL_DOWNLOAD = 53,
         /// <summary>
         ///  Error in gpgme
         /// </summary>
-        ALPM_ERR_GPGME = 53,
+        ALPM_ERR_GPGME = 54,
         /// <summary>
         ///  Missing compile-time features
         /// </summary>
-        ALPM_ERR_MISSING_CAPABILITY_SIGNATURES = 54,
+        ALPM_ERR_MISSING_CAPABILITY_SIGNATURES = 55,
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-namespace Pacpar.Alpm.Bindings;
+namespace Pacpar.Alpm;
 
 /// <summary>
 ///  PGP signature verification options

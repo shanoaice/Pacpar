@@ -407,20 +407,22 @@ pub enum _alpm_errno_t {
     ALPM_ERR_CONFLICTING_DEPS = 46,
     #[doc = " Files conflict"]
     ALPM_ERR_FILE_CONFLICTS = 47,
+    #[doc = " Download setup failed"]
+    ALPM_ERR_RETRIEVE_PREPARE = 48,
     #[doc = " Download failed"]
-    ALPM_ERR_RETRIEVE = 48,
+    ALPM_ERR_RETRIEVE = 49,
     #[doc = " Invalid Regex"]
-    ALPM_ERR_INVALID_REGEX = 49,
+    ALPM_ERR_INVALID_REGEX = 50,
     #[doc = " Error in libarchive"]
-    ALPM_ERR_LIBARCHIVE = 50,
+    ALPM_ERR_LIBARCHIVE = 51,
     #[doc = " Error in libcurl"]
-    ALPM_ERR_LIBCURL = 51,
+    ALPM_ERR_LIBCURL = 52,
     #[doc = " Error in external download program"]
-    ALPM_ERR_EXTERNAL_DOWNLOAD = 52,
+    ALPM_ERR_EXTERNAL_DOWNLOAD = 53,
     #[doc = " Error in gpgme"]
-    ALPM_ERR_GPGME = 53,
+    ALPM_ERR_GPGME = 54,
     #[doc = " Missing compile-time features"]
-    ALPM_ERR_MISSING_CAPABILITY_SIGNATURES = 54,
+    ALPM_ERR_MISSING_CAPABILITY_SIGNATURES = 55,
 }
 #[doc = " libalpm's error type"]
 pub use self::_alpm_errno_t as alpm_errno_t;
@@ -525,12 +527,10 @@ pub struct _alpm_pgpkey_t {
     pub length: ::std::os::raw::c_uint,
     #[doc = " has the key been revoked"]
     pub revoked: ::std::os::raw::c_uint,
-    #[doc = " A character representing the  encryption algorithm used by the public key\n\n ? = unknown\n R = RSA\n D = DSA\n E = EDDSA"]
-    pub pubkey_algo: ::std::os::raw::c_char,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _alpm_pgpkey_t"][::std::mem::size_of::<_alpm_pgpkey_t>() - 72usize];
+    ["Size of _alpm_pgpkey_t"][::std::mem::size_of::<_alpm_pgpkey_t>() - 64usize];
     ["Alignment of _alpm_pgpkey_t"][::std::mem::align_of::<_alpm_pgpkey_t>() - 8usize];
     ["Offset of field: _alpm_pgpkey_t::data"]
         [::std::mem::offset_of!(_alpm_pgpkey_t, data) - 0usize];
@@ -549,8 +549,6 @@ const _: () = {
         [::std::mem::offset_of!(_alpm_pgpkey_t, length) - 56usize];
     ["Offset of field: _alpm_pgpkey_t::revoked"]
         [::std::mem::offset_of!(_alpm_pgpkey_t, revoked) - 60usize];
-    ["Offset of field: _alpm_pgpkey_t::pubkey_algo"]
-        [::std::mem::offset_of!(_alpm_pgpkey_t, pubkey_algo) - 64usize];
 };
 #[doc = " A PGP key"]
 pub type alpm_pgpkey_t = _alpm_pgpkey_t;
@@ -567,14 +565,14 @@ pub struct _alpm_sigresult_t {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _alpm_sigresult_t"][::std::mem::size_of::<_alpm_sigresult_t>() - 80usize];
+    ["Size of _alpm_sigresult_t"][::std::mem::size_of::<_alpm_sigresult_t>() - 72usize];
     ["Alignment of _alpm_sigresult_t"][::std::mem::align_of::<_alpm_sigresult_t>() - 8usize];
     ["Offset of field: _alpm_sigresult_t::key"]
         [::std::mem::offset_of!(_alpm_sigresult_t, key) - 0usize];
     ["Offset of field: _alpm_sigresult_t::status"]
-        [::std::mem::offset_of!(_alpm_sigresult_t, status) - 72usize];
+        [::std::mem::offset_of!(_alpm_sigresult_t, status) - 64usize];
     ["Offset of field: _alpm_sigresult_t::validity"]
-        [::std::mem::offset_of!(_alpm_sigresult_t, validity) - 76usize];
+        [::std::mem::offset_of!(_alpm_sigresult_t, validity) - 68usize];
 };
 #[doc = " Signature result. Contains the key, status, and validity of a given\n signature."]
 pub type alpm_sigresult_t = _alpm_sigresult_t;
@@ -599,14 +597,14 @@ const _: () = {
 #[doc = " Signature list. Contains the number of signatures found and a pointer to an\n array of results. The array is of size count."]
 pub type alpm_siglist_t = _alpm_siglist_t;
 unsafe extern "C" {
-    #[doc = " Check the PGP signature for the given package file.\n @param pkg the package to check\n @param siglist a pointer to storage for signature results\n @return 0 if valid, -1 if an error occurred or signature is invalid"]
+    #[doc = " Check the PGP signature for the given package file.\n @param pkg the package to check\n @param siglist a pointer to storage for signature results\n @return 0 on success, -1 if an error occurred or signature is missing"]
     pub fn alpm_pkg_check_pgp_signature(
         pkg: *mut alpm_pkg_t,
         siglist: *mut alpm_siglist_t,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    #[doc = " Check the PGP signature for the given database.\n @param db the database to check\n @param siglist a pointer to storage for signature results\n @return 0 if valid, -1 if an error occurred or signature is invalid"]
+    #[doc = " Check the PGP signature for the given database.\n @param db the database to check\n @param siglist a pointer to storage for signature results\n @return 0 on success, -1 if an error occurred or signature is missing"]
     pub fn alpm_db_check_pgp_signature(
         db: *mut alpm_db_t,
         siglist: *mut alpm_siglist_t,
@@ -2371,6 +2369,10 @@ unsafe extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
+    #[doc = " Get the download timeout state\n @param handle the context handle\n @return 0 for enabled, 1 for disabled"]
+    pub fn alpm_option_get_disable_dl_timeout(handle: *mut alpm_handle_t) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
     #[doc = " Enables/disables the download timeout.\n @param handle the context handle\n @param disable_dl_timeout 0 for enabled, 1 for disabled\n @return 0 on success, -1 on error (pm_errno is set accordingly)"]
     pub fn alpm_option_set_disable_dl_timeout(
         handle: *mut alpm_handle_t,
@@ -2389,10 +2391,40 @@ unsafe extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    #[doc = " Enables/disables the sandbox.\n @param handle the context handle\n @param disable_sandbox 0 for enabled, 1 for disabled\n @return 0 on success, -1 on error (pm_errno is set accordingly)"]
+    #[doc = " Get the state of the sandbox\n @param handle the context handle\n @return 0 for enabled, 1 if any component is disabled, 2 if completely disabled"]
+    pub fn alpm_option_get_disable_sandbox(handle: *mut alpm_handle_t) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    #[doc = " Enables/disables all components of the sandbox.\n @param handle the context handle\n @param disable_sandbox 0 for enabled, 1 for disabled\n @return 0 on success, -1 on error (pm_errno is set accordingly)"]
     pub fn alpm_option_set_disable_sandbox(
         handle: *mut alpm_handle_t,
         disable_sandbox: ::std::os::raw::c_ushort,
+    ) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    #[doc = " Get the state of the filesystem part of the sandbox\n @param handle the context handle\n @return 0 for enabled, 1 for disabled"]
+    pub fn alpm_option_get_disable_sandbox_filesystem(
+        handle: *mut alpm_handle_t,
+    ) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    #[doc = " Enables/disables the filesystem part of the sandbox.\n @param handle the context handle\n @param disable_sandbox_filesystem 0 for enabled, 1 for disabled\n @return 0 on success, -1 on error (pm_errno is set accordingly)"]
+    pub fn alpm_option_set_disable_sandbox_filesystem(
+        handle: *mut alpm_handle_t,
+        disable_sandbox_filesystem: ::std::os::raw::c_ushort,
+    ) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    #[doc = " Get the state of the syscalls part of the sandbox\n @param handle the context handle\n @return 0 for enabled, 1 for disabled"]
+    pub fn alpm_option_get_disable_sandbox_syscalls(
+        handle: *mut alpm_handle_t,
+    ) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    #[doc = " Enables/disables the syscalls part of the sandbox.\n @param handle the context handle\n @param disable_sandbox_syscalls 0 for enabled, 1 for disabled\n @return 0 on success, -1 on error (pm_errno is set accordingly)"]
+    pub fn alpm_option_set_disable_sandbox_syscalls(
+        handle: *mut alpm_handle_t,
+        disable_sandbox_syscalls: ::std::os::raw::c_ushort,
     ) -> ::std::os::raw::c_int;
 }
 #[repr(u32)]
@@ -2828,11 +2860,12 @@ unsafe extern "C" {
     pub fn alpm_capabilities() -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    #[doc = " Drop privileges by switching to a different user.\n @param handle the context handle\n @param sandboxuser the user to switch to\n @param sandbox_path if non-NULL, restrict writes to this filesystem path\n @return 0 on success, -1 on failure"]
+    #[doc = " Drop privileges by switching to a different user.\n @param handle the context handle\n @param sandboxuser the user to switch to\n @param sandbox_path if non-NULL, restrict writes to this filesystem path\n @param restrict_syscalls whether to deny access to a list of dangerous syscalls\n @return 0 on success, -1 on failure"]
     pub fn alpm_sandbox_setup_child(
         handle: *mut alpm_handle_t,
         sandboxuser: *const ::std::os::raw::c_char,
         sandbox_path: *const ::std::os::raw::c_char,
+        restrict_syscalls: bool,
     ) -> ::std::os::raw::c_int;
 }
 pub type __builtin_va_list = [__va_list_tag; 1usize];

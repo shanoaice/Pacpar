@@ -67,9 +67,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         // .csharp_generate_const_filter(|x| x.starts_with("alpm_")) // use csharp_generate_const_filter if you want to generate const
         .csharp_class_name("NativeMethods")
         .csharp_class_accessibility("public")
-        .csharp_namespace("Pacpar.Alpm")
+        .csharp_namespace("Pacpar.Alpm.Bindings")
         .always_included_types(["_alpm_backup_t", "_alpm_pkgvalidation_t", "_alpm_siglevel_t", "_alpm_transflag_t"])
-        .generate_csharp_file("../NativeMethods.libalpm.g.cs")?;
+        .generate_csharp_file("../bindings/NativeMethods.libalpm.g.cs")?;
 
     Ok(())
 }

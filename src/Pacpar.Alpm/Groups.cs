@@ -1,7 +1,8 @@
 using System.Runtime.InteropServices;
-using Pacpar.Alpm.list;
+using Pacpar.Alpm.Bindings;
+using Pacpar.Alpm.List;
 
-namespace Pacpar.Alpm.Bindings;
+namespace Pacpar.Alpm;
 
 public unsafe class Group(_alpm_group_t* backingStruct)
 {

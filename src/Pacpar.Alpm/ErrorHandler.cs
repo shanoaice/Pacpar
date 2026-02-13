@@ -1,3 +1,5 @@
+using Pacpar.Alpm.Bindings;
+
 #pragma warning disable CA2208
 #pragma warning disable NotResolvedInText
 namespace Pacpar.Alpm;
