@@ -16,7 +16,20 @@ public class Alpm : IDisposable
   {
     _errno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
     *_errno = _alpm_errno_t.ALPM_ERR_OK;
-    _handle = NativeMethods.alpm_initialize((byte*)Marshal.StringToHGlobalAnsi(root), (byte*)Marshal.StringToHGlobalAnsi(dbpath), _errno);
+
+    var rootPtr = Marshal.StringToHGlobalAnsi(root);
+    var dbpathPtr = Marshal.StringToHGlobalAnsi(dbpath);
+    try
+    {
+      _handle = NativeMethods.alpm_initialize((byte*)rootPtr, (byte*)dbpathPtr, _errno);
+    }
+    finally
+    {
+      Marshal.FreeHGlobal(rootPtr);
+      Marshal.FreeHGlobal(dbpathPtr);
+    }
+    if (_handle == null) throw ErrorHandler.GetException(*_errno) ?? new Exception("Failed to initialize libalpm.");
+
     Options = new(_handle);
   }
 
@@ -71,13 +84,26 @@ public class Alpm : IDisposable
   public unsafe Package LoadPackage(string filename, bool full, int level)
   {
     ThrowIfDisposed();
-    byte** pkg = (byte**)Marshal.AllocHGlobal(sizeof(nint));
-    var err = NativeMethods.alpm_pkg_load(_handle, (byte*)Marshal.StringToHGlobalAnsi(filename), full ? 1 : 0, level, pkg);
-    if (err != 0)
+    var filenamePtr = Marshal.StringToHGlobalAnsi(filename);
+    // This is a pointer to a pointer, where libalpm will write the package handle.
+    var pkgOutPtr = (byte**)Marshal.AllocHGlobal(sizeof(nint));
+    try
     {
-      throw GetCurrentError()!;
+      var err = NativeMethods.alpm_pkg_load(_handle, (byte*)filenamePtr, full ? 1 : 0, level, pkgOutPtr);
+      if (err != 0)
+      {
+        // Note: alpm_pkg_load sets the handle errno on failure.
+        throw GetCurrentError() ?? new Exception($"Failed to load package: {GetCurrentErrorString()}");
+      }
+      // The Package class now takes ownership of the native handle *pkgOutPtr
+      return new(*pkgOutPtr, false);
     }
-    return new(*pkg, false);
+    finally
+    {
+      Marshal.FreeHGlobal(filenamePtr);
+      // We must free the memory we allocated for the output pointer.
+      Marshal.FreeHGlobal((IntPtr)pkgOutPtr);
+    }
   }
 
   public Transactions BeginTransaction(TransactionFlags flags)
