@@ -40,13 +40,21 @@ public enum AlpmStringListAllocPattern
 }
 
 /// <summary>
+/// Interface for ALPM lists.
+/// </summary>
+public interface IAlpmList<out T> : IReadOnlyList<T>, IDisposable
+{
+}
+
+/// <summary>
 /// Wraps an alpm_list_t from libalpm.
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public class AlpmList<T> : IDisposable, IReadOnlyList<T>
+public class AlpmList<T> : IAlpmList<T>
 {
   internal unsafe _alpm_list_t* AlpmListNative;
-  private readonly unsafe delegate*<void*, T> _factory;
+  // ReSharper disable once InconsistentNaming
+  internal readonly unsafe delegate*<void*, T> _factory;
   protected bool Disposed;
   private readonly bool _ownsList;
 
@@ -83,34 +91,44 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
     if (Disposed) throw new ObjectDisposedException(GetType().FullName);
   }
 
-  private sealed class AlpmListEnumerator<TEnum>(AlpmList<TEnum> alpmList, bool disposeParent = false)
+  public unsafe struct Enumerator(AlpmList<T> alpmList, bool disposeParent = false)
     : IEnumerator<TEnum>
+    where TEnum : T
   {
-    private unsafe _alpm_list_t* _alpmListNative = alpmList.AlpmListNative;
+    private _alpm_list_t* _current = null;
+    private bool _started = false;
     private bool _disposed;
 
-    public unsafe TEnum Current
+    public TEnum Current
     {
       get
       {
         if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-        return alpmList._factory(_alpmListNative->data);
+        if (!_started || _current == null) throw new InvalidOperationException();
+        return (TEnum)alpmList._factory(_current->data);
       }
     }
 
-    public unsafe bool MoveNext()
+    public bool MoveNext()
     {
       if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-      var next = NativeMethods.alpm_list_next(_alpmListNative);
-      if ((IntPtr)next == IntPtr.Zero) return false;
-      _alpmListNative = next;
-      return true;
+      if (!_started)
+      {
+        _current = alpmList.AlpmListNative;
+        _started = true;
+      }
+      else if (_current != null)
+      {
+        _current = NativeMethods.alpm_list_next(_current);
+      }
+      return _current != null;
     }
 
-    public unsafe void Reset()
+    public void Reset()
     {
       if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-      _alpmListNative = alpmList.AlpmListNative;
+      _current = null;
+      _started = false;
     }
 
     public void Dispose()
@@ -131,11 +149,6 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
     }
 
     object IEnumerator.Current => Current!;
-
-    ~AlpmListEnumerator()
-    {
-      Dispose(disposing: false);
-    }
   }
 
   public void Dispose()
@@ -163,17 +176,19 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
     Dispose(disposing: false);
   }
 
-  public IEnumerator<T> GetEnumerator()
+  public Enumerator GetEnumerator()
   {
     ThrowIfDisposed();
-    return new AlpmListEnumerator<T>(this);
+    return new Enumerator(this);
   }
 
-  public IEnumerator<T> GetOwningEnumerator()
+  public Enumerator GetOwningEnumerator()
   {
     ThrowIfDisposed();
-    return new AlpmListEnumerator<T>(this, true);
+    return new Enumerator(this, true);
   }
+
+  IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
 
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
