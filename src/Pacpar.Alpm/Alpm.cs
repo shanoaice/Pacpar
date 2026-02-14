@@ -3,10 +3,13 @@ using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm;
 
+// ReSharper disable once ClassNeverInstantiated.Global
 public class Alpm : IDisposable
 {
   // opaque handle to libalpm, details not exposed
   private unsafe byte* _handle;
+  // A handle to this managed object that can be safely passed to native code.
+  private GCHandle<Alpm> _thisHandle;
   // ReSharper disable once MemberCanBePrivate.Global
   private readonly unsafe _alpm_errno_t* _errno;
   // ReSharper disable once RedundantDefaultMemberInitializer
@@ -16,6 +19,10 @@ public class Alpm : IDisposable
   {
     _errno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
     *_errno = _alpm_errno_t.ALPM_ERR_OK;
+
+    // Allocate a GCHandle to this instance. This gives us a stable
+    // reference that we can pass to native code as a 'context' pointer.
+    _thisHandle = new GCHandle<Alpm>(this);
 
     var rootPtr = Marshal.StringToHGlobalAnsi(root);
     var dbpathPtr = Marshal.StringToHGlobalAnsi(dbpath);
@@ -30,7 +37,7 @@ public class Alpm : IDisposable
     }
     if (_handle == null) throw ErrorHandler.GetException(*_errno) ?? new Exception("Failed to initialize libalpm.");
 
-    Options = new(_handle);
+    Options = new AlpmOptions(_handle);
   }
 
   private void ThrowIfDisposed()
@@ -69,6 +76,7 @@ public class Alpm : IDisposable
     }
   }
 
+  // ReSharper disable once MemberCanBePrivate.Global
   public unsafe string? GetCurrentErrorString()
   {
     ThrowIfDisposed();
@@ -96,7 +104,7 @@ public class Alpm : IDisposable
         throw GetCurrentError() ?? new Exception($"Failed to load package: {GetCurrentErrorString()}");
       }
       // The Package class now takes ownership of the native handle *pkgOutPtr
-      return new(*pkgOutPtr, false);
+      return new Package(*pkgOutPtr, false);
     }
     finally
     {
@@ -109,7 +117,7 @@ public class Alpm : IDisposable
   public Transactions BeginTransaction(TransactionFlags flags)
   {
     ThrowIfDisposed();
-    return new(this, flags);
+    return new Transactions(this, flags);
   }
 
   public void Dispose()
@@ -120,21 +128,26 @@ public class Alpm : IDisposable
 
   protected virtual unsafe void Dispose(bool disposing)
   {
-    if (!_disposed)
+    if (_disposed) return;
+    if (disposing)
     {
-      if (disposing)
-      {
-        // dispose managed state (managed objects)
-      }
-      // even when alpm_release fails with -1 the handle is invalidated, regardless
-      // the handle pointer is not owned by us, so we don't need to free it
-      // we should set it to zero anyway, just in case
-      _ = NativeMethods.alpm_release(_handle);
-      _handle = (byte*)IntPtr.Zero;
+      // dispose managed state (managed objects)
 
-      Marshal.FreeHGlobal((nint)_errno);
-      _disposed = true;
+      // It is crucial to free the GCHandle when the object is disposed
+      // to allow the GC to collect the object and to avoid handle leaks.
+      if (_thisHandle.IsAllocated)
+      {
+        _thisHandle.Dispose();
+      }
     }
+    // even when alpm_release fails with -1 the handle is invalidated, regardless
+    // the handle pointer is not owned by us, so we don't need to free it
+    // we should set it to zero anyway, just in case
+    _ = NativeMethods.alpm_release(_handle);
+    _handle = (byte*)IntPtr.Zero;
+
+    Marshal.FreeHGlobal((nint)_errno);
+    _disposed = true;
   }
 
   ~Alpm()
