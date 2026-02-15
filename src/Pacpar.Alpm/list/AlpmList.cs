@@ -40,21 +40,15 @@ public enum AlpmStringListAllocPattern
 }
 
 /// <summary>
-/// Interface for ALPM lists.
-/// </summary>
-public interface IAlpmList<out T> : IReadOnlyList<T>, IDisposable
-{
-}
-
-/// <summary>
 /// Wraps an alpm_list_t from libalpm.
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public class AlpmList<T> : IAlpmList<T>
+public class AlpmList<T> : IDisposable, IReadOnlyList<T>
 {
   internal unsafe _alpm_list_t* AlpmListNative;
-  // ReSharper disable once InconsistentNaming
-  internal readonly unsafe delegate*<void*, T> _factory;
+
+  // ReSharper disable once MemberCanBePrivate.Global
+  internal readonly unsafe delegate*<void*, T> Factory;
   protected bool Disposed;
   private readonly bool _ownsList;
 
@@ -68,7 +62,7 @@ public class AlpmList<T> : IAlpmList<T>
   internal unsafe AlpmList(_alpm_list_t* alpmList, delegate*<void*, T> factory, bool ownsList = true)
   {
     AlpmListNative = alpmList;
-    _factory = factory;
+    Factory = factory;
     _ownsList = ownsList;
   }
 
@@ -81,31 +75,30 @@ public class AlpmList<T> : IAlpmList<T>
   /// <param name="factory">factory function to covert void* to T</param>
   public unsafe AlpmList(delegate*<void*, T> factory)
   {
-    _factory = factory;
+    Factory = factory;
     AlpmListNative = (_alpm_list_t*)IntPtr.Zero;
     _ownsList = true;
   }
 
-  protected void ThrowIfDisposed()
+  private void ThrowIfDisposed()
   {
-    if (Disposed) throw new ObjectDisposedException(GetType().FullName);
+    ObjectDisposedException.ThrowIf(Disposed, this);
   }
 
   public unsafe struct Enumerator(AlpmList<T> alpmList, bool disposeParent = false)
-    : IEnumerator<TEnum>
-    where TEnum : T
+    : IEnumerator<T>
   {
     private _alpm_list_t* _current = null;
     private bool _started = false;
     private bool _disposed;
 
-    public TEnum Current
+    public T Current
     {
       get
       {
         if (_disposed) throw new ObjectDisposedException(GetType().FullName);
         if (!_started || _current == null) throw new InvalidOperationException();
-        return (TEnum)alpmList._factory(_current->data);
+        return alpmList.Factory(_current->data);
       }
     }
 
@@ -121,6 +114,7 @@ public class AlpmList<T> : IAlpmList<T>
       {
         _current = NativeMethods.alpm_list_next(_current);
       }
+
       return _current != null;
     }
 
@@ -133,17 +127,8 @@ public class AlpmList<T> : IAlpmList<T>
 
     public void Dispose()
     {
-      Dispose(disposing: true);
-      GC.SuppressFinalize(this);
-    }
-
-    private void Dispose(bool disposing)
-    {
       if (_disposed) return;
-      if (disposing)
-      {
-        if (disposeParent) alpmList.Dispose();
-      }
+      if (disposeParent) alpmList.Dispose();
 
       _disposed = true;
     }
@@ -206,7 +191,7 @@ public class AlpmList<T> : IAlpmList<T>
     get
     {
       ThrowIfDisposed();
-      return _factory(NativeMethods.alpm_list_nth(AlpmListNative, (nuint)index));
+      return Factory(NativeMethods.alpm_list_nth(AlpmListNative, (nuint)index));
     }
   }
 }
