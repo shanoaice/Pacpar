@@ -20,7 +20,10 @@ internal class ArchitectureOptionCollection : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_architectures(_handle));
 
-  public IEnumerator<string> GetEnumerator() => BackingList.GetOwningEnumerator();
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
+
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(string arch)
@@ -96,7 +99,9 @@ internal class AssumeInstalledOptionCollection : ICollection<Depend>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_assumeinstalled(_handle));
 
-  public IEnumerator<Depend> GetEnumerator() => BackingList.GetOwningEnumerator();
+  public AlpmList<Depend>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<Depend> IEnumerable<Depend>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(Depend item)
@@ -161,7 +166,10 @@ internal class HookDirectoriesOptionCollection : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_hookdirs(_handle));
 
-  public IEnumerator<string> GetEnumerator() => BackingList.GetOwningEnumerator();
+  // ReSharper disable once MemberCanBePrivate.Global
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(string arch)
@@ -237,7 +245,10 @@ internal class IgnoreGroupsOptionCollection : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_ignoregroups(_handle));
 
-  public IEnumerator<string> GetEnumerator() => BackingList.GetOwningEnumerator();
+  // ReSharper disable once MemberCanBePrivate.Global
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(string arch)
@@ -313,7 +324,10 @@ internal class IgnorePackagesOptionCollection : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_ignorepkgs(_handle));
 
-  public IEnumerator<string> GetEnumerator() => BackingList.GetOwningEnumerator();
+  // ReSharper disable once MemberCanBePrivate.Global
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(string arch)
@@ -389,7 +403,10 @@ internal class NoExtractOptionCollection : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_noextracts(_handle));
 
-  public IEnumerator<string> GetEnumerator() => BackingList.GetOwningEnumerator();
+  // ReSharper disable once MemberCanBePrivate.Global
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(string arch)
@@ -465,7 +482,10 @@ internal class NoUpgradeOptionCollection : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_noupgrades(_handle));
 
-  public IEnumerator<string> GetEnumerator() => BackingList.GetOwningEnumerator();
+  // ReSharper disable once MemberCanBePrivate.Global
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(string arch)
@@ -541,7 +561,10 @@ internal class CacheDirectoriesOptionCollection : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_cachedirs(_handle));
 
-  public IEnumerator<string> GetEnumerator() => BackingList.GetOwningEnumerator();
+  // ReSharper disable once MemberCanBePrivate.Global
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(string arch)
@@ -617,7 +640,10 @@ internal class OverwritableFilesOptionCollection : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_overwrite_files(_handle));
 
-  public IEnumerator<string> GetEnumerator() => BackingList.GetOwningEnumerator();
+  // ReSharper disable once MemberCanBePrivate.Global
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+
+  IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(string arch)
