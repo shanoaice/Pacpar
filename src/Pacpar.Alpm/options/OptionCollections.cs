@@ -67,7 +67,7 @@ internal class ArchitectureOptionCollection : ICollection<string>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
@@ -132,7 +132,7 @@ internal class AssumeInstalledOptionCollection : ICollection<Depend>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
@@ -208,7 +208,7 @@ internal class HookDirectoriesOptionCollection : ICollection<string>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
@@ -284,7 +284,7 @@ internal class IgnoreGroupsOptionCollection : ICollection<string>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
@@ -360,7 +360,7 @@ internal class IgnorePackagesOptionCollection : ICollection<string>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
@@ -436,7 +436,7 @@ internal class NoExtractOptionCollection : ICollection<string>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
@@ -512,7 +512,7 @@ internal class NoUpgradeOptionCollection : ICollection<string>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
@@ -588,7 +588,7 @@ internal class CacheDirectoriesOptionCollection : ICollection<string>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
@@ -664,7 +664,7 @@ internal class OverwritableFilesOptionCollection : ICollection<string>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
     using var enumerator = GetEnumerator();
-    for (var i = 0; i < arrayIndex; ++i)
+    for (var i = 0; i <= arrayIndex; ++i)
     {
       enumerator.MoveNext();
     }
