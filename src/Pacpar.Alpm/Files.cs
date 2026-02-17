@@ -31,23 +31,42 @@ public unsafe class FileList(_alpm_filelist_t* backingStruct) : IReadOnlyList<Fi
   public File this[int index] =>
     new((_alpm_file_t*)(new Span<nint>(backingStruct->files, (int)backingStruct->count))[index]);
 
-  private class FileListEnumerator(FileList fileList) : IEnumerator<File>
+  public struct Enumerator(FileList fileList) : IEnumerator<File>
   {
-    // ReSharper disable once RedundantDefaultMemberInitializer
     private int _index = 0;
-    public File Current => fileList[_index];
+    private bool _started = false;
+
+    public File Current => !_started ? throw new InvalidOperationException() : fileList[_index];
 
     object IEnumerator.Current => Current;
 
-    public bool MoveNext() => _index++ < fileList.Count;
-    public void Reset() => _index = 0;
+    public bool MoveNext()
+    {
+      if (_index >= fileList.Count - 1) return false;
+
+      if (!_started)
+      {
+        _started = true;
+        return true;
+      }
+
+      ++_index;
+      return true;
+    }
+
+    public void Reset()
+    {
+      _started = false;
+      _index = 0;
+    }
 
     public void Dispose()
     {
-      GC.SuppressFinalize(this);
     }
   }
 
-  public IEnumerator<File> GetEnumerator() => new FileListEnumerator(this);
+  public Enumerator GetEnumerator() => new Enumerator(this);
+
+  IEnumerator<File> IEnumerable<File>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
