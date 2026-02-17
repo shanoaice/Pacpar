@@ -12,10 +12,6 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
 
   public static AlpmDisposableList<Depend> ListFactory(_alpm_list_t* alpmList) => new(alpmList, &Factory);
 
-  private string? _description;
-  private string? _name;
-  private string? _version;
-
   private bool _disposed;
 
   protected void ThrowIfDisposed()
@@ -28,8 +24,8 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
     get
     {
       ThrowIfDisposed();
-      _description ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->desc);
-      return _description;
+      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->desc);
+      return field;
     }
   }
   public string? Name
@@ -37,8 +33,8 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
     get
     {
       ThrowIfDisposed();
-      _name ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->name);
-      return _name;
+      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->name);
+      return field;
     }
   }
   public string? Version
@@ -46,8 +42,8 @@ public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
     get
     {
       ThrowIfDisposed();
-      _version ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->version);
-      return _version;
+      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->version);
+      return field;
     }
   }
 
@@ -81,9 +77,7 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
 
   public static DepMissing Factory(void* ptr) => new((_alpm_depmissing_t*)ptr);
 
-  private string? _causingPkg;
   public readonly Depend? Depend = new(backingStruct->depend);
-  private string? _target;
 
   private bool _disposed;
 
@@ -97,8 +91,8 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
     get
     {
       ThrowIfDisposed();
-      _causingPkg ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->causingpkg);
-      return _causingPkg;
+      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->causingpkg);
+      return field;
     }
   }
   public string? Target
@@ -106,8 +100,8 @@ public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
     get
     {
       ThrowIfDisposed();
-      _target ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
-      return _target;
+      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
+      return field;
     }
   }
 
@@ -140,10 +134,6 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
 
   public static FileConflict Factory(void* ptr) => new((_alpm_fileconflict_t*)ptr);
 
-  private string? _ctarget;
-  private string? _file;
-  private string? _target;
-
   private bool _disposed;
 
   protected void ThrowIfDisposed()
@@ -156,8 +146,8 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
     get
     {
       ThrowIfDisposed();
-      _ctarget ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->ctarget);
-      return _ctarget;
+      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->ctarget);
+      return field;
     }
   }
   public string? File
@@ -165,8 +155,8 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
     get
     {
       ThrowIfDisposed();
-      _file ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->file);
-      return _file;
+      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->file);
+      return field;
     }
   }
   public string? Target
@@ -174,8 +164,8 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
     get
     {
       ThrowIfDisposed();
-      _target ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
-      return _target;
+      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
+      return field;
     }
   }
 

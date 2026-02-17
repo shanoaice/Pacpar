@@ -8,9 +8,8 @@ public unsafe class Group(_alpm_group_t* backingStruct)
 {
   public static Group Factory(void* ptr) => new((_alpm_group_t*)ptr);
 
-  private string? _name;
   // ReSharper disable once MemberCanBePrivate.Global
-  public string Name => _name ??= Marshal.PtrToStringAnsi((nint)backingStruct->name)!;
+  public string Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->name)!;
 
   public AlpmDisposableList<Package> Packages => new(backingStruct->packages, &Package.FactoryFromDatabase);
 

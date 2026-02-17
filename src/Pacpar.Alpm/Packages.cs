@@ -140,13 +140,12 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     Dispose(false);
   }
 
-  private string? _name;
   public string Name
   {
     get
     {
       ThrowIfDisposed();
-      return _name ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_name(BackingStruct))!;
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_name(BackingStruct))!;
     }
   }
 
@@ -162,23 +161,21 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     return NativeMethods.alpm_pkg_should_ignore(LibraryHandle, BackingStruct) != 0;
   }
 
-  private string? _filename;
   public string? Filename
   {
     get
     {
       ThrowIfDisposed();
-      return _filename ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
     }
   }
 
-  private string? _base;
   public string? Base
   {
     get
     {
       ThrowIfDisposed();
-      return _base ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
     }
   }
 
@@ -200,23 +197,21 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  private string? _desc;
   public string? Description
   {
     get
     {
       ThrowIfDisposed();
-      return _desc ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
     }
   }
 
-  private string? _url;
   public string? Url
   {
     get
     {
       ThrowIfDisposed();
-      return _url ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
     }
   }
 
@@ -239,43 +234,39 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  private string? _packager;
   public string? Packager
   {
     get
     {
       ThrowIfDisposed();
-      return _packager ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
     }
   }
 
-  private string? _md5Sum;
   public string? Md5Sum
   {
     get
     {
       ThrowIfDisposed();
-      return _md5Sum ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
     }
   }
 
-  private string? _sha256Sum;
   public string? Sha256Sum
   {
     get
     {
       ThrowIfDisposed();
-      return _sha256Sum ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
     }
   }
 
-  private string? _arch;
   public string? Arch
   {
     get
     {
       ThrowIfDisposed();
-      return _arch ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
     }
   }
 
@@ -430,13 +421,12 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     return new(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct));
   }
 
-  private string? _base64Sig;
   public string? Base64Signature
   {
     get
     {
       ThrowIfDisposed();
-      return _base64Sig ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
+      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
     }
   }
 

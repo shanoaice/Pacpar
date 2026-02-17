@@ -11,21 +11,17 @@ public unsafe class Backup(_alpm_backup_t* backingStruct)
 
   public static AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => new(ptr, &Factory);
 
-  private string? _name;
-
-  public string? Name => _name ??= Marshal.PtrToStringAnsi((nint)backingStruct->name);
+  public string? Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->name);
 }
 
 public unsafe class File(_alpm_file_t* backingStruct)
 {
   public static File Factory(void* ptr) => new((_alpm_file_t*)ptr);
 
-  public readonly uint Mode = backingStruct->mode;
-  public readonly CLong Size = backingStruct->size;
+  public uint Mode => backingStruct->mode;
+  public CLong Size => backingStruct->size;
 
-  private string? _name;
-
-  public string? Name => _name ??= Marshal.PtrToStringAnsi((nint)backingStruct->name);
+  public string? Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->name);
 }
 
 public unsafe class FileList(_alpm_filelist_t* backingStruct) : IReadOnlyList<File>
