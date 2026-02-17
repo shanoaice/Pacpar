@@ -14,7 +14,7 @@ public unsafe class Backup(_alpm_backup_t* backingStruct)
   public string? Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->name);
 }
 
-public unsafe class File(_alpm_file_t* backingStruct)
+public unsafe struct File(_alpm_file_t* backingStruct)
 {
   public static File Factory(void* ptr) => new((_alpm_file_t*)ptr);
 
@@ -26,12 +26,10 @@ public unsafe class File(_alpm_file_t* backingStruct)
 
 public unsafe class FileList(_alpm_filelist_t* backingStruct) : IReadOnlyList<File>
 {
-  private readonly File?[] _files = new File[backingStruct->count];
+  public int Count => (int)backingStruct->count;
 
-  private readonly int _count = (int)backingStruct->count;
-  int IReadOnlyCollection<File>.Count => _count;
-
-  public File this[int index] => _files[index] ??= new File(backingStruct->files + index);
+  public File this[int index] =>
+    new((_alpm_file_t*)(new Span<nint>(backingStruct->files, (int)backingStruct->count))[index]);
 
   private class FileListEnumerator(FileList fileList) : IEnumerator<File>
   {
@@ -41,8 +39,9 @@ public unsafe class FileList(_alpm_filelist_t* backingStruct) : IReadOnlyList<Fi
 
     object IEnumerator.Current => Current;
 
-    public bool MoveNext() => _index++ < fileList._count;
+    public bool MoveNext() => _index++ < fileList.Count;
     public void Reset() => _index = 0;
+
     public void Dispose()
     {
       GC.SuppressFinalize(this);
