@@ -2783,6 +2783,65 @@ namespace Pacpar.Alpm.Bindings
         public _alpm_question_import_key_t import_key;
     }
 
+    /// <summary>
+    ///  Context struct for when a download starts.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe partial struct _alpm_download_event_init_t
+    {
+        /// <summary>
+        ///  whether this file is optional and thus the errors could be ignored
+        /// </summary>
+        public int optional;
+    }
+
+    /// <summary>
+    ///  Context struct for when a download progresses.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe partial struct _alpm_download_event_progress_t
+    {
+        /// <summary>
+        ///  Amount of data downloaded
+        /// </summary>
+        public CLong downloaded;
+        /// <summary>
+        ///  Total amount need to be downloaded
+        /// </summary>
+        public CLong total;
+    }
+
+    /// <summary>
+    ///  Context struct for when a download retries.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe partial struct _alpm_download_event_retry_t
+    {
+        /// <summary>
+        ///  If the download will resume or start over
+        /// </summary>
+        public int resume;
+    }
+
+    /// <summary>
+    ///  Context struct for when a download completes.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe partial struct _alpm_download_event_completed_t
+    {
+        /// <summary>
+        ///  Total bytes in file
+        /// </summary>
+        public CLong total;
+        /// <summary>
+        ///  download result code:
+        ///     0 - download completed successfully
+        ///     1 - the file is up-to-date
+        ///    -1 - error
+        /// </summary>
+        public int result;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public unsafe partial struct __va_list_tag
     {

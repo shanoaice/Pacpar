@@ -68,7 +68,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         .csharp_class_name("NativeMethods")
         .csharp_class_accessibility("public")
         .csharp_namespace("Pacpar.Alpm.Bindings")
-        .always_included_types(["_alpm_backup_t", "_alpm_pkgvalidation_t", "_alpm_siglevel_t", "_alpm_transflag_t"])
+        .always_included_types([
+            "_alpm_backup_t",
+            "_alpm_pkgvalidation_t",
+            "_alpm_siglevel_t",
+            "_alpm_transflag_t",
+            "_alpm_download_event_init_t",
+            "_alpm_download_event_progress_t",
+            "_alpm_download_event_retry_t",
+            "_alpm_download_event_completed_t",
+        ])
         .generate_csharp_file("../bindings/NativeMethods.libalpm.g.cs")?;
 
     Ok(())
