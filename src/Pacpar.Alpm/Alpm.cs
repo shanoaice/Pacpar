@@ -8,8 +8,6 @@ public class Alpm : IDisposable
 {
   // opaque handle to libalpm, details not exposed
   private unsafe byte* _handle;
-  // A handle to this managed object that can be safely passed to native code.
-  private GCHandle<Alpm> _thisHandle;
   // ReSharper disable once MemberCanBePrivate.Global
   private readonly unsafe _alpm_errno_t* _errno;
   // ReSharper disable once RedundantDefaultMemberInitializer
@@ -19,10 +17,6 @@ public class Alpm : IDisposable
   {
     _errno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
     *_errno = _alpm_errno_t.ALPM_ERR_OK;
-
-    // Allocate a GCHandle to this instance. This gives us a stable
-    // reference that we can pass to native code as a 'context' pointer.
-    _thisHandle = new GCHandle<Alpm>(this);
 
     var rootPtr = Marshal.StringToHGlobalAnsi(root);
     var dbpathPtr = Marshal.StringToHGlobalAnsi(dbpath);
@@ -38,6 +32,7 @@ public class Alpm : IDisposable
     if (_handle == null) throw ErrorHandler.GetException(*_errno) ?? new Exception("Failed to initialize libalpm.");
 
     Options = new AlpmOptions(_handle);
+    Callback = new Callback(_handle);
   }
 
   private void ThrowIfDisposed()
@@ -49,6 +44,11 @@ public class Alpm : IDisposable
   /// Exposes methods to set libalpm options.
   /// </summary>
   public AlpmOptions Options { get; }
+
+  /// <summary>
+  /// Expose methods to set libalpm callbacks.
+  /// </summary>
+  public Callback Callback { get; }
 
   /// <summary>
   /// The IntPtr version of the handle to libalpm, allows
@@ -132,13 +132,7 @@ public class Alpm : IDisposable
     if (disposing)
     {
       // dispose managed state (managed objects)
-
-      // It is crucial to free the GCHandle when the object is disposed
-      // to allow the GC to collect the object and to avoid handle leaks.
-      if (_thisHandle.IsAllocated)
-      {
-        _thisHandle.Dispose();
-      }
+      Callback.Dispose();
     }
     // even when alpm_release fails with -1 the handle is invalidated, regardless
     // the handle pointer is not owned by us, so we don't need to free it
