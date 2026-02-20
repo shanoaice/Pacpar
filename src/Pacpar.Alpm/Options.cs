@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
-using Pacpar.Alpm.options;
+using Pacpar.Alpm.Options;
 
 namespace Pacpar.Alpm;
 
@@ -18,23 +18,23 @@ public class AlpmOptions
     _handle = handle;
   }
 
-  public unsafe ICollection<string> Architectures => new ArchitectureOptionCollection(_handle);
+  public unsafe ICollection<string> Architectures => new Options.Architecture(_handle);
 
-  public unsafe ICollection<Depend> AssumeInstalled => new AssumeInstalledOptionCollection(_handle);
+  public unsafe ICollection<Depend> AssumeInstalled => new AssumeInstalled(_handle);
 
-  public unsafe ICollection<string> CacheDirectories => new CacheDirectoriesOptionCollection(_handle);
+  public unsafe ICollection<string> CacheDirectories => new CacheDirectories(_handle);
 
-  public unsafe ICollection<string> OverwritableFiles => new OverwritableFilesOptionCollection(_handle);
+  public unsafe ICollection<string> OverwritableFiles => new OverwritableFiles(_handle);
 
-  public unsafe ICollection<string> HookDirectories => new HookDirectoriesOptionCollection(_handle);
+  public unsafe ICollection<string> HookDirectories => new HookDirectories(_handle);
 
-  public unsafe ICollection<string> IgnoreGroups => new IgnoreGroupsOptionCollection(_handle);
+  public unsafe ICollection<string> IgnoreGroups => new IgnoreGroups(_handle);
 
-  public unsafe ICollection<string> IgnorePackages => new IgnorePackagesOptionCollection(_handle);
+  public unsafe ICollection<string> IgnorePackages => new IgnorePackages(_handle);
 
   public unsafe ICollection<string> NoExtract => new NoExtractOptionCollection(_handle);
 
-  public unsafe ICollection<string> NoUpgrade => new NoUpgradeOptionCollection(_handle);
+  public unsafe ICollection<string> NoUpgrade => new NoUpgrade(_handle);
 
   public unsafe bool CheckSpace
   {
