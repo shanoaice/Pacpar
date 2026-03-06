@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
+using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
@@ -8,8 +9,10 @@ public class Alpm : IDisposable
 {
   // opaque handle to libalpm, details not exposed
   private unsafe byte* _handle;
+
   // ReSharper disable once MemberCanBePrivate.Global
   private readonly unsafe _alpm_errno_t* _errno;
+
   // ReSharper disable once RedundantDefaultMemberInitializer
   private bool _disposed = false;
 
@@ -29,6 +32,7 @@ public class Alpm : IDisposable
       Marshal.FreeHGlobal(rootPtr);
       Marshal.FreeHGlobal(dbpathPtr);
     }
+
     if (_handle == null) throw ErrorHandler.GetException(*_errno) ?? new Exception("Failed to initialize libalpm.");
 
     Options = new AlpmOptions(_handle);
@@ -103,6 +107,7 @@ public class Alpm : IDisposable
         // Note: alpm_pkg_load sets the handle errno on failure.
         throw GetCurrentError() ?? new Exception($"Failed to load package: {GetCurrentErrorString()}");
       }
+
       // The Package class now takes ownership of the native handle *pkgOutPtr
       return new Package(*pkgOutPtr, false);
     }
@@ -120,6 +125,24 @@ public class Alpm : IDisposable
     return new Transactions(this, flags);
   }
 
+  public unsafe Databases GetLocalDatabase()
+  {
+    ThrowIfDisposed();
+    var databasePtr = NativeMethods.alpm_get_localdb(_handle);
+    return *_errno != _alpm_errno_t.ALPM_ERR_OK
+      ? throw ErrorHandler.GetException(*_errno)!
+      : new Databases(databasePtr);
+  }
+
+  public unsafe AlpmList<Databases> GetSyncDatabases()
+  {
+    ThrowIfDisposed();
+    var syncDatabases = NativeMethods.alpm_get_syncdbs(_handle);
+    return *_errno != _alpm_errno_t.ALPM_ERR_OK
+      ? throw ErrorHandler.GetException(*_errno)!
+      : new AlpmList<Databases>(syncDatabases, &Databases.Factory);
+  }
+
   public void Dispose()
   {
     Dispose(true);
@@ -134,6 +157,7 @@ public class Alpm : IDisposable
       // dispose managed state (managed objects)
       Callback.Dispose();
     }
+
     // even when alpm_release fails with -1 the handle is invalidated, regardless
     // the handle pointer is not owned by us, so we don't need to free it
     // we should set it to zero anyway, just in case

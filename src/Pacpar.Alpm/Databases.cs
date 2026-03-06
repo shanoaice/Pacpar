@@ -6,6 +6,8 @@ namespace Pacpar.Alpm;
 
 public unsafe class Databases(byte* backingStruct)
 {
+  public static Databases Factory(void* ptr) => new((byte*)ptr);
+
   public string Name => field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_db_get_name(backingStruct))!;
 
   public Package GetPackage(string name)
