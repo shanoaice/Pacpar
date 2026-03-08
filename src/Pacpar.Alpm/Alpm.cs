@@ -125,22 +125,22 @@ public class Alpm : IDisposable
     return new Transactions(this, flags);
   }
 
-  public unsafe Databases GetLocalDatabase()
+  public unsafe Database GetLocalDatabase()
   {
     ThrowIfDisposed();
     var databasePtr = NativeMethods.alpm_get_localdb(_handle);
     return *_errno != _alpm_errno_t.ALPM_ERR_OK
       ? throw ErrorHandler.GetException(*_errno)!
-      : new Databases(databasePtr);
+      : new Database(databasePtr);
   }
 
-  public unsafe AlpmList<Databases> GetSyncDatabases()
+  public unsafe AlpmList<Database> GetSyncDatabases()
   {
     ThrowIfDisposed();
     var syncDatabases = NativeMethods.alpm_get_syncdbs(_handle);
     return *_errno != _alpm_errno_t.ALPM_ERR_OK
       ? throw ErrorHandler.GetException(*_errno)!
-      : new AlpmList<Databases>(syncDatabases, &Databases.Factory);
+      : new AlpmList<Database>(syncDatabases, &Database.Factory);
   }
 
   public void Dispose()
