@@ -10,15 +10,12 @@ public unsafe class Database(byte* backingStruct)
 
   public string Name => field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_db_get_name(backingStruct))!;
 
-  public Package GetPackage(string name)
+  public Package? GetPackage(string name)
   {
     var nameCstr = Marshal.StringToHGlobalAnsi(name);
     var pkg = NativeMethods.alpm_db_get_pkg(backingStruct, (byte*)nameCstr);
     Marshal.FreeHGlobal(nameCstr);
-    if ((nint)pkg == IntPtr.Zero)
-    {
-      throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
-    }
+    if ((nint)pkg == IntPtr.Zero) return null;
     return new Package(pkg);
   }
 
@@ -52,15 +49,12 @@ public unsafe class Database(byte* backingStruct)
     return new AlpmStringList(servers);
   }
 
-  public Group GetGroup(string name)
+  public Group? GetGroup(string name)
   {
     var nameCstr = Marshal.StringToHGlobalAnsi(name);
     var group = NativeMethods.alpm_db_get_group(backingStruct, (byte*)nameCstr);
     Marshal.FreeHGlobal(nameCstr);
-    if ((nint)group == IntPtr.Zero)
-    {
-      throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
-    }
+    if ((nint)group == IntPtr.Zero) return null;
     return new Group(group);
   }
 
@@ -83,7 +77,7 @@ public unsafe class Database(byte* backingStruct)
   public (bool, Exception?) Validate()
   {
     var valid = NativeMethods.alpm_db_get_valid(backingStruct);
-    if (valid != 0) return (false, ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle)));
-    return (true, null);
+    if (valid == 0) return (true, null);
+    return (false, ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle)));
   }
 }
