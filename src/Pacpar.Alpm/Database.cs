@@ -15,16 +15,54 @@ public unsafe class Database(byte* backingStruct)
     var nameCstr = Marshal.StringToHGlobalAnsi(name);
     var pkg = NativeMethods.alpm_db_get_pkg(backingStruct, (byte*)nameCstr);
     Marshal.FreeHGlobal(nameCstr);
+    if ((nint)pkg == IntPtr.Zero)
+    {
+      throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
+    }
     return new Package(pkg);
   }
 
-  public AlpmDisposableList<Package> GetPackageCache() => new(NativeMethods.alpm_db_get_pkgcache(backingStruct), &Package.FactoryFromDatabase);
+  public AlpmDisposableList<Package> GetPackageCache()
+  {
+    var pkgCache = NativeMethods.alpm_db_get_pkgcache(backingStruct);
+    if ((nint)pkgCache == IntPtr.Zero)
+    {
+      throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
+    }
+    return new AlpmDisposableList<Package>(pkgCache, &Package.FactoryFromDatabase);
+  }
 
-  public AlpmStringList GetServers() => new(NativeMethods.alpm_db_get_servers(backingStruct));
+  public AlpmStringList GetServers()
+  {
+    var servers = NativeMethods.alpm_db_get_servers(backingStruct);
+    if (servers == null)
+    {
+      return new AlpmStringList();
+    }
+    return new AlpmStringList(servers);
+  }
 
-  public AlpmStringList GetCacheServers() => new(NativeMethods.alpm_db_get_cache_servers(backingStruct));
+  public AlpmStringList GetCacheServers()
+  {
+    var servers = NativeMethods.alpm_db_get_cache_servers(backingStruct);
+    if (servers == null)
+    {
+      return new AlpmStringList();
+    }
+    return new AlpmStringList(servers);
+  }
 
-  public Group GetGroup(string name) => new(NativeMethods.alpm_db_get_group(backingStruct, (byte*)Marshal.StringToHGlobalAnsi(name)));
+  public Group GetGroup(string name)
+  {
+    var nameCstr = Marshal.StringToHGlobalAnsi(name);
+    var group = NativeMethods.alpm_db_get_group(backingStruct, (byte*)nameCstr);
+    Marshal.FreeHGlobal(nameCstr);
+    if ((nint)group == IntPtr.Zero)
+    {
+      throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
+    }
+    return new Group(group);
+  }
 
   public AlpmList<Group> GetGroupCache()
   {
@@ -33,7 +71,7 @@ public unsafe class Database(byte* backingStruct)
     {
       throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
     }
-    return new(groupCache, &Group.Factory);
+    return new AlpmList<Group>(groupCache, &Group.Factory);
   }
 
   public nint Handle => (nint)NativeMethods.alpm_db_get_handle(backingStruct);

@@ -169,7 +169,7 @@ public class Transactions : IDisposable
   public unsafe AlpmList<Package> GetAddedPackages()
   {
     ThrowIfDisposed();
-    return new(NativeMethods.alpm_trans_get_add((byte*)_library.Handle), &Package.FactoryFromDatabase);
+    return new AlpmList<Package>(NativeMethods.alpm_trans_get_add((byte*)_library.Handle), &Package.FactoryFromDatabase);
   }
 
   public unsafe TransactionFlags GetFlags()
@@ -181,7 +181,7 @@ public class Transactions : IDisposable
   public unsafe AlpmList<Package> GetRemovedPackages()
   {
     ThrowIfDisposed();
-    return new(NativeMethods.alpm_trans_get_remove((byte*)_library.Handle), &Package.FactoryFromDatabase);
+    return new AlpmList<Package>(NativeMethods.alpm_trans_get_remove((byte*)_library.Handle), &Package.FactoryFromDatabase);
   }
 
   public void Dispose()

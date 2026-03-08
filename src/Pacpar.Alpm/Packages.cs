@@ -28,7 +28,7 @@ public unsafe class Signature(byte* sig, int len) : IDisposable
     get
     {
       ThrowIfDisposed();
-      return new(sig, len);
+      return new Span<byte>(sig, len);
     }
   }
 
@@ -184,7 +184,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return new(NativeMethods.alpm_pkg_get_version(BackingStruct));
+      return new Version(NativeMethods.alpm_pkg_get_version(BackingStruct));
     }
   }
 
@@ -311,7 +311,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return new(NativeMethods.alpm_pkg_get_licenses(BackingStruct));
+      return new AlpmStringList(NativeMethods.alpm_pkg_get_licenses(BackingStruct));
     }
   }
 
@@ -320,7 +320,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return new(NativeMethods.alpm_pkg_get_groups(BackingStruct));
+      return new AlpmStringList(NativeMethods.alpm_pkg_get_groups(BackingStruct));
     }
   }
 
@@ -392,7 +392,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return new(NativeMethods.alpm_pkg_get_files(BackingStruct));
+      return new FileList(NativeMethods.alpm_pkg_get_files(BackingStruct));
     }
   }
 
@@ -412,13 +412,13 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
   public AlpmStringList GetRequiredBy()
   {
     ThrowIfDisposed();
-    return new(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct));
+    return new AlpmStringList(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct));
   }
 
   public AlpmStringList GetOptionalFor()
   {
     ThrowIfDisposed();
-    return new(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct));
+    return new AlpmStringList(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct));
   }
 
   public string? Base64Signature
@@ -449,7 +449,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
       var lenPtr = (nuint*)Marshal.AllocHGlobal(sizeof(nuint));
       var result = NativeMethods.alpm_pkg_get_sig(BackingStruct, bufferPtr, lenPtr);
       if (result != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(LibraryHandle))!;
-      _signature = new(*bufferPtr, (int)*lenPtr);
+      _signature = new Signature(*bufferPtr, (int)*lenPtr);
     }
     return _signature;
   }
