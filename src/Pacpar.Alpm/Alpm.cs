@@ -93,7 +93,7 @@ public class Alpm : IDisposable
     return ErrorHandler.GetException(Errno);
   }
 
-  public unsafe Package LoadPackage(string filename, bool full, int level)
+  public unsafe Package LoadPackage(string filename, bool full, SigLevel level)
   {
     ThrowIfDisposed();
     var filenamePtr = Marshal.StringToHGlobalAnsi(filename);
@@ -101,7 +101,7 @@ public class Alpm : IDisposable
     var pkgOutPtr = (byte**)Marshal.AllocHGlobal(sizeof(nint));
     try
     {
-      var err = NativeMethods.alpm_pkg_load(_handle, (byte*)filenamePtr, full ? 1 : 0, level, pkgOutPtr);
+      var err = NativeMethods.alpm_pkg_load(_handle, (byte*)filenamePtr, full ? 1 : 0, (int)level, pkgOutPtr);
       if (err != 0)
       {
         // Note: alpm_pkg_load sets the handle errno on failure.
