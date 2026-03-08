@@ -143,6 +143,24 @@ public class Alpm : IDisposable
       : new AlpmList<Database>(syncDatabases, &Database.Factory);
   }
 
+  public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
+  {
+    ThrowIfDisposed();
+    var treeNameCString = Marshal.StringToHGlobalAnsi(treename);
+    var database = NativeMethods.alpm_register_syncdb(_handle, (byte*)treeNameCString, (int)level);
+    Marshal.FreeHGlobal(treeNameCString);
+    return *_errno != _alpm_errno_t.ALPM_ERR_OK
+      ? throw ErrorHandler.GetException(*_errno)!
+      : new Database(database);
+  }
+
+  public unsafe void UnregisterAllSyncDatabases()
+  {
+    ThrowIfDisposed();
+    var err = NativeMethods.alpm_unregister_all_syncdbs(_handle);
+    if (err != 0) throw ErrorHandler.GetException(*_errno)!;
+  }
+
   public void Dispose()
   {
     Dispose(true);

@@ -74,6 +74,12 @@ public unsafe class Database(byte* backingStruct)
 
   // TODO: USAGE
 
+  public void Unregister()
+  {
+    var err = NativeMethods.alpm_db_unregister(backingStruct);
+    if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
+  }
+
   public (bool, Exception?) Validate()
   {
     var valid = NativeMethods.alpm_db_get_valid(backingStruct);
