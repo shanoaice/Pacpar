@@ -10,6 +10,20 @@
   </PropertyGroup>
 
   <!--
+    Pending/ holds the specification tests for the features the implementation guide describes
+    (report item M). They call APIs that do not exist yet, so they are kept out of the build until
+    someone implements them:
+
+        dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj -p:PacparPendingFeatureTests=true
+
+    Flip the property on while implementing: the tests compile only once the API they describe
+    exists, and then they are the acceptance criteria for it.
+  -->
+  <ItemGroup Condition="'$(PacparPendingFeatureTests)' != 'true'">
+    <Compile Remove="Pending/**/*.cs" />
+  </ItemGroup>
+
+  <!--
     The va_list forwarding test needs a C caller: C# cannot materialise a va_list, so
     native/pacpar_log_shim_test.c plays the role of libalpm firing alpm_cb_log. This stays in the
     test project on purpose: the library itself ships no native artifact, because it expands the
