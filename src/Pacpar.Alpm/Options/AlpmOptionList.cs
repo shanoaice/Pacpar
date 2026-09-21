@@ -35,8 +35,11 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   /// <summary>The native adder. Returns 0 on success, anything else on failure.</summary>
   private protected abstract int AddNative(byte* handle, byte* item);
 
-  /// <summary>The native remover. Returns <c>true</c> when the item was removed.</summary>
-  private protected abstract bool RemoveNative(byte* handle, byte* item);
+  /// <summary>
+  /// The native remover, returning libalpm's raw result: <c>1</c> when it removed the entry,
+  /// <c>0</c> when it found nothing and <c>-1</c> on error.
+  /// </summary>
+  private protected abstract int RemoveNative(byte* handle, byte* item);
 
   /// <summary>Borrows or marshals an item for a native lookup or removal.</summary>
   /// <param name="owned">Whether <see cref="Release"/> must free the returned pointer.</param>
@@ -105,7 +108,17 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
     var itemPtr = Acquire(item, out var owned);
     try
     {
-      return RemoveNative(_handle, itemPtr);
+      // Nothing libalpm knows about, so nothing to remove; this also keeps a null pointer out of
+      // alpm_option_remove_*, which does not accept one.
+      if (itemPtr == null) return false;
+
+      // alpm_option_remove_* answer 1 when they removed the entry, 0 when they found nothing and
+      // -1 on error, while their header documents "0 on success, -1 on error". Testing the result
+      // against 0, as this wrapper used to, therefore made Remove answer with the inverse of the
+      // ICollection<T> contract. Only a positive result means the item was removed.
+      var err = RemoveNative(_handle, itemPtr);
+      if (err < 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
+      return err > 0;
     }
     finally
     {

@@ -8,6 +8,6 @@ internal sealed unsafe class Architecture(byte* handle) : AlpmStringOptionList(h
 
   private protected override int AddNative(byte* h, byte* item) => NativeMethods.alpm_option_add_architecture(h, item);
 
-  private protected override bool RemoveNative(byte* h, byte* item)
-    => NativeMethods.alpm_option_remove_architecture(h, item) == 0;
+  private protected override int RemoveNative(byte* h, byte* item)
+    => NativeMethods.alpm_option_remove_architecture(h, item);
 }

@@ -106,13 +106,12 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   /// <summary>
   /// Probed against libalpm 16.0.1: <b>every</b> <c>alpm_option_remove_*</c> returns 1 when it
   /// removed the entry, 0 when it found nothing and -1 on error, while its own header documents
-  /// "0 on success, -1 on error" for all of them. The wrapper has always tested that result against
-  /// 0, so <see cref="ICollection{T}.Remove"/> answers with the inverse of its contract for every
-  /// option collection, not just this one. This test pins the current behaviour so the refactor is
-  /// provably neutral; report item N fixes it and will have to change these two assertions.
+  /// "0 on success, -1 on error" for all of them. Testing that result against 0, as this wrapper
+  /// used to, made <see cref="ICollection{T}.Remove"/> answer with the inverse of its contract for
+  /// every option collection; report item N moved the interpretation into the base class.
   /// </summary>
   [Fact]
-  public void Remove_ReturnsTheInvertedResult_PendingReportItemN()
+  public void Remove_ReportsWhetherTheDependencyWasThere()
   {
     var native = ParseDepend("foobar=1.0");
     try
@@ -120,12 +119,12 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
       var collection = _alpm.Options.AssumeInstalled;
       collection.Add(Depend.Factory(native));
 
-      // The entry does go away...
-      Assert.False(collection.Remove(Depend.Factory(native)));
+      // The entry does go away, and Remove says so.
+      Assert.True(collection.Remove(Depend.Factory(native)));
       Assert.Empty(collection);
 
-      // ...and the result is "true" once there is nothing left to remove.
-      Assert.True(collection.Remove(Depend.Factory(native)));
+      // Nothing left to remove.
+      Assert.False(collection.Remove(Depend.Factory(native)));
     }
     finally
     {

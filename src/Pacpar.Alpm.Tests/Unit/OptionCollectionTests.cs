@@ -166,4 +166,27 @@ public sealed class OptionCollectionTests : IDisposable
 
     Assert.Empty(architectures);
   }
+
+  /// <summary>
+  /// Report item N: every <c>alpm_option_remove_*</c> returns 1 when it removed the entry and 0
+  /// when it found nothing, while its header documents "0 on success, -1 on error". The wrapper
+  /// used to test that result against 0, which inverted the result of
+  /// <see cref="ICollection{T}.Remove"/> for all nine option collections.
+  /// </summary>
+  [Fact]
+  public void Remove_ReportsWhetherTheItemWasThere()
+  {
+    var architectures = Architectures;
+    architectures.Add("x86_64");
+
+    Assert.True(architectures.Remove("x86_64"));
+    Assert.Empty(architectures);
+
+    Assert.False(architectures.Remove("x86_64"));
+
+    // An item that was never there must answer false without disturbing the list.
+    architectures.Add("aarch64");
+    Assert.False(architectures.Remove("riscv64"));
+    Assert.Equal("aarch64", Assert.Single(architectures));
+  }
 }

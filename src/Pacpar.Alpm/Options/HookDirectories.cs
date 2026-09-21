@@ -8,6 +8,6 @@ internal sealed unsafe class HookDirectories(byte* handle) : AlpmStringOptionLis
 
   private protected override int AddNative(byte* h, byte* item) => NativeMethods.alpm_option_add_hookdir(h, item);
 
-  private protected override bool RemoveNative(byte* h, byte* item)
-    => NativeMethods.alpm_option_remove_hookdir(h, item) == 0;
+  private protected override int RemoveNative(byte* h, byte* item)
+    => NativeMethods.alpm_option_remove_hookdir(h, item);
 }

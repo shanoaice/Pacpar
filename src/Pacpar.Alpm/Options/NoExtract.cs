@@ -8,6 +8,6 @@ internal sealed unsafe class NoExtractOptionCollection(byte* handle) : AlpmStrin
 
   private protected override int AddNative(byte* h, byte* item) => NativeMethods.alpm_option_add_noextract(h, item);
 
-  private protected override bool RemoveNative(byte* h, byte* item)
-    => NativeMethods.alpm_option_remove_noextract(h, item) == 0;
+  private protected override int RemoveNative(byte* h, byte* item)
+    => NativeMethods.alpm_option_remove_noextract(h, item);
 }

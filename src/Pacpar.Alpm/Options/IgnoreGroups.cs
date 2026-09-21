@@ -8,6 +8,6 @@ internal sealed unsafe class IgnoreGroups(byte* handle) : AlpmStringOptionList(h
 
   private protected override int AddNative(byte* h, byte* item) => NativeMethods.alpm_option_add_ignoregroup(h, item);
 
-  private protected override bool RemoveNative(byte* h, byte* item)
-    => NativeMethods.alpm_option_remove_ignoregroup(h, item) == 0;
+  private protected override int RemoveNative(byte* h, byte* item)
+    => NativeMethods.alpm_option_remove_ignoregroup(h, item);
 }

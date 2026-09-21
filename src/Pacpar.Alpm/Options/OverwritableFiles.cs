@@ -8,6 +8,6 @@ internal sealed unsafe class OverwritableFiles(byte* handle) : AlpmStringOptionL
 
   private protected override int AddNative(byte* h, byte* item) => NativeMethods.alpm_option_add_overwrite_file(h, item);
 
-  private protected override bool RemoveNative(byte* h, byte* item)
-    => NativeMethods.alpm_option_remove_overwrite_file(h, item) == 0;
+  private protected override int RemoveNative(byte* h, byte* item)
+    => NativeMethods.alpm_option_remove_overwrite_file(h, item);
 }

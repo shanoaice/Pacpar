@@ -8,6 +8,6 @@ internal sealed unsafe class IgnorePackages(byte* handle) : AlpmStringOptionList
 
   private protected override int AddNative(byte* h, byte* item) => NativeMethods.alpm_option_add_ignorepkg(h, item);
 
-  private protected override bool RemoveNative(byte* h, byte* item)
-    => NativeMethods.alpm_option_remove_ignorepkg(h, item) == 0;
+  private protected override int RemoveNative(byte* h, byte* item)
+    => NativeMethods.alpm_option_remove_ignorepkg(h, item);
 }

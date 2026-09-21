@@ -10,8 +10,8 @@ internal sealed unsafe class AssumeInstalled(byte* handle) : AlpmOptionList<Depe
   private protected override int AddNative(byte* h, byte* item)
     => NativeMethods.alpm_option_add_assumeinstalled(h, (_alpm_depend_t*)item);
 
-  private protected override bool RemoveNative(byte* h, byte* item)
-    => item != null && NativeMethods.alpm_option_remove_assumeinstalled(h, (_alpm_depend_t*)item) == 0;
+  private protected override int RemoveNative(byte* h, byte* item)
+    => NativeMethods.alpm_option_remove_assumeinstalled(h, (_alpm_depend_t*)item);
 
   // The dependency struct is borrowed: libalpm dups whatever it stores, so nothing is released.
   private protected override byte* Acquire(Depend item, out bool owned)
