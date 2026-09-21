@@ -5,22 +5,36 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
-public unsafe class Backup(_alpm_backup_t* backingStruct)
+public unsafe class Backup
 {
-  public static Backup Factory(void* ptr) => new((_alpm_backup_t*)ptr);
+  private readonly _alpm_backup_t* backingStruct;
+
+  internal Backup(_alpm_backup_t* backingStruct)
+  {
+    this.backingStruct = backingStruct;
+  }
+
+  internal static Backup Factory(void* ptr) => new((_alpm_backup_t*)ptr);
 
   /// <summary>
   /// Borrowed view over a backup-entry list owned by libalpm (for example
   /// <c>alpm_pkg_get_backup</c>).
   /// </summary>
-  public static AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => AlpmList<Backup>.Borrow(ptr, &Factory);
+  internal static AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => AlpmList<Backup>.Borrow(ptr, &Factory);
 
   public string? Name => field ??= NativeString.FromNative((nint)backingStruct->name);
 }
 
-public unsafe struct File(_alpm_file_t* backingStruct)
+public unsafe struct File
 {
-  public static File Factory(void* ptr) => new((_alpm_file_t*)ptr);
+  private readonly _alpm_file_t* backingStruct;
+
+  internal File(_alpm_file_t* backingStruct)
+  {
+    this.backingStruct = backingStruct;
+  }
+
+  internal static File Factory(void* ptr) => new((_alpm_file_t*)ptr);
 
   public uint Mode => backingStruct->mode;
   public CLong Size => backingStruct->size;
@@ -28,8 +42,15 @@ public unsafe struct File(_alpm_file_t* backingStruct)
   public string? Name => field ??= NativeString.FromNative((nint)backingStruct->name);
 }
 
-public unsafe class FileList(_alpm_filelist_t* backingStruct) : IReadOnlyList<File>
+public unsafe class FileList : IReadOnlyList<File>
 {
+  private readonly _alpm_filelist_t* backingStruct;
+
+  internal FileList(_alpm_filelist_t* backingStruct)
+  {
+    this.backingStruct = backingStruct;
+  }
+
   public int Count => (int)backingStruct->count;
 
   public File this[int index] =>

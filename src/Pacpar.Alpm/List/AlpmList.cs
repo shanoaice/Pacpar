@@ -38,7 +38,7 @@ public abstract class AlpmList<T> : IReadOnlyList<T>
   /// </summary>
   /// <param name="list">The list to view. May be <c>null</c>, which yields an empty view.</param>
   /// <param name="factory">Converts one native list item into <typeparamref name="T"/>.</param>
-  public static unsafe AlpmList<T> Borrow(_alpm_list_t* list, delegate*<void*, T> factory)
+  internal static unsafe AlpmList<T> Borrow(_alpm_list_t* list, delegate*<void*, T> factory)
     => new AlpmBorrowedList<T>(list, factory);
 
   /// <summary>

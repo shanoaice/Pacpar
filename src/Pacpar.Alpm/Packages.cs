@@ -30,8 +30,15 @@ public enum PackageReason : uint
   Unknown = 2
 }
 
-public unsafe class Version(byte* version) : IComparable<Version>
+public unsafe class Version : IComparable<Version>
 {
+  private readonly byte* version;
+
+  internal Version(byte* version)
+  {
+    this.version = version;
+  }
+
   internal byte* VersionPtr => version;
 
   public int CompareTo(Version? other) => other == null ? 1 : NativeMethods.alpm_pkg_vercmp(version, other.VersionPtr);
@@ -39,8 +46,17 @@ public unsafe class Version(byte* version) : IComparable<Version>
   public override string ToString() => NativeString.FromNative((nint)version)!;
 }
 
-public unsafe class Signature(byte* sig, int len) : IDisposable
+public unsafe class Signature : IDisposable
 {
+  private readonly byte* sig;
+  private readonly int len;
+
+  internal Signature(byte* sig, int len)
+  {
+    this.sig = sig;
+    this.len = len;
+  }
+
   // ReSharper disable once RedundantDefaultMemberInitializer
   private bool _disposed = false;
 
@@ -110,12 +126,18 @@ public enum PackageValidation : uint
 }
 // ReSharper restore InconsistentNaming
 
-public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDisposable
+public unsafe class Package : IDisposable
 {
-  internal readonly byte* BackingStruct = backingStruct;
+  internal readonly byte* BackingStruct;
   // ReSharper disable once RedundantDefaultMemberInitializer
   private bool _disposed = false;
-  public readonly bool FromDatabase = fromDatabase;
+  public readonly bool FromDatabase;
+
+  internal Package(byte* backingStruct, bool fromDatabase = true)
+  {
+    BackingStruct = backingStruct;
+    FromDatabase = fromDatabase;
+  }
 
   private void ThrowIfDisposed()
   {
@@ -131,8 +153,8 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public static Package FactoryFromDatabase(void* ptr) => new((byte*)ptr);
-  public static Package FactoryNotFromDatabase(void* ptr) => new((byte*)ptr, false);
+  internal static Package FactoryFromDatabase(void* ptr) => new((byte*)ptr);
+  internal static Package FactoryNotFromDatabase(void* ptr) => new((byte*)ptr, false);
 
   public void Dispose()
   {

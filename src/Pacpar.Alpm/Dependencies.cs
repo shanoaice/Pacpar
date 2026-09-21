@@ -61,13 +61,13 @@ public unsafe class Depend
     Depmod = depmod;
   }
 
-  public static Depend Factory(void* ptr) => new((_alpm_depend_t*)ptr);
+  internal static Depend Factory(void* ptr) => new((_alpm_depend_t*)ptr);
 
   /// <summary>
   /// Borrowed view over a dependency list owned by libalpm (for example
   /// <c>alpm_pkg_get_depends</c>, <c>alpm_option_get_assumeinstalled</c>).
   /// </summary>
-  public static AlpmList<Depend> ListFactory(_alpm_list_t* alpmList)
+  internal static AlpmList<Depend> ListFactory(_alpm_list_t* alpmList)
     => AlpmList<Depend>.Borrow(alpmList, &Factory);
 
   /// <summary>Creates a detached, fully managed copy of a native dependency.</summary>
@@ -130,11 +130,16 @@ public sealed class DepMissing
   public string? Target { get; }
 }
 
-public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposable
+public unsafe class FileConflict : IDisposable
 {
-  internal readonly _alpm_fileconflict_t* BackingStruct = backingStruct;
+  internal readonly _alpm_fileconflict_t* BackingStruct;
 
-  public static FileConflict Factory(void* ptr) => new((_alpm_fileconflict_t*)ptr);
+  internal FileConflict(_alpm_fileconflict_t* backingStruct)
+  {
+    BackingStruct = backingStruct;
+  }
+
+  internal static FileConflict Factory(void* ptr) => new((_alpm_fileconflict_t*)ptr);
 
   private bool _disposed;
 
@@ -193,20 +198,28 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
   ~FileConflict() => Dispose(disposing: false);
 }
 
-public unsafe class Conflict(_alpm_conflict_t* backingStruct) : IDisposable
+public unsafe class Conflict : IDisposable
 {
-  internal readonly _alpm_conflict_t* BackingStruct = backingStruct;
+  internal readonly _alpm_conflict_t* BackingStruct;
 
-  public static Conflict Factory(void* ptr) => new((_alpm_conflict_t*)ptr);
+  public Package Package1;
+  public Package Package2;
 
-  public Package Package1 = new(backingStruct->package1);
-  public Package Package2 = new(backingStruct->package2);
+  internal Conflict(_alpm_conflict_t* backingStruct)
+  {
+    BackingStruct = backingStruct;
+    Package1 = new Package(backingStruct->package1);
+    Package2 = new Package(backingStruct->package2);
+    Reason = new Depend(backingStruct->reason);
+  }
+
+  internal static Conflict Factory(void* ptr) => new((_alpm_conflict_t*)ptr);
 
   /// <summary>
   /// The conflicting dependency. Borrowed from the conflict struct: it is released by
   /// <c>alpm_conflict_free</c>, not by this type.
   /// </summary>
-  public Depend Reason = new(backingStruct->reason);
+  public Depend Reason;
 
   private bool _disposed;
 

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
@@ -59,17 +60,20 @@ public class Alpm : IDisposable
   public Callback Callback { get; }
 
   /// <summary>
-  /// The IntPtr version of the handle to libalpm, allows
-  ///  passing around without unsafe.
-  ///  DO NOT MODIFY IT IN ANY WAYS WHEN PASSING AROUND. BAD THINGS WILL HAPPEN!
+  /// The raw handle to libalpm, as an <see cref="IntPtr"/> so it can be passed around without
+  /// <c>unsafe</c>.
   /// </summary>
-  public unsafe IntPtr Handle
+  /// <remarks>
+  /// An escape hatch for interop this wrapper does not cover, not part of the normal API: the
+  /// handle is owned by this instance, and modifying it, releasing it or handing it to another
+  /// <see cref="Alpm"/> is undefined behaviour. The wrapper's own types are the supported way to
+  /// reach libalpm.
+  /// </remarks>
+  [EditorBrowsable(EditorBrowsableState.Never)]
+  public unsafe IntPtr AsHandle()
   {
-    get
-    {
-      ThrowIfDisposed();
-      return (IntPtr)_handle;
-    }
+    ThrowIfDisposed();
+    return (IntPtr)_handle;
   }
 
   /// <summary>

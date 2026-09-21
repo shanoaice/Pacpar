@@ -84,7 +84,7 @@ public class Transactions : IDisposable
   internal unsafe Transactions(Alpm alpmLibrary, TransactionFlags flags)
   {
     _library = alpmLibrary;
-    var err = NativeMethods.alpm_trans_init((byte*)_library.Handle, (int)flags);
+    var err = NativeMethods.alpm_trans_init((byte*)_library.AsHandle(), (int)flags);
     if (err != 0)
     {
       throw _library.GetRequiredCurrentError();
@@ -111,7 +111,7 @@ public class Transactions : IDisposable
     _alpm_list_t* list = null;
     try
     {
-      var err = NativeMethods.alpm_trans_prepare((byte*)_library.Handle, &list);
+      var err = NativeMethods.alpm_trans_prepare((byte*)_library.AsHandle(), &list);
       if (err != 0)
       {
         throw _library.GetRequiredCurrentError();
@@ -134,7 +134,7 @@ public class Transactions : IDisposable
   public unsafe void AddPackage(Package pkg)
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_add_pkg((byte*)_library.Handle, pkg.BackingStruct);
+    var err = NativeMethods.alpm_add_pkg((byte*)_library.AsHandle(), pkg.BackingStruct);
     if (err != 0)
     {
       throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to add package: {pkg.Name}");
@@ -144,7 +144,7 @@ public class Transactions : IDisposable
   public unsafe void RemovePackage(Package pkg)
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_remove_pkg((byte*)_library.Handle, pkg.BackingStruct);
+    var err = NativeMethods.alpm_remove_pkg((byte*)_library.AsHandle(), pkg.BackingStruct);
     if (err != 0)
     {
       throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to remove package: {pkg.Name}");
@@ -154,7 +154,7 @@ public class Transactions : IDisposable
   public unsafe void SystemUpgrade(bool enableDowngrade)
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_sync_sysupgrade((byte*)_library.Handle, enableDowngrade ? 1 : 0);
+    var err = NativeMethods.alpm_sync_sysupgrade((byte*)_library.AsHandle(), enableDowngrade ? 1 : 0);
     if (err != 0)
     {
       throw _library.GetRequiredCurrentError();
@@ -164,7 +164,7 @@ public class Transactions : IDisposable
   public unsafe void Interrupt()
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_trans_interrupt((byte*)_library.Handle);
+    var err = NativeMethods.alpm_trans_interrupt((byte*)_library.AsHandle());
     if (err != 0)
     {
       throw _library.GetRequiredCurrentError();
@@ -184,7 +184,7 @@ public class Transactions : IDisposable
     ThrowIfDisposed();
 
     _alpm_list_t* messages = null;
-    var err = NativeMethods.alpm_trans_commit((byte*)_library.Handle, &messages);
+    var err = NativeMethods.alpm_trans_commit((byte*)_library.AsHandle(), &messages);
     if (err != 0)
     {
       AlpmNativeList.Free(messages, &MemoryManagement.CFreeExtern);
@@ -197,20 +197,20 @@ public class Transactions : IDisposable
   public unsafe AlpmList<Package> GetAddedPackages()
   {
     ThrowIfDisposed();
-    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_add((byte*)_library.Handle),
+    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_add((byte*)_library.AsHandle()),
       &Package.FactoryFromDatabase);
   }
 
   public unsafe TransactionFlags GetFlags()
   {
     ThrowIfDisposed();
-    return (TransactionFlags)NativeMethods.alpm_trans_get_flags((byte*)_library.Handle);
+    return (TransactionFlags)NativeMethods.alpm_trans_get_flags((byte*)_library.AsHandle());
   }
 
   public unsafe AlpmList<Package> GetRemovedPackages()
   {
     ThrowIfDisposed();
-    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_remove((byte*)_library.Handle),
+    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_remove((byte*)_library.AsHandle()),
       &Package.FactoryFromDatabase);
   }
 
@@ -222,13 +222,13 @@ public class Transactions : IDisposable
   /// releases an active transaction during <c>alpm_release</c>, so a finalizer adds no cleanup — but
   /// it can run after the handle is already disposed or released, and an exception escaping a
   /// finalizer terminates the process (that is exactly what <c>~Transactions()</c> used to do via
-  /// <see cref="Alpm.Handle"/>'s disposed check).
+  /// <see cref="Alpm.AsHandle"/>'s disposed check).
   /// </remarks>
   public unsafe void Dispose()
   {
     if (_released) return;
 
     _released = true;
-    _ = NativeMethods.alpm_trans_release((byte*)_library.Handle);
+    _ = NativeMethods.alpm_trans_release((byte*)_library.AsHandle());
   }
 }

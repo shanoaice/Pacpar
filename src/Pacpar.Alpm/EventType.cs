@@ -25,7 +25,7 @@ public enum PackageOperation : uint
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class EventType
 {
-  public static unsafe EventType FromUnion(_alpm_event_t* backingStruct)
+  internal static unsafe EventType FromUnion(_alpm_event_t* backingStruct)
   {
     return backingStruct->type_ switch
     {
@@ -110,15 +110,29 @@ public abstract class EventType
   {
   }
 
-  public unsafe class PackageOperationStart(_alpm_event_t* backingStruct) : EventType
+  public unsafe class PackageOperationStart : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal PackageOperationStart(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public Package NewPackage => new(backingStruct->package_operation.newpkg);
     public Package OldPackage => new(backingStruct->package_operation.oldpkg);
     public PackageOperation Operation => (PackageOperation)(uint)backingStruct->package_operation.operation;
   }
 
-  public unsafe class PackageOperationDone(_alpm_event_t* backingStruct) : EventType
+  public unsafe class PackageOperationDone : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal PackageOperationDone(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public Package NewPackage => new(backingStruct->package_operation.newpkg);
     public Package OldPackage => new(backingStruct->package_operation.oldpkg);
     public PackageOperation Operation => (PackageOperation)(uint)backingStruct->package_operation.operation;
@@ -140,8 +154,15 @@ public abstract class EventType
   {
   }
 
-  public unsafe class ScriptletInfo(_alpm_event_t* backingStruct) : EventType
+  public unsafe class ScriptletInfo : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal ScriptletInfo(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public string Line => field ??= (NativeString.FromNative((nint)backingStruct->scriptlet_info.line) ?? "");
   }
 
@@ -165,14 +186,28 @@ public abstract class EventType
   {
   }
 
-  public unsafe class OptionalDependencyRemoval(_alpm_event_t* backingStruct) : EventType
+  public unsafe class OptionalDependencyRemoval : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal OptionalDependencyRemoval(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public Depend OptionalDependency => new(backingStruct->optdep_removal.optdep);
     public Package Package => new(backingStruct->optdep_removal.pkg);
   }
 
-  public unsafe class DatabaseMissing(_alpm_event_t* backingStruct) : EventType
+  public unsafe class DatabaseMissing : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal DatabaseMissing(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public string DatabaseName =>
       field ??= (NativeString.FromNative((nint)backingStruct->database_missing.dbname) ?? "");
   }
@@ -193,60 +228,123 @@ public abstract class EventType
   {
   }
 
-  public unsafe class PacnewCreated(_alpm_event_t* backingStruct) : EventType
+  public unsafe class PacnewCreated : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal PacnewCreated(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public bool FromNoUpgrade => backingStruct->pacnew_created.from_noupgrade != 0;
     public Package OldPackage => new(backingStruct->pacnew_created.oldpkg);
     public Package NewPackage => new(backingStruct->pacnew_created.newpkg);
     public string File => field ??= (NativeString.FromNative((nint)backingStruct->pacnew_created.file) ?? "");
   }
 
-  public unsafe class PacsaveCreated(_alpm_event_t* backingStruct) : EventType
+  public unsafe class PacsaveCreated : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal PacsaveCreated(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public Package OldPackage => new(backingStruct->pacsave_created.oldpkg);
     public string File => field ??= (NativeString.FromNative((nint)backingStruct->pacsave_created.file) ?? "");
   }
 
-  public unsafe class HookStart(_alpm_event_t* backingStruct) : EventType
+  public unsafe class HookStart : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal HookStart(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public HookWhen When => (HookWhen)(uint)backingStruct->hook.when;
   }
 
-  public unsafe class HookDone(_alpm_event_t* backingStruct) : EventType
+  public unsafe class HookDone : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal HookDone(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public HookWhen When => (HookWhen)(uint)backingStruct->hook.when;
   }
 
-  public unsafe class HookRunStart(_alpm_event_t* backingStruct) : EventType
+  public unsafe class HookRunStart : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal HookRunStart(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public string Name => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.name) ?? "");
     public string Description => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.desc) ?? "");
     public nuint Position => backingStruct->hook_run.position;
     public nuint Total => backingStruct->hook_run.total;
   }
 
-  public unsafe class HookRunDone(_alpm_event_t* backingStruct) : EventType
+  public unsafe class HookRunDone : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal HookRunDone(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public string Name => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.name) ?? "");
     public string Description => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.desc) ?? "");
     public nuint Position => backingStruct->hook_run.position;
     public nuint Total => backingStruct->hook_run.total;
   }
 
-  public unsafe class PackageRetrieveStart(_alpm_event_t* backingStruct) : EventType
+  public unsafe class PackageRetrieveStart : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal PackageRetrieveStart(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public nuint PackageCount => backingStruct->pkg_retrieve.num;
     public CLong TotalSize => backingStruct->pkg_retrieve.total_size;
   }
 
-  public unsafe class PackageRetrieveDone(_alpm_event_t* backingStruct) : EventType
+  public unsafe class PackageRetrieveDone : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal PackageRetrieveDone(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public nuint PackageCount => backingStruct->pkg_retrieve.num;
     public CLong TotalSize => backingStruct->pkg_retrieve.total_size;
   }
 
-  public unsafe class PackageRetrieveFailed(_alpm_event_t* backingStruct) : EventType
+  public unsafe class PackageRetrieveFailed : EventType
   {
+    private readonly _alpm_event_t* backingStruct;
+
+    internal PackageRetrieveFailed(_alpm_event_t* backingStruct)
+    {
+      this.backingStruct = backingStruct;
+    }
+
     public nuint PackageCount => backingStruct->pkg_retrieve.num;
     public CLong TotalSize => backingStruct->pkg_retrieve.total_size;
   }

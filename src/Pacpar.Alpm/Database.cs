@@ -1,12 +1,20 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
-public unsafe class Database(byte* backingStruct)
+public unsafe class Database
 {
-  public static Database Factory(void* ptr) => new((byte*)ptr);
+  private readonly byte* backingStruct;
+
+  internal Database(byte* backingStruct)
+  {
+    this.backingStruct = backingStruct;
+  }
+
+  internal static Database Factory(void* ptr) => new((byte*)ptr);
 
   public string Name => field ??= NativeString.FromNative((nint)NativeMethods.alpm_db_get_name(backingStruct))!;
 
@@ -75,7 +83,9 @@ public unsafe class Database(byte* backingStruct)
     return AlpmList<Group>.Borrow(groupCache, &Group.Factory);
   }
 
-  public nint Handle => (nint)NativeMethods.alpm_db_get_handle(backingStruct);
+  /// <summary>The raw libalpm handle this database belongs to.</summary>
+  [EditorBrowsable(EditorBrowsableState.Never)]
+  public nint AsHandle() => (nint)NativeMethods.alpm_db_get_handle(backingStruct);
 
   public SigLevel SigLevel => (SigLevel)NativeMethods.alpm_db_get_siglevel(backingStruct);
 
@@ -84,7 +94,7 @@ public unsafe class Database(byte* backingStruct)
   public void Unregister()
   {
     var err = NativeMethods.alpm_db_unregister(backingStruct);
-    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)Handle));
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)AsHandle()));
   }
 
   /// <summary>
@@ -105,7 +115,7 @@ public unsafe class Database(byte* backingStruct)
   {
     if (IsValid) return;
 
-    var errno = NativeMethods.alpm_errno((byte*)Handle);
+    var errno = NativeMethods.alpm_errno((byte*)AsHandle());
     throw errno == _alpm_errno_t.ALPM_ERR_OK
       ? new InvalidOperationException("The database is invalid but libalpm did not set an error code.")
       : ErrorHandler.ToException(errno);
@@ -121,7 +131,7 @@ public unsafe class Database(byte* backingStruct)
   /// </remarks>
   private void ThrowIfErrnoSet()
   {
-    var errno = NativeMethods.alpm_errno((byte*)Handle);
+    var errno = NativeMethods.alpm_errno((byte*)AsHandle());
     if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
   }
 }

@@ -19,7 +19,7 @@ namespace Pacpar.Alpm.List;
 /// </remarks>
 public sealed class AlpmStringList : AlpmList<string>
 {
-  public unsafe AlpmStringList(_alpm_list_t* alpmList) : base(alpmList, &StringFactory)
+  internal unsafe AlpmStringList(_alpm_list_t* alpmList) : base(alpmList, &StringFactory)
   {
   }
 

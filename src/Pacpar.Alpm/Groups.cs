@@ -4,9 +4,16 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
-public unsafe class Group(_alpm_group_t* backingStruct)
+public unsafe class Group
 {
-  public static Group Factory(void* ptr) => new((_alpm_group_t*)ptr);
+  private readonly _alpm_group_t* backingStruct;
+
+  internal Group(_alpm_group_t* backingStruct)
+  {
+    this.backingStruct = backingStruct;
+  }
+
+  internal static Group Factory(void* ptr) => new((_alpm_group_t*)ptr);
 
   // ReSharper disable once MemberCanBePrivate.Global
   public string Name => field ??= NativeString.FromNative((nint)backingStruct->name)!;

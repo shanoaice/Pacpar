@@ -11,7 +11,7 @@ public sealed class AlpmInitializationTests(AlpmEnvironmentFixture fixture)
   {
     using var alpm = fixture.CreateAlpm();
 
-    Assert.NotEqual(IntPtr.Zero, alpm.Handle);
+    Assert.NotEqual(IntPtr.Zero, alpm.AsHandle());
     Assert.Equal(Pacpar.Alpm.Bindings._alpm_errno_t.ALPM_ERR_OK, alpm.Errno);
     Assert.Null(alpm.GetCurrentError());
   }
@@ -46,7 +46,7 @@ public sealed class AlpmInitializationTests(AlpmEnvironmentFixture fixture)
     var alpm = fixture.CreateAlpm();
     alpm.Dispose();
 
-    Assert.Throws<ObjectDisposedException>(() => _ = alpm.Handle);
+    Assert.Throws<ObjectDisposedException>(() => _ = alpm.AsHandle());
     Assert.Throws<ObjectDisposedException>(() => _ = alpm.Errno);
     Assert.Throws<ObjectDisposedException>(() => alpm.GetCurrentError());
   }
