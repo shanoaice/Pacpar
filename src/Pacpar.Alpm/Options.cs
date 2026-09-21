@@ -42,7 +42,7 @@ public class AlpmOptions
     set
     {
       var err = NativeMethods.alpm_option_set_checkspace(_handle, value ? 1 : 0);
-      if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+      if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
     }
   }
 
@@ -55,7 +55,7 @@ public class AlpmOptions
       try
       {
         var err = NativeMethods.alpm_option_set_dbext(_handle, (byte*)ptr);
-        if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+        if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
       }
       finally
       {
@@ -74,7 +74,7 @@ public class AlpmOptions
     set
     {
       var err = NativeMethods.alpm_option_set_default_siglevel(_handle, (int)value);
-      if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+      if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
     }
   }
 
@@ -84,7 +84,7 @@ public class AlpmOptions
     set
     {
       var err = NativeMethods.alpm_option_set_local_file_siglevel(_handle, (int)value);
-      if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+      if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
     }
   }
 
@@ -94,7 +94,7 @@ public class AlpmOptions
     set
     {
       var err = NativeMethods.alpm_option_set_remote_file_siglevel(_handle, (int)value);
-      if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+      if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
     }
   }
 
@@ -104,7 +104,7 @@ public class AlpmOptions
     set
     {
       var err = NativeMethods.alpm_option_set_parallel_downloads(_handle, (uint)value);
-      if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+      if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
     }
   }
 
@@ -117,7 +117,7 @@ public class AlpmOptions
       try
       {
         var err = NativeMethods.alpm_option_set_logfile(_handle, (byte*)ptr);
-        if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+        if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
       }
       finally
       {
@@ -132,7 +132,7 @@ public class AlpmOptions
     set
     {
       var err = NativeMethods.alpm_option_set_usesyslog(_handle, value ? 1 : 0);
-      if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+      if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
     }
   }
 
@@ -147,7 +147,7 @@ public class AlpmOptions
       try
       {
         var err = NativeMethods.alpm_option_set_gpgdir(_handle, (byte*)ptr);
-        if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+        if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
       }
       finally
       {

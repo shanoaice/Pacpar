@@ -27,7 +27,7 @@ internal class AssumeInstalled : ICollection<Depend>
   public unsafe void Add(Depend item)
   {
     var err = NativeMethods.alpm_option_add_assumeinstalled(_handle, item.NativePtrOrThrow(nameof(item)));
-    if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
   }
 
   public unsafe bool Contains(Depend item)

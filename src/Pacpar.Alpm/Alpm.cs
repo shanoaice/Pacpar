@@ -130,7 +130,7 @@ public class Alpm : IDisposable
     ThrowIfDisposed();
     var databasePtr = NativeMethods.alpm_get_localdb(_handle);
     return *_errno != _alpm_errno_t.ALPM_ERR_OK
-      ? throw ErrorHandler.GetException(*_errno)!
+      ? throw ErrorHandler.ToException(*_errno)
       : new Database(databasePtr);
   }
 
@@ -139,7 +139,7 @@ public class Alpm : IDisposable
     ThrowIfDisposed();
     var syncDatabases = NativeMethods.alpm_get_syncdbs(_handle);
     return *_errno != _alpm_errno_t.ALPM_ERR_OK
-      ? throw ErrorHandler.GetException(*_errno)!
+      ? throw ErrorHandler.ToException(*_errno)
       : AlpmList<Database>.Borrow(syncDatabases, &Database.Factory);
   }
 
@@ -150,7 +150,7 @@ public class Alpm : IDisposable
     var database = NativeMethods.alpm_register_syncdb(_handle, (byte*)treeNameCString, (int)level);
     Marshal.FreeHGlobal(treeNameCString);
     return *_errno != _alpm_errno_t.ALPM_ERR_OK
-      ? throw ErrorHandler.GetException(*_errno)!
+      ? throw ErrorHandler.ToException(*_errno)
       : new Database(database);
   }
 
@@ -158,7 +158,7 @@ public class Alpm : IDisposable
   {
     ThrowIfDisposed();
     var err = NativeMethods.alpm_unregister_all_syncdbs(_handle);
-    if (err != 0) throw ErrorHandler.GetException(*_errno)!;
+    if (err != 0) throw ErrorHandler.ToException(*_errno);
   }
 
   public void Dispose()

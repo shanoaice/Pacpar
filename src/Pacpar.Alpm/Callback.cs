@@ -58,23 +58,23 @@ public sealed class Callback : IDisposable
 
     var err = NativeMethods.alpm_option_set_eventcb(alpmHandle, &EventAgent,
       (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle));
-    if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(alpmHandle))!;
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(alpmHandle));
 
     err = NativeMethods.alpm_option_set_fetchcb(alpmHandle, &FetchAgent,
       (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle));
-    if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(alpmHandle))!;
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(alpmHandle));
 
     err = NativeMethods.alpm_option_set_questioncb(alpmHandle, &QuestionAgent,
       (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle));
-    if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(alpmHandle))!;
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(alpmHandle));
 
     err = NativeMethods.alpm_option_set_progresscb(alpmHandle, &ProgressAgent,
       (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle));
-    if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(alpmHandle))!;
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(alpmHandle));
 
     err = NativeMethods.alpm_option_set_dlcb(alpmHandle, &DownloadAgent,
       (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle));
-    if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(alpmHandle))!;
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(alpmHandle));
   }
 
   public Action<EventType>? EventHandler { get; set; }

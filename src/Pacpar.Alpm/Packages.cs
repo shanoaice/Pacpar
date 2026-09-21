@@ -461,7 +461,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
       var bufferPtr = (byte**)Marshal.AllocHGlobal(sizeof(byte*));
       var lenPtr = (nuint*)Marshal.AllocHGlobal(sizeof(nuint));
       var result = NativeMethods.alpm_pkg_get_sig(BackingStruct, bufferPtr, lenPtr);
-      if (result != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(LibraryHandle))!;
+      if (result != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(LibraryHandle));
       _signature = new Signature(*bufferPtr, (int)*lenPtr);
     }
     return _signature;

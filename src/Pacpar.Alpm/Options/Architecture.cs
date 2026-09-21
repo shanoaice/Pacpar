@@ -32,7 +32,7 @@ internal class Architecture : ICollection<string>
     try
     {
       var err = NativeMethods.alpm_option_add_architecture(_handle, stringPtr);
-      if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
+      if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
     }
     finally
     {

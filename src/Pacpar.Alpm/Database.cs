@@ -24,7 +24,7 @@ public unsafe class Database(byte* backingStruct)
     var pkgCache = NativeMethods.alpm_db_get_pkgcache(backingStruct);
     if ((nint)pkgCache == IntPtr.Zero)
     {
-      throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
+      throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)Handle));
     }
     return AlpmList<Package>.Borrow(pkgCache, &Package.FactoryFromDatabase);
   }
@@ -63,7 +63,7 @@ public unsafe class Database(byte* backingStruct)
     var groupCache = NativeMethods.alpm_db_get_groupcache(backingStruct);
     if ((nint)groupCache == IntPtr.Zero)
     {
-      throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
+      throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)Handle));
     }
     return AlpmList<Group>.Borrow(groupCache, &Group.Factory);
   }
@@ -77,7 +77,7 @@ public unsafe class Database(byte* backingStruct)
   public void Unregister()
   {
     var err = NativeMethods.alpm_db_unregister(backingStruct);
-    if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)Handle));
   }
 
   public (bool, Exception?) Validate()
