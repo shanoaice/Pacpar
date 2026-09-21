@@ -9,6 +9,50 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
+  <!--
+    The va_list forwarding test needs a C caller: C# cannot materialise a va_list, so
+    native/pacpar_log_shim_test.c plays the role of libalpm firing alpm_cb_log. This stays in the
+    test project on purpose: the library itself ships no native artifact, because it expands the
+    va_list with libc's vasprintf (see LogMessageFormatter).
+  -->
+  <PropertyGroup>
+    <PacparTestNativeSource>$(MSBuildThisFileDirectory)native/pacpar_log_shim_test.c</PacparTestNativeSource>
+    <PacparTestNativeCc Condition="'$(PacparTestNativeCc)' == ''">$(CC)</PacparTestNativeCc>
+    <PacparTestNativeCc Condition="'$(PacparTestNativeCc)' == ''">cc</PacparTestNativeCc>
+    <!--
+      BaseIntermediateOutputPath, not IntermediateOutputPath: both are read during evaluation, and
+      IntermediateOutputPath is only defined by the SDK targets at the bottom of the project, so
+      reading it here yields an empty string and writes the .so into the source tree. The value
+      stays relative so MSBuild and Exec resolve it against the project directory, and the
+      backslash is replaced because BaseIntermediateOutputPath is "obj\" on some hosts even on Unix.
+    -->
+    <PacparTestNativeOutDir>$(BaseIntermediateOutputPath.Replace('\', '/'))native/</PacparTestNativeOutDir>
+    <PacparTestNativeOutput>$(PacparTestNativeOutDir)libpacpar_log_shim_test.so</PacparTestNativeOutput>
+  </PropertyGroup>
+
+  <Target Name="CompileTestNative"
+          Inputs="$(PacparTestNativeSource)"
+          Outputs="$(PacparTestNativeOutput)">
+    <MakeDir Directories="$(PacparTestNativeOutDir)" />
+    <Exec Command="&quot;$(PacparTestNativeCc)&quot; -shared -O2 -Wall -Wextra -fPIC -fvisibility=hidden -o &quot;$(PacparTestNativeOutput)&quot; &quot;$(PacparTestNativeSource)&quot;"
+          ConsoleToMsBuild="true" />
+  </Target>
+
+  <!--
+    Separate target because a target that is up to date is skipped whole, ItemGroup included; and
+    before AssignTargetPaths because that is what turns the Link into a TargetPath in the output.
+  -->
+  <Target Name="IncludeTestNative"
+          BeforeTargets="AssignTargetPaths"
+          DependsOnTargets="CompileTestNative">
+    <ItemGroup Condition="Exists('$(PacparTestNativeOutput)')">
+      <None Include="$(PacparTestNativeOutput)"
+            Link="libpacpar_log_shim_test.so"
+            CopyToOutputDirectory="PreserveNewest"
+            Visible="false" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.2">
       <PrivateAssets>all</PrivateAssets>
