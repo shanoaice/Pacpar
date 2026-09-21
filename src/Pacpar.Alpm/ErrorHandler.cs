@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm;
@@ -120,7 +119,7 @@ public static class ErrorHandler
   private static unsafe string? StrErrorCore(_alpm_errno_t errno)
   {
     // alpm_strerror is bounds-checked: out-of-range values come back as "unexpected error".
-    return Marshal.PtrToStringUTF8((nint)NativeMethods.alpm_strerror(errno));
+    return NativeString.FromNative((nint)NativeMethods.alpm_strerror(errno));
   }
 
   private static Exception Create(_alpm_errno_t errno)

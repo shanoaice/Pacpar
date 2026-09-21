@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
@@ -26,32 +25,32 @@ public abstract class QuestionType
   public unsafe class InstallIgnoredPackage(_alpm_question_t* backingStruct) : QuestionType
   {
     public bool Install => backingStruct->install_ignorepkg.install != 0;
-    public string Package => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->install_ignorepkg.pkg) ?? "";
+    public string Package => field ??= NativeString.FromNative((nint)backingStruct->install_ignorepkg.pkg) ?? "";
   }
 
   public unsafe class ReplacePackage(_alpm_question_t* backingStruct) : QuestionType
   {
 
     public bool Replace => backingStruct->replace.replace != 0;
-    public string OldPackage => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->replace.oldpkg) ?? "";
-    public string NewPackage => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->replace.newpkg) ?? "";
-    public string NewDatabase => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->replace.newdb) ?? "";
+    public string OldPackage => field ??= NativeString.FromNative((nint)backingStruct->replace.oldpkg) ?? "";
+    public string NewPackage => field ??= NativeString.FromNative((nint)backingStruct->replace.newpkg) ?? "";
+    public string NewDatabase => field ??= NativeString.FromNative((nint)backingStruct->replace.newdb) ?? "";
   }
 
   public unsafe class ConflictPkg(_alpm_question_t* backingStruct) : QuestionType
   {
     public bool Remove => backingStruct->conflict.remove != 0;
-    public string Package1 => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->conflict.conflict->package1) ?? "";
-    public string Package2 => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->conflict.conflict->package2) ?? "";
-    public string Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->conflict.conflict->reason->name) ?? "";
-    public string Version => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->conflict.conflict->reason->version) ?? "";
-    public string Description => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->conflict.conflict->reason->desc) ?? "";
+    public string Package1 => field ??= NativeString.FromNative((nint)backingStruct->conflict.conflict->package1) ?? "";
+    public string Package2 => field ??= NativeString.FromNative((nint)backingStruct->conflict.conflict->package2) ?? "";
+    public string Name => field ??= NativeString.FromNative((nint)backingStruct->conflict.conflict->reason->name) ?? "";
+    public string Version => field ??= NativeString.FromNative((nint)backingStruct->conflict.conflict->reason->version) ?? "";
+    public string Description => field ??= NativeString.FromNative((nint)backingStruct->conflict.conflict->reason->desc) ?? "";
   }
 
   public unsafe class CorruptedPkg(_alpm_question_t* backingStruct) : QuestionType
   {
     public bool Remove => backingStruct->corrupted.remove != 0;
-    public string FilePath => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->corrupted.filepath) ?? "";
+    public string FilePath => field ??= NativeString.FromNative((nint)backingStruct->corrupted.filepath) ?? "";
   }
 
   public unsafe class RemovePkgs(_alpm_question_t* backingStruct) : QuestionType
@@ -66,15 +65,15 @@ public abstract class QuestionType
     public bool UseIndex => backingStruct->select_provider.use_index != 0;
     public AlpmList<Package> Providers =>
       AlpmList<Package>.Borrow(backingStruct->select_provider.providers, &Package.FactoryFromDatabase);
-    public string Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->select_provider.depend->name) ?? "";
-    public string Version => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->select_provider.depend->version) ?? "";
-    public string Description => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->select_provider.depend->desc) ?? "";
+    public string Name => field ??= NativeString.FromNative((nint)backingStruct->select_provider.depend->name) ?? "";
+    public string Version => field ??= NativeString.FromNative((nint)backingStruct->select_provider.depend->version) ?? "";
+    public string Description => field ??= NativeString.FromNative((nint)backingStruct->select_provider.depend->desc) ?? "";
   }
 
   public unsafe class ImportKey(_alpm_question_t* backingStruct) : QuestionType
   {
     public bool Import => backingStruct->import_key.import != 0;
-    public string Uid => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->import_key.uid) ?? "";
-    public string Fingerprint => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->import_key.fingerprint) ?? "";
+    public string Uid => field ??= NativeString.FromNative((nint)backingStruct->import_key.uid) ?? "";
+    public string Fingerprint => field ??= NativeString.FromNative((nint)backingStruct->import_key.fingerprint) ?? "";
   }
 }

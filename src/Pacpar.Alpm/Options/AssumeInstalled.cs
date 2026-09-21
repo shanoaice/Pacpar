@@ -1,77 +1,39 @@
-using System.Collections;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm.Options;
 
-internal class AssumeInstalled : ICollection<Depend>
+internal sealed unsafe class AssumeInstalled(byte* handle) : AlpmOptionList<Depend>(handle)
 {
-  private readonly unsafe byte* _handle;
+  private protected override _alpm_list_t* GetList(byte* h) => NativeMethods.alpm_option_get_assumeinstalled(h);
 
-  internal unsafe AssumeInstalled(byte* handle)
+  private protected override int AddNative(byte* h, byte* item)
+    => NativeMethods.alpm_option_add_assumeinstalled(h, (_alpm_depend_t*)item);
+
+  private protected override bool RemoveNative(byte* h, byte* item)
+    => item != null && NativeMethods.alpm_option_remove_assumeinstalled(h, (_alpm_depend_t*)item) == 0;
+
+  // The dependency struct is borrowed: libalpm dups whatever it stores, so nothing is released.
+  private protected override byte* Acquire(Depend item, out bool owned)
   {
-    _handle = handle;
+    owned = false;
+    return (byte*)item.BackingStruct;
   }
 
-  private unsafe AlpmList<Depend> BackingList => Depend.ListFactory(NativeMethods.alpm_option_get_assumeinstalled(_handle));
-
-  public bool IsReadOnly => false;
-
-  public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_assumeinstalled(_handle));
-
-  public AlpmList<Depend>.Enumerator GetEnumerator() => BackingList.GetEnumerator();
-
-  IEnumerator<Depend> IEnumerable<Depend>.GetEnumerator() => GetEnumerator();
-  IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-  public unsafe void Add(Depend item)
+  private protected override void Release(byte* item, bool owned)
   {
-    var err = NativeMethods.alpm_option_add_assumeinstalled(_handle, item.NativePtrOrThrow(nameof(item)));
-    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
   }
 
-  public unsafe bool Contains(Depend item)
+  // A detached snapshot (depmissing) has no native struct, so Add must keep throwing for it.
+  private protected override byte* AcquireForAdd(Depend item, out bool owned)
   {
-    var itemPtr = item.BackingStruct;
-    if (itemPtr == null) return false;
-
-    var optionsList = NativeMethods.alpm_option_get_assumeinstalled(_handle);
-    return NativeMethods.alpm_list_find_ptr(optionsList, itemPtr) == itemPtr;
+    owned = false;
+    return (byte*)item.NativePtrOrThrow(nameof(item));
   }
 
-  public unsafe bool Remove(Depend item)
-  {
-    if (item.BackingStruct == null) return false;
+  private protected override AlpmList<Depend> View(_alpm_list_t* list) => Depend.ListFactory(list);
 
-    var itemPtr = item.BackingStruct;
-    var err = NativeMethods.alpm_option_remove_assumeinstalled(_handle, itemPtr);
-    return err == 0;
-  }
-
-  public void Clear()
-  {
-    // Snapshot first: the enumerator caches the current native node, so removing while
-    // enumerating leaves it pointing at a freed node on the next MoveNext().
-    foreach (var item in BackingList.ToArray())
-    {
-      Remove(item);
-    }
-  }
-
-  public void CopyTo(Depend[] array, int arrayIndex)
-  {
-    ArgumentNullException.ThrowIfNull(array);
-    ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
-
-    var source = BackingList.ToArray();
-    if (array.Length - arrayIndex < source.Length)
-    {
-      throw new ArgumentException("The destination array is not long enough to hold all items.", nameof(array));
-    }
-
-    for (var i = 0; i < source.Length; ++i)
-    {
-      array[arrayIndex + i] = source[i];
-    }
-  }
+  // Dependencies are compared by identity, not by string contents.
+  private protected override byte* FindIn(_alpm_list_t* list, byte* item)
+    => (byte*)NativeMethods.alpm_list_find_ptr(list, item);
 }

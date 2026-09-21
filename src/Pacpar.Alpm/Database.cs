@@ -8,13 +8,13 @@ public unsafe class Database(byte* backingStruct)
 {
   public static Database Factory(void* ptr) => new((byte*)ptr);
 
-  public string Name => field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_db_get_name(backingStruct))!;
+  public string Name => field ??= NativeString.FromNative((nint)NativeMethods.alpm_db_get_name(backingStruct))!;
 
   public Package? GetPackage(string name)
   {
-    var nameCstr = Marshal.StringToHGlobalAnsi(name);
-    var pkg = NativeMethods.alpm_db_get_pkg(backingStruct, (byte*)nameCstr);
-    Marshal.FreeHGlobal(nameCstr);
+    var nameCstr = NativeString.ToNative(name);
+    var pkg = NativeMethods.alpm_db_get_pkg(backingStruct, nameCstr);
+    Marshal.FreeHGlobal((nint)nameCstr);
     if ((nint)pkg == IntPtr.Zero) return null;
     return new Package(pkg);
   }
@@ -58,9 +58,9 @@ public unsafe class Database(byte* backingStruct)
 
   public Group? GetGroup(string name)
   {
-    var nameCstr = Marshal.StringToHGlobalAnsi(name);
-    var group = NativeMethods.alpm_db_get_group(backingStruct, (byte*)nameCstr);
-    Marshal.FreeHGlobal(nameCstr);
+    var nameCstr = NativeString.ToNative(name);
+    var group = NativeMethods.alpm_db_get_group(backingStruct, nameCstr);
+    Marshal.FreeHGlobal((nint)nameCstr);
     if ((nint)group == IntPtr.Zero) return null;
     return new Group(group);
   }

@@ -22,16 +22,16 @@ public class Alpm : IDisposable
     _initializeErrno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
     *_initializeErrno = _alpm_errno_t.ALPM_ERR_OK;
 
-    var rootPtr = Marshal.StringToHGlobalAnsi(root);
-    var dbpathPtr = Marshal.StringToHGlobalAnsi(dbpath);
+    var rootPtr = NativeString.ToNative(root);
+    var dbpathPtr = NativeString.ToNative(dbpath);
     try
     {
-      _handle = NativeMethods.alpm_initialize((byte*)rootPtr, (byte*)dbpathPtr, _initializeErrno);
+      _handle = NativeMethods.alpm_initialize(rootPtr, dbpathPtr, _initializeErrno);
     }
     finally
     {
-      Marshal.FreeHGlobal(rootPtr);
-      Marshal.FreeHGlobal(dbpathPtr);
+      Marshal.FreeHGlobal((nint)rootPtr);
+      Marshal.FreeHGlobal((nint)dbpathPtr);
     }
 
     if (_handle == null)
@@ -93,7 +93,7 @@ public class Alpm : IDisposable
   public unsafe string? GetCurrentErrorString()
   {
     ThrowIfDisposed();
-    return Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_strerror(Errno));
+    return NativeString.FromNative((nint)NativeMethods.alpm_strerror(Errno));
   }
 
   public Exception? GetCurrentError()
@@ -130,12 +130,12 @@ public class Alpm : IDisposable
   public unsafe Package LoadPackage(string filename, bool full, SigLevel level)
   {
     ThrowIfDisposed();
-    var filenamePtr = Marshal.StringToHGlobalAnsi(filename);
+    var filenamePtr = NativeString.ToNative(filename);
     // This is a pointer to a pointer, where libalpm will write the package handle.
     var pkgOutPtr = (byte**)Marshal.AllocHGlobal(sizeof(nint));
     try
     {
-      var err = NativeMethods.alpm_pkg_load(_handle, (byte*)filenamePtr, full ? 1 : 0, (int)level, pkgOutPtr);
+      var err = NativeMethods.alpm_pkg_load(_handle, filenamePtr, full ? 1 : 0, (int)level, pkgOutPtr);
       if (err != 0)
       {
         // Note: alpm_pkg_load sets the handle errno on failure.
@@ -147,7 +147,7 @@ public class Alpm : IDisposable
     }
     finally
     {
-      Marshal.FreeHGlobal(filenamePtr);
+      Marshal.FreeHGlobal((nint)filenamePtr);
       // We must free the memory we allocated for the output pointer.
       Marshal.FreeHGlobal((IntPtr)pkgOutPtr);
     }
@@ -178,16 +178,16 @@ public class Alpm : IDisposable
   public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
   {
     ThrowIfDisposed();
-    var treeNameCString = Marshal.StringToHGlobalAnsi(treename);
+    var treeNameCString = NativeString.ToNative(treename);
     try
     {
-      var database = NativeMethods.alpm_register_syncdb(_handle, (byte*)treeNameCString, (int)level);
+      var database = NativeMethods.alpm_register_syncdb(_handle, treeNameCString, (int)level);
       ThrowIfCurrentError();
       return new Database(database);
     }
     finally
     {
-      Marshal.FreeHGlobal(treeNameCString);
+      Marshal.FreeHGlobal((nint)treeNameCString);
     }
   }
 

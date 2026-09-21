@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
@@ -47,9 +46,9 @@ public unsafe class Depend
   internal Depend(_alpm_depend_t* backingStruct)
   {
     _backingStruct = backingStruct;
-    Name = Marshal.PtrToStringUTF8((nint)backingStruct->name);
-    Version = Marshal.PtrToStringUTF8((nint)backingStruct->version);
-    Description = Marshal.PtrToStringUTF8((nint)backingStruct->desc);
+    Name = NativeString.FromNative((nint)backingStruct->name);
+    Version = NativeString.FromNative((nint)backingStruct->version);
+    Description = NativeString.FromNative((nint)backingStruct->desc);
     Depmod = (DepMod)(uint)backingStruct->mod_;
   }
 
@@ -73,9 +72,9 @@ public unsafe class Depend
 
   /// <summary>Creates a detached, fully managed copy of a native dependency.</summary>
   internal static Depend Snapshot(_alpm_depend_t* native)
-    => new(Marshal.PtrToStringUTF8((nint)native->name),
-      Marshal.PtrToStringUTF8((nint)native->version),
-      Marshal.PtrToStringUTF8((nint)native->desc),
+    => new(NativeString.FromNative((nint)native->name),
+      NativeString.FromNative((nint)native->version),
+      NativeString.FromNative((nint)native->desc),
       (DepMod)(uint)native->mod_);
 
   /// <summary>
@@ -120,8 +119,8 @@ public sealed class DepMissing
   }
 
   internal static unsafe DepMissing FromNative(_alpm_depmissing_t* native)
-    => new(Marshal.PtrToStringUTF8((nint)native->target),
-      Marshal.PtrToStringUTF8((nint)native->causingpkg),
+    => new(NativeString.FromNative((nint)native->target),
+      NativeString.FromNative((nint)native->causingpkg),
       native->depend != null ? Depend.Snapshot(native->depend) : null);
 
   public Depend? Depend { get; }
@@ -149,7 +148,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
     get
     {
       ThrowIfDisposed();
-      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->ctarget);
+      field ??= NativeString.FromNative((IntPtr)BackingStruct->ctarget);
       return field;
     }
   }
@@ -158,7 +157,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
     get
     {
       ThrowIfDisposed();
-      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->file);
+      field ??= NativeString.FromNative((IntPtr)BackingStruct->file);
       return field;
     }
   }
@@ -167,7 +166,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
     get
     {
       ThrowIfDisposed();
-      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
+      field ??= NativeString.FromNative((IntPtr)BackingStruct->target);
       return field;
     }
   }

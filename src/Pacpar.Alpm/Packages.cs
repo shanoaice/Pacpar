@@ -36,7 +36,7 @@ public unsafe class Version(byte* version) : IComparable<Version>
 
   public int CompareTo(Version? other) => other == null ? 1 : NativeMethods.alpm_pkg_vercmp(version, other.VersionPtr);
 
-  public override string ToString() => Marshal.PtrToStringAnsi((nint)version)!;
+  public override string ToString() => NativeString.FromNative((nint)version)!;
 }
 
 public unsafe class Signature(byte* sig, int len) : IDisposable
@@ -171,7 +171,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_name(BackingStruct))!;
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_name(BackingStruct))!;
     }
   }
 
@@ -192,7 +192,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
     }
   }
 
@@ -201,7 +201,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
     }
   }
 
@@ -228,7 +228,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
     }
   }
 
@@ -237,7 +237,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
     }
   }
 
@@ -265,7 +265,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
     }
   }
 
@@ -274,7 +274,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
     }
   }
 
@@ -283,7 +283,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
     }
   }
 
@@ -292,7 +292,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
     }
   }
 
@@ -465,7 +465,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     get
     {
       ThrowIfDisposed();
-      return field ??= Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
     }
   }
 

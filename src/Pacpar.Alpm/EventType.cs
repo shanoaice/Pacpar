@@ -142,7 +142,7 @@ public abstract class EventType
 
   public unsafe class ScriptletInfo(_alpm_event_t* backingStruct) : EventType
   {
-    public string Line => field ??= (Marshal.PtrToStringAnsi((nint)backingStruct->scriptlet_info.line) ?? "");
+    public string Line => field ??= (NativeString.FromNative((nint)backingStruct->scriptlet_info.line) ?? "");
   }
 
   public class RetrieveStart : EventType
@@ -174,7 +174,7 @@ public abstract class EventType
   public unsafe class DatabaseMissing(_alpm_event_t* backingStruct) : EventType
   {
     public string DatabaseName =>
-      field ??= (Marshal.PtrToStringAnsi((nint)backingStruct->database_missing.dbname) ?? "");
+      field ??= (NativeString.FromNative((nint)backingStruct->database_missing.dbname) ?? "");
   }
 
   public class KeyringStart : EventType
@@ -198,13 +198,13 @@ public abstract class EventType
     public bool FromNoUpgrade => backingStruct->pacnew_created.from_noupgrade != 0;
     public Package OldPackage => new(backingStruct->pacnew_created.oldpkg);
     public Package NewPackage => new(backingStruct->pacnew_created.newpkg);
-    public string File => field ??= (Marshal.PtrToStringAnsi((nint)backingStruct->pacnew_created.file) ?? "");
+    public string File => field ??= (NativeString.FromNative((nint)backingStruct->pacnew_created.file) ?? "");
   }
 
   public unsafe class PacsaveCreated(_alpm_event_t* backingStruct) : EventType
   {
     public Package OldPackage => new(backingStruct->pacsave_created.oldpkg);
-    public string File => field ??= (Marshal.PtrToStringAnsi((nint)backingStruct->pacsave_created.file) ?? "");
+    public string File => field ??= (NativeString.FromNative((nint)backingStruct->pacsave_created.file) ?? "");
   }
 
   public unsafe class HookStart(_alpm_event_t* backingStruct) : EventType
@@ -219,16 +219,16 @@ public abstract class EventType
 
   public unsafe class HookRunStart(_alpm_event_t* backingStruct) : EventType
   {
-    public string Name => field ??= (Marshal.PtrToStringAnsi((nint)backingStruct->hook_run.name) ?? "");
-    public string Description => field ??= (Marshal.PtrToStringAnsi((nint)backingStruct->hook_run.desc) ?? "");
+    public string Name => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.name) ?? "");
+    public string Description => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.desc) ?? "");
     public nuint Position => backingStruct->hook_run.position;
     public nuint Total => backingStruct->hook_run.total;
   }
 
   public unsafe class HookRunDone(_alpm_event_t* backingStruct) : EventType
   {
-    public string Name => field ??= (Marshal.PtrToStringAnsi((nint)backingStruct->hook_run.name) ?? "");
-    public string Description => field ??= (Marshal.PtrToStringAnsi((nint)backingStruct->hook_run.desc) ?? "");
+    public string Name => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.name) ?? "");
+    public string Description => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.desc) ?? "");
     public nuint Position => backingStruct->hook_run.position;
     public nuint Total => backingStruct->hook_run.total;
   }

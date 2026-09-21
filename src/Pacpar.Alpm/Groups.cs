@@ -9,7 +9,7 @@ public unsafe class Group(_alpm_group_t* backingStruct)
   public static Group Factory(void* ptr) => new((_alpm_group_t*)ptr);
 
   // ReSharper disable once MemberCanBePrivate.Global
-  public string Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->name)!;
+  public string Name => field ??= NativeString.FromNative((nint)backingStruct->name)!;
 
   /// <summary>
   /// Packages that belong to this group. The list is owned by the group, so the view never frees it.
@@ -26,10 +26,10 @@ public unsafe class Group(_alpm_group_t* backingStruct)
   /// </remarks>
   public IReadOnlyList<Package> FindGroupPackages(AlpmList<Database> dbs)
   {
-    var namePtr = Marshal.StringToHGlobalAnsi(Name);
+    var namePtr = NativeString.ToNative(Name);
     try
     {
-      var result = NativeMethods.alpm_find_group_pkgs(dbs.Native, (byte*)namePtr);
+      var result = NativeMethods.alpm_find_group_pkgs(dbs.Native, namePtr);
       try
       {
         var packages = new List<Package>();
@@ -47,7 +47,7 @@ public unsafe class Group(_alpm_group_t* backingStruct)
     }
     finally
     {
-      Marshal.FreeHGlobal(namePtr);
+      Marshal.FreeHGlobal((nint)namePtr);
     }
   }
 }

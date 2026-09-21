@@ -38,7 +38,7 @@ internal static unsafe class LogMessageFormatter
 
     try
     {
-      return Marshal.PtrToStringUTF8((nint)buffer);
+      return NativeString.FromNative((nint)buffer);
     }
     finally
     {

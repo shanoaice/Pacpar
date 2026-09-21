@@ -88,8 +88,8 @@ public sealed class Callback
 
     return SafeInvoke(() =>
     {
-      var urlString = Marshal.PtrToStringAnsi((IntPtr)url) ?? "";
-      var localPathString = Marshal.PtrToStringAnsi((IntPtr)localPath) ?? "";
+      var urlString = NativeString.FromNative((IntPtr)url) ?? "";
+      var localPathString = NativeString.FromNative((IntPtr)localPath) ?? "";
 
       return (int)(callback.FetchHandler?.Invoke(urlString, localPathString, force != 0) ?? FetchResult.Success);
     }, (int)FetchResult.Error, callback.HandlerException);
@@ -108,7 +108,7 @@ public sealed class Callback
   {
     var callback = GCHandle<Callback>.FromIntPtr((nint)ctx).Target;
     SafeInvoke(
-      () => callback.ProgressHandler?.Invoke((ProgressType)(uint)progress, Marshal.PtrToStringAnsi((nint)pkg) ?? "", percent,
+      () => callback.ProgressHandler?.Invoke((ProgressType)(uint)progress, NativeString.FromNative((nint)pkg) ?? "", percent,
         howmany, current), callback.HandlerException);
   }
 
@@ -117,7 +117,7 @@ public sealed class Callback
   {
     var callback = GCHandle<Callback>.FromIntPtr((nint)ctx).Target;
     SafeInvoke(
-      () => callback.DownloadHandler?.Invoke(Marshal.PtrToStringAnsi((nint)filename) ?? "",
+      () => callback.DownloadHandler?.Invoke(NativeString.FromNative((nint)filename) ?? "",
         DownloadEventType.FromUnion(eventType, data)), callback.HandlerException);
   }
 

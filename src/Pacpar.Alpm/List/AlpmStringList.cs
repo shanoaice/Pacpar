@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm.List;
@@ -28,7 +27,7 @@ public sealed class AlpmStringList : AlpmList<string>
   {
   }
 
-  private static unsafe string StringFactory(void* data) => Marshal.PtrToStringAnsi((nint)data) ?? string.Empty;
+  private static unsafe string StringFactory(void* data) => NativeString.FromNative((nint)data) ?? string.Empty;
 
   /// <summary>
   /// Takes ownership of a list libalpm allocated for the caller, copies its strings into a managed
