@@ -59,7 +59,9 @@ internal class IgnorePackages : ICollection<string>
 
   public void Clear()
   {
-    foreach (var item in this)
+    // Snapshot first: the enumerator caches the current native node, so removing while
+    // enumerating leaves it pointing at a freed node on the next MoveNext().
+    foreach (var item in BackingList.ToArray())
     {
       Remove(item);
     }
@@ -69,17 +71,16 @@ internal class IgnorePackages : ICollection<string>
   {
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
-    using var enumerator = GetEnumerator();
-    for (var i = 0; i <= arrayIndex; ++i)
+
+    var source = BackingList.ToArray();
+    if (array.Length - arrayIndex < source.Length)
     {
-      enumerator.MoveNext();
+      throw new ArgumentException("The destination array is not long enough to hold all items.", nameof(array));
     }
 
-    var idx = 0;
-    do
+    for (var i = 0; i < source.Length; ++i)
     {
-      array[idx] = enumerator.Current;
-      ++idx;
-    } while (enumerator.MoveNext());
+      array[arrayIndex + i] = source[i];
+    }
   }
 }
