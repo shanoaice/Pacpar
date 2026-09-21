@@ -1349,6 +1349,26 @@ namespace Pacpar.Alpm.Bindings
         public static extern int alpm_option_set_disable_sandbox_syscalls(byte* handle, ushort disable_sandbox_syscalls);
 
         /// <summary>
+        ///  Get the state of the network part of the sandbox
+        ///  @param handle the context handle
+        ///  @return 0 for enabled, 1 for disabled
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "alpm_option_get_disable_sandbox_network", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int alpm_option_get_disable_sandbox_network(byte* handle);
+
+        /// <summary>
+        ///  Enables/disables the network part of the sandbox.
+        ///  When enabled, scriptlets and hooks are run inside a fresh network
+        ///  namespace with only a loopback interface, and are aborted if the
+        ///  namespace cannot be created.
+        ///  @param handle the context handle
+        ///  @param disable_sandbox_network 0 for enabled, 1 for disabled
+        ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
+        /// </summary>
+        [DllImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox_network", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int alpm_option_set_disable_sandbox_network(byte* handle, ushort disable_sandbox_network);
+
+        /// <summary>
         ///  Create a package from a file.
         ///  If full is false, the archive is read only until all necessary
         ///  metadata is found. If it is true, the entire archive is read, which

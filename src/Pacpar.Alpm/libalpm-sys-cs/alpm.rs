@@ -2427,6 +2427,19 @@ unsafe extern "C" {
         disable_sandbox_syscalls: ::std::os::raw::c_ushort,
     ) -> ::std::os::raw::c_int;
 }
+unsafe extern "C" {
+    #[doc = " Get the state of the network part of the sandbox\n @param handle the context handle\n @return 0 for enabled, 1 for disabled"]
+    pub fn alpm_option_get_disable_sandbox_network(
+        handle: *mut alpm_handle_t,
+    ) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    #[doc = " Enables/disables the network part of the sandbox.\n When enabled, scriptlets and hooks are run inside a fresh network\n namespace with only a loopback interface, and are aborted if the\n namespace cannot be created.\n @param handle the context handle\n @param disable_sandbox_network 0 for enabled, 1 for disabled\n @return 0 on success, -1 on error (pm_errno is set accordingly)"]
+    pub fn alpm_option_set_disable_sandbox_network(
+        handle: *mut alpm_handle_t,
+        disable_sandbox_network: ::std::os::raw::c_ushort,
+    ) -> ::std::os::raw::c_int;
+}
 #[repr(u32)]
 #[doc = " Package install reasons."]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
