@@ -4,6 +4,32 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
+/// <summary>Where a package handle comes from (libalpm's <c>_alpm_pkgfrom_t</c>).</summary>
+public enum PackageOrigin : uint
+{
+  /// <summary>Loaded from a package file.</summary>
+  File = 1,
+
+  /// <summary>From the local database.</summary>
+  LocalDatabase = 2,
+
+  /// <summary>From a sync database.</summary>
+  SyncDatabase = 3
+}
+
+/// <summary>Why a package is installed (libalpm's <c>_alpm_pkgreason_t</c>).</summary>
+public enum PackageReason : uint
+{
+  /// <summary>Explicitly installed by the user.</summary>
+  Explicit = 0,
+
+  /// <summary>Installed as a dependency.</summary>
+  Dependency = 1,
+
+  /// <summary>libalpm could not determine the reason.</summary>
+  Unknown = 2
+}
+
 public unsafe class Version(byte* version) : IComparable<Version>
 {
   internal byte* VersionPtr => version;
@@ -188,12 +214,12 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public _alpm_pkgfrom_t Origin
+  public PackageOrigin Origin
   {
     get
     {
       ThrowIfDisposed();
-      return NativeMethods.alpm_pkg_get_origin(BackingStruct);
+      return (PackageOrigin)(uint)NativeMethods.alpm_pkg_get_origin(BackingStruct);
     }
   }
 
@@ -288,12 +314,12 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public _alpm_pkgreason_t Reason
+  public PackageReason Reason
   {
     get
     {
       ThrowIfDisposed();
-      return NativeMethods.alpm_pkg_get_reason(BackingStruct);
+      return (PackageReason)(uint)NativeMethods.alpm_pkg_get_reason(BackingStruct);
     }
   }
 

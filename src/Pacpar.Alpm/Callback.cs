@@ -4,6 +4,22 @@ using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm;
 
+/// <summary>The phase a progress callback reports (libalpm's <c>_alpm_progress_t</c>).</summary>
+public enum ProgressType : uint
+{
+  AddStart = 0,
+  UpgradeStart = 1,
+  DowngradeStart = 2,
+  ReinstallStart = 3,
+  RemoveStart = 4,
+  ConflictsStart = 5,
+  DiskSpaceStart = 6,
+  IntegrityStart = 7,
+  LoadStart = 8,
+  KeyringStart = 9
+}
+
+
 /// <summary>
 /// Holds the native callback context (ctx) and the user-facing handlers of an <see cref="Alpm"/>
 /// instance.
@@ -58,8 +74,8 @@ public sealed class Callback
   {
     var callback = GCHandle<Callback>.FromIntPtr((nint)ctx).Target;
     SafeInvoke(
-      () => callback.ProgressHandler?.Invoke(progress, Marshal.PtrToStringAnsi((nint)pkg) ?? "", percent, howmany,
-        current), callback.HandlerException);
+      () => callback.ProgressHandler?.Invoke((ProgressType)(uint)progress, Marshal.PtrToStringAnsi((nint)pkg) ?? "", percent,
+        howmany, current), callback.HandlerException);
   }
 
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -104,7 +120,7 @@ public sealed class Callback
 
   public Action<string, DownloadEventType>? DownloadHandler { get; set; }
 
-  public Action<_alpm_progress_t, string, int, nuint, nuint>? ProgressHandler { get; set; }
+  public Action<ProgressType, string, int, nuint, nuint>? ProgressHandler { get; set; }
 
   /// <summary>
   /// Optional observer for exceptions thrown by the user handlers (<see cref="EventHandler"/>,

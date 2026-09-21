@@ -4,6 +4,24 @@ using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm;
 
+/// <summary>When a hook runs (libalpm's <c>_alpm_hook_when_t</c>).</summary>
+public enum HookWhen : uint
+{
+  PreTransaction = 1,
+  PostTransaction = 2
+}
+
+/// <summary>The operation a package event describes (libalpm's <c>_alpm_package_operation_t</c>).</summary>
+public enum PackageOperation : uint
+{
+  Install = 1,
+  Upgrade = 2,
+  Reinstall = 3,
+  Downgrade = 4,
+  Remove = 5
+}
+
+
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class EventType
 {
@@ -96,14 +114,14 @@ public abstract class EventType
   {
     public Package NewPackage => new(backingStruct->package_operation.newpkg);
     public Package OldPackage => new(backingStruct->package_operation.oldpkg);
-    public _alpm_package_operation_t Operation => backingStruct->package_operation.operation;
+    public PackageOperation Operation => (PackageOperation)(uint)backingStruct->package_operation.operation;
   }
 
   public unsafe class PackageOperationDone(_alpm_event_t* backingStruct) : EventType
   {
     public Package NewPackage => new(backingStruct->package_operation.newpkg);
     public Package OldPackage => new(backingStruct->package_operation.oldpkg);
-    public _alpm_package_operation_t Operation => backingStruct->package_operation.operation;
+    public PackageOperation Operation => (PackageOperation)(uint)backingStruct->package_operation.operation;
   }
 
   public class IntegrityStart : EventType
@@ -191,12 +209,12 @@ public abstract class EventType
 
   public unsafe class HookStart(_alpm_event_t* backingStruct) : EventType
   {
-    public _alpm_hook_when_t When => backingStruct->hook.when;
+    public HookWhen When => (HookWhen)(uint)backingStruct->hook.when;
   }
 
   public unsafe class HookDone(_alpm_event_t* backingStruct) : EventType
   {
-    public _alpm_hook_when_t When => backingStruct->hook.when;
+    public HookWhen When => (HookWhen)(uint)backingStruct->hook.when;
   }
 
   public unsafe class HookRunStart(_alpm_event_t* backingStruct) : EventType

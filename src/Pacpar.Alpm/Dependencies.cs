@@ -4,6 +4,29 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
+/// <summary>The version comparison a dependency uses (libalpm's <c>_alpm_depmod_t</c>).</summary>
+public enum DepMod : uint
+{
+  /// <summary>Any version satisfies the dependency.</summary>
+  Any = 1,
+
+  /// <summary>=</summary>
+  Equal = 2,
+
+  /// <summary>&gt;=</summary>
+  GreaterOrEqual = 3,
+
+  /// <summary>&lt;=</summary>
+  LessOrEqual = 4,
+
+  /// <summary>&gt;</summary>
+  Greater = 5,
+
+  /// <summary>&lt;</summary>
+  Less = 6
+}
+
+
 /// <summary>
 /// A dependency (<c>alpm_depend_t</c>).
 /// </summary>
@@ -27,10 +50,10 @@ public unsafe class Depend
     Name = Marshal.PtrToStringUTF8((nint)backingStruct->name);
     Version = Marshal.PtrToStringUTF8((nint)backingStruct->version);
     Description = Marshal.PtrToStringUTF8((nint)backingStruct->desc);
-    Depmod = backingStruct->mod_;
+    Depmod = (DepMod)(uint)backingStruct->mod_;
   }
 
-  private Depend(string? name, string? version, string? description, _alpm_depmod_t depmod)
+  private Depend(string? name, string? version, string? description, DepMod depmod)
   {
     _backingStruct = null;
     Name = name;
@@ -53,7 +76,7 @@ public unsafe class Depend
     => new(Marshal.PtrToStringUTF8((nint)native->name),
       Marshal.PtrToStringUTF8((nint)native->version),
       Marshal.PtrToStringUTF8((nint)native->desc),
-      native->mod_);
+      (DepMod)(uint)native->mod_);
 
   /// <summary>
   /// The native struct used by list operations, or <c>null</c> for a detached snapshot.
@@ -76,7 +99,7 @@ public unsafe class Depend
 
   public string? Version { get; }
 
-  public _alpm_depmod_t Depmod { get; }
+  public DepMod Depmod { get; }
 }
 
 /// <summary>
