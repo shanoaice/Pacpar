@@ -11,6 +11,10 @@
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pacpar.Alpm.Tests" />
+  </ItemGroup>
+
   <PropertyGroup>
     <BuildDependsOn>
     GenerateBindings;$(BuildDependsOn)
