@@ -9,7 +9,11 @@ public unsafe class Backup(_alpm_backup_t* backingStruct)
 {
   public static Backup Factory(void* ptr) => new((_alpm_backup_t*)ptr);
 
-  public static AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => new(ptr, &Factory);
+  /// <summary>
+  /// Borrowed view over a backup-entry list owned by libalpm (for example
+  /// <c>alpm_pkg_get_backup</c>).
+  /// </summary>
+  public static AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => AlpmList<Backup>.Borrow(ptr, &Factory);
 
   public string? Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->name);
 }

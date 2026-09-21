@@ -11,13 +11,43 @@ public unsafe class Group(_alpm_group_t* backingStruct)
   // ReSharper disable once MemberCanBePrivate.Global
   public string Name => field ??= Marshal.PtrToStringAnsi((nint)backingStruct->name)!;
 
-  public AlpmDisposableList<Package> Packages => new(backingStruct->packages, &Package.FactoryFromDatabase);
+  /// <summary>
+  /// Packages that belong to this group. The list is owned by the group, so the view never frees it.
+  /// </summary>
+  public AlpmList<Package> Packages => AlpmList<Package>.Borrow(backingStruct->packages, &Package.FactoryFromDatabase);
 
-  public AlpmDisposableList<Package> FindGroupPackages(AlpmList<Database> dbs)
+  /// <summary>
+  /// Finds group members across <paramref name="dbs"/>.
+  /// </summary>
+  /// <remarks>
+  /// libalpm allocates the returned list for the caller ("caller is responsible for
+  /// <c>alpm_list_free</c>"), so it is copied into a managed collection and freed here. The
+  /// packages themselves stay owned by the databases.
+  /// </remarks>
+  public IReadOnlyList<Package> FindGroupPackages(AlpmList<Database> dbs)
   {
-    var result = NativeMethods.alpm_find_group_pkgs(dbs.AlpmListNative, (byte*)Marshal.StringToHGlobalAnsi(Name));
-    return (nint)result == IntPtr.Zero
-      ? new AlpmDisposableList<Package>(&Package.FactoryFromDatabase)
-      : new AlpmDisposableList<Package>(result, &Package.FactoryFromDatabase);
+    var namePtr = Marshal.StringToHGlobalAnsi(Name);
+    try
+    {
+      var result = NativeMethods.alpm_find_group_pkgs(dbs.Native, (byte*)namePtr);
+      try
+      {
+        var packages = new List<Package>();
+        for (var node = result; node != null; node = NativeMethods.alpm_list_next(node))
+        {
+          packages.Add(Package.FactoryFromDatabase(node->data));
+        }
+
+        return packages;
+      }
+      finally
+      {
+        AlpmNativeList.Free(result, null);
+      }
+    }
+    finally
+    {
+      Marshal.FreeHGlobal(namePtr);
+    }
   }
 }

@@ -4,133 +4,113 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
-public unsafe class Depend(_alpm_depend_t* backingStruct) : IDisposable
+/// <summary>
+/// A dependency (<c>alpm_depend_t</c>).
+/// </summary>
+/// <remarks>
+/// This is a borrowed view: it never frees the underlying struct, because every dependency reachable
+/// today is owned by a package, a database or an option list. Strings are copied out on
+/// construction, so the properties stay valid for as long as the containing list does.
+/// <para>
+/// Instances produced by <see cref="Snapshot"/> carry no native pointer at all; they are detached
+/// copies used by <see cref="DepMissing"/>. Such an instance cannot be handed back to libalpm list
+/// operations.
+/// </para>
+/// </remarks>
+public unsafe class Depend
 {
-  internal readonly _alpm_depend_t* BackingStruct = backingStruct;
+  private readonly _alpm_depend_t* _backingStruct;
+
+  internal Depend(_alpm_depend_t* backingStruct)
+  {
+    _backingStruct = backingStruct;
+    Name = Marshal.PtrToStringUTF8((nint)backingStruct->name);
+    Version = Marshal.PtrToStringUTF8((nint)backingStruct->version);
+    Description = Marshal.PtrToStringUTF8((nint)backingStruct->desc);
+    Depmod = backingStruct->mod_;
+  }
+
+  private Depend(string? name, string? version, string? description, _alpm_depmod_t depmod)
+  {
+    _backingStruct = null;
+    Name = name;
+    Version = version;
+    Description = description;
+    Depmod = depmod;
+  }
 
   public static Depend Factory(void* ptr) => new((_alpm_depend_t*)ptr);
 
-  public static AlpmDisposableList<Depend> ListFactory(_alpm_list_t* alpmList) => new(alpmList, &Factory);
+  /// <summary>
+  /// Borrowed view over a dependency list owned by libalpm (for example
+  /// <c>alpm_pkg_get_depends</c>, <c>alpm_option_get_assumeinstalled</c>).
+  /// </summary>
+  public static AlpmList<Depend> ListFactory(_alpm_list_t* alpmList)
+    => AlpmList<Depend>.Borrow(alpmList, &Factory);
 
-  private bool _disposed;
+  /// <summary>Creates a detached, fully managed copy of a native dependency.</summary>
+  internal static Depend Snapshot(_alpm_depend_t* native)
+    => new(Marshal.PtrToStringUTF8((nint)native->name),
+      Marshal.PtrToStringUTF8((nint)native->version),
+      Marshal.PtrToStringUTF8((nint)native->desc),
+      native->mod_);
 
-  protected void ThrowIfDisposed()
-  {
-    throw new ObjectDisposedException(GetType().FullName);
-  }
+  /// <summary>
+  /// The native struct used by list operations, or <c>null</c> for a detached snapshot.
+  /// </summary>
+  internal _alpm_depend_t* BackingStruct => _backingStruct;
 
-  public string? Description
-  {
-    get
-    {
-      ThrowIfDisposed();
-      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->desc);
-      return field;
-    }
-  }
-  public string? Name
-  {
-    get
-    {
-      ThrowIfDisposed();
-      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->name);
-      return field;
-    }
-  }
-  public string? Version
-  {
-    get
-    {
-      ThrowIfDisposed();
-      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->version);
-      return field;
-    }
-  }
+  /// <summary>
+  /// The native struct, or an exception when this instance is a detached snapshot that libalpm must
+  /// not be handed.
+  /// </summary>
+  internal _alpm_depend_t* NativePtrOrThrow(string paramName)
+    => _backingStruct != null
+      ? _backingStruct
+      : throw new ArgumentException(
+        "This Depend is a detached snapshot and cannot be passed back to libalpm.", paramName);
 
-  public _alpm_depmod_t Depmod => BackingStruct->mod_;
+  public string? Description { get; }
 
-  public void Dispose()
-  {
-    GC.SuppressFinalize(this);
-    Dispose(disposing: true);
-  }
+  public string? Name { get; }
 
-  protected virtual void Dispose(bool disposing)
-  {
-    if (!_disposed)
-    {
-      if (disposing)
-      {
-        // dispose managed state (managed objects)
-      }
-      NativeMethods.alpm_dep_free(BackingStruct);
-      _disposed = true;
-    }
-  }
+  public string? Version { get; }
 
-  ~Depend() => Dispose(disposing: false);
+  public _alpm_depmod_t Depmod { get; }
 }
 
-public unsafe class DepMissing(_alpm_depmissing_t* backingStruct) : IDisposable
+/// <summary>
+/// A dependency that is missing from the transaction outcome.
+/// </summary>
+/// <remarks>
+/// Managed snapshot: the list libalpm dumps into <c>alpm_trans_prepare</c>'s output parameter is
+/// caller-owned, so <see cref="Transactions.Prepare"/> copies the values out and frees the native
+/// memory (list and elements). No native pointer is retained.
+/// </remarks>
+public sealed class DepMissing
 {
-  internal _alpm_depmissing_t* BackingStruct = backingStruct;
-
-  public static DepMissing Factory(void* ptr) => new((_alpm_depmissing_t*)ptr);
-
-  public readonly Depend? Depend = new(backingStruct->depend);
-
-  private bool _disposed;
-
-  protected void ThrowIfDisposed()
+  private DepMissing(string? target, string? causingPkg, Depend? depend)
   {
-    throw new ObjectDisposedException(GetType().FullName);
+    Target = target;
+    CausingPkg = causingPkg;
+    Depend = depend;
   }
 
-  public string? CausingPkg
-  {
-    get
-    {
-      ThrowIfDisposed();
-      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->causingpkg);
-      return field;
-    }
-  }
-  public string? Target
-  {
-    get
-    {
-      ThrowIfDisposed();
-      field ??= Marshal.PtrToStringUTF8((IntPtr)BackingStruct->target);
-      return field;
-    }
-  }
+  internal static unsafe DepMissing FromNative(_alpm_depmissing_t* native)
+    => new(Marshal.PtrToStringUTF8((nint)native->target),
+      Marshal.PtrToStringUTF8((nint)native->causingpkg),
+      native->depend != null ? Depend.Snapshot(native->depend) : null);
 
-  public void Dispose()
-  {
-    GC.SuppressFinalize(this);
-    Dispose(disposing: true);
-  }
+  public Depend? Depend { get; }
 
-  protected virtual void Dispose(bool disposing)
-  {
-    if (!_disposed)
-    {
-      if (disposing)
-      {
-        // dispose managed state (managed objects)
-        Depend?.Dispose();
-      }
-      NativeMethods.alpm_depmissing_free(BackingStruct);
-      _disposed = true;
-    }
-  }
+  public string? CausingPkg { get; }
 
-  ~DepMissing() => Dispose(disposing: false);
+  public string? Target { get; }
 }
 
 public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposable
 {
-  internal _alpm_fileconflict_t* BackingStruct = backingStruct;
+  internal readonly _alpm_fileconflict_t* BackingStruct = backingStruct;
 
   public static FileConflict Factory(void* ptr) => new((_alpm_fileconflict_t*)ptr);
 
@@ -138,7 +118,7 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
 
   protected void ThrowIfDisposed()
   {
-    throw new ObjectDisposedException(GetType().FullName);
+    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
   }
 
   public string? Ctarget
@@ -193,19 +173,24 @@ public unsafe class FileConflict(_alpm_fileconflict_t* backingStruct) : IDisposa
 
 public unsafe class Conflict(_alpm_conflict_t* backingStruct) : IDisposable
 {
-  internal _alpm_conflict_t* BackingStruct = backingStruct;
+  internal readonly _alpm_conflict_t* BackingStruct = backingStruct;
 
   public static Conflict Factory(void* ptr) => new((_alpm_conflict_t*)ptr);
 
   public Package Package1 = new(backingStruct->package1);
   public Package Package2 = new(backingStruct->package2);
+
+  /// <summary>
+  /// The conflicting dependency. Borrowed from the conflict struct: it is released by
+  /// <c>alpm_conflict_free</c>, not by this type.
+  /// </summary>
   public Depend Reason = new(backingStruct->reason);
 
   private bool _disposed;
 
   protected void ThrowIfDisposed()
   {
-    throw new ObjectDisposedException(GetType().FullName);
+    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
   }
 
 
@@ -224,7 +209,6 @@ public unsafe class Conflict(_alpm_conflict_t* backingStruct) : IDisposable
         // dispose managed state (managed objects)
         Package1.Dispose();
         Package2.Dispose();
-        Reason.Dispose();
       }
       NativeMethods.alpm_conflict_free(BackingStruct);
       _disposed = true;

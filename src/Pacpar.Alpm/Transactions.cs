@@ -96,18 +96,38 @@ public class Transactions : IDisposable
     if (_released) throw new ObjectDisposedException(GetType().FullName);
   }
 
-  public unsafe AlpmList<DepMissing> Prepare()
+  /// <summary>
+  /// Prepares the transaction and returns the missing dependencies, if any.
+  /// </summary>
+  /// <remarks>
+  /// libalpm dumps a caller-owned list of <c>alpm_depmissing_t</c> into the output parameter, so the
+  /// list is copied into managed <see cref="DepMissing"/> snapshots and freed here — list and
+  /// elements both, following the <c>FREELIST</c> recipe from <c>man 3 libalpm_list</c>.
+  /// </remarks>
+  public unsafe IReadOnlyList<DepMissing> Prepare()
   {
     ThrowIfDisposed();
-    var depmissing = new AlpmList<DepMissing>(&DepMissing.Factory);
-    fixed (_alpm_list_t** list = &depmissing.AlpmListNative)
+
+    _alpm_list_t* list = null;
+    try
     {
-      var err = NativeMethods.alpm_trans_prepare((byte*)_library.Handle, list);
+      var err = NativeMethods.alpm_trans_prepare((byte*)_library.Handle, &list);
       if (err != 0)
       {
         throw _library.GetCurrentError()!;
       }
-      return depmissing;
+
+      var result = new List<DepMissing>();
+      for (var node = list; node != null; node = NativeMethods.alpm_list_next(node))
+      {
+        result.Add(DepMissing.FromNative((_alpm_depmissing_t*)node->data));
+      }
+
+      return result;
+    }
+    finally
+    {
+      AlpmNativeList.Free(list, &MemoryManagement.DepMissingFreeExtern);
     }
   }
 
@@ -151,25 +171,34 @@ public class Transactions : IDisposable
     }
   }
 
-  public unsafe AlpmStringList Commit()
+  /// <summary>
+  /// Commits the transaction. On success the (usually empty) list of error descriptions is returned.
+  /// </summary>
+  /// <remarks>
+  /// libalpm dumps a caller-owned, <c>malloc</c>-allocated string list into the output parameter, so
+  /// its contents are copied into a managed collection and the list is freed here — on the error
+  /// path too, which previously leaked it.
+  /// </remarks>
+  public unsafe IReadOnlyList<string> Commit()
   {
     ThrowIfDisposed();
-    var errorMessages = new AlpmStringList(AlpmStringListAllocPattern.FFI);
-    fixed (_alpm_list_t** list = &errorMessages.AlpmListNative)
+
+    _alpm_list_t* messages = null;
+    var err = NativeMethods.alpm_trans_commit((byte*)_library.Handle, &messages);
+    if (err != 0)
     {
-      var err = NativeMethods.alpm_trans_commit((byte*)_library.Handle, list);
-      if (err != 0)
-      {
-        throw _library.GetCurrentError()!;
-      }
-      return errorMessages;
+      AlpmNativeList.Free(messages, &MemoryManagement.CFreeExtern);
+      throw _library.GetCurrentError()!;
     }
+
+    return AlpmStringList.TakeOwned(messages, &MemoryManagement.CFreeExtern);
   }
 
   public unsafe AlpmList<Package> GetAddedPackages()
   {
     ThrowIfDisposed();
-    return new AlpmList<Package>(NativeMethods.alpm_trans_get_add((byte*)_library.Handle), &Package.FactoryFromDatabase);
+    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_add((byte*)_library.Handle),
+      &Package.FactoryFromDatabase);
   }
 
   public unsafe TransactionFlags GetFlags()
@@ -181,7 +210,8 @@ public class Transactions : IDisposable
   public unsafe AlpmList<Package> GetRemovedPackages()
   {
     ThrowIfDisposed();
-    return new AlpmList<Package>(NativeMethods.alpm_trans_get_remove((byte*)_library.Handle), &Package.FactoryFromDatabase);
+    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_remove((byte*)_library.Handle),
+      &Package.FactoryFromDatabase);
   }
 
   public void Dispose()

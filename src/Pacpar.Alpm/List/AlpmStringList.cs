@@ -1,78 +1,48 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm.List;
 
 /// <summary>
-/// Indicates the allocation pattern of strings wrapped by AlpmStringList
+/// Read-only view over an <c>alpm_list_t</c> of C strings.
 /// </summary>
-public enum AlpmStringListAllocPattern
+/// <remarks>
+/// This is a borrowed view only: it never frees the list nor any of its strings, so callers must
+/// not dispose it (it is not disposable). Strings libalpm owns internally — for example the
+/// results of <c>alpm_db_get_servers</c>, <c>alpm_pkg_get_licenses</c> or
+/// <c>alpm_option_get_cachedirs</c> — are the normal case.
+/// <para>
+/// Lists whose strings the caller must free are not exposed as this type. They are copied into a
+/// managed collection and freed by the method that produced them; see
+/// <see cref="TakeOwned"/>.
+/// </para>
+/// </remarks>
+public sealed class AlpmStringList : AlpmList<string>
 {
-  /// <summary>
-  /// Indicates that we do not free any of the content,
-  /// not even the list itself. usually happens when the caller
-  /// manages the list. This is also the default.
-  /// </summary>
-  NO_FREE = 0,
-
-  /// <summary>
-  /// Indicate that we will free the list itself,
-  /// but not the inner string content, usually happens
-  /// when the content should be freed by the caller
-  /// who passes in the list.
-  /// </summary>
-  NO_FREE_INNER = 1,
-
-  /// <summary>
-  /// Indicates that we should free the content
-  /// by the allocator across FFI boundary, i.e. the C free().
-  /// Usually happens when callee is responsible for freeing the content.
-  /// </summary>
-  FFI = 2,
-
-  /// <summary>
-  /// Indicates that we should free the content
-  /// by the .NET CLR Unmanaged Allocator.
-  /// Usually happens when we created the list ourselves.
-  /// </summary>
-  DOT_NET = 3,
-}
-
-public unsafe class AlpmStringList : AlpmList<string>
-{
-  private readonly AlpmStringListAllocPattern _allocPattern;
-
-  public AlpmStringList(_alpm_list_t* alpmList,
-    AlpmStringListAllocPattern allocPattern = AlpmStringListAllocPattern.NO_FREE) : base(alpmList, &StringFactory,
-    allocPattern != AlpmStringListAllocPattern.NO_FREE)
+  public unsafe AlpmStringList(_alpm_list_t* alpmList) : base(alpmList, &StringFactory)
   {
-    this._allocPattern = allocPattern;
   }
 
-  public AlpmStringList(AlpmStringListAllocPattern allocPattern = AlpmStringListAllocPattern.NO_FREE) : base(
-    &StringFactory)
+  public unsafe AlpmStringList() : base(null, &StringFactory)
   {
-    this._allocPattern = allocPattern;
   }
 
-  protected override void Dispose(bool disposing)
+  private static unsafe string StringFactory(void* data) => Marshal.PtrToStringAnsi((nint)data) ?? string.Empty;
+
+  /// <summary>
+  /// Takes ownership of a list libalpm allocated for the caller, copies its strings into a managed
+  /// collection, then frees the list and (through <paramref name="innerFree"/>) its strings.
+  /// </summary>
+  /// <param name="list">List the caller owns. May be <c>null</c>.</param>
+  /// <param name="innerFree">
+  /// Required destructor for the strings. Pass <c>MemoryManagement.CFreeExtern</c> for strings
+  /// libalpm allocated with <c>malloc</c>/<c>strdup</c> — this is the <c>FREELIST</c> recipe from
+  /// <c>man 3 libalpm_list</c>.
+  /// </param>
+  internal static unsafe IReadOnlyList<string> TakeOwned(_alpm_list_t* list, delegate* unmanaged[Cdecl]<void*, void> innerFree)
   {
-    if (!Disposed)
-    {
-      switch (_allocPattern)
-      {
-        case AlpmStringListAllocPattern.FFI:
-          NativeMethods.alpm_list_free_inner(AlpmListNative, &MemoryManagement.CFreeExtern);
-          break;
-        case AlpmStringListAllocPattern.DOT_NET:
-          NativeMethods.alpm_list_free_inner(AlpmListNative, &MemoryManagement.UnmanagedFreeExtern);
-          break;
-        // No-op for NoFree or any other case
-      }
-    }
-
-    base.Dispose(disposing);
+    using var owned = new AlpmOwnedList<string>(list, &StringFactory, innerFree);
+    return owned.ToArray();
   }
-
-  private static string StringFactory(void* data) => Marshal.PtrToStringAnsi((nint)data) ?? string.Empty;
 }

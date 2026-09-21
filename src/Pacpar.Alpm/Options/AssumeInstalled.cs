@@ -13,32 +13,36 @@ internal class AssumeInstalled : ICollection<Depend>
     _handle = handle;
   }
 
-  private unsafe AlpmList<Depend> BackingList => new(NativeMethods.alpm_option_get_assumeinstalled(_handle), &Depend.Factory, false);
+  private unsafe AlpmList<Depend> BackingList => Depend.ListFactory(NativeMethods.alpm_option_get_assumeinstalled(_handle));
 
   public bool IsReadOnly => false;
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_assumeinstalled(_handle));
 
-  public AlpmList<Depend>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+  public AlpmList<Depend>.Enumerator GetEnumerator() => BackingList.GetEnumerator();
 
   IEnumerator<Depend> IEnumerable<Depend>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
   public unsafe void Add(Depend item)
   {
-    var err = NativeMethods.alpm_option_add_assumeinstalled(_handle, item.BackingStruct);
+    var err = NativeMethods.alpm_option_add_assumeinstalled(_handle, item.NativePtrOrThrow(nameof(item)));
     if (err != 0) throw ErrorHandler.GetException(NativeMethods.alpm_errno(_handle))!;
   }
 
   public unsafe bool Contains(Depend item)
   {
     var itemPtr = item.BackingStruct;
+    if (itemPtr == null) return false;
+
     var optionsList = NativeMethods.alpm_option_get_assumeinstalled(_handle);
     return NativeMethods.alpm_list_find_ptr(optionsList, itemPtr) == itemPtr;
   }
 
   public unsafe bool Remove(Depend item)
   {
+    if (item.BackingStruct == null) return false;
+
     var itemPtr = item.BackingStruct;
     var err = NativeMethods.alpm_option_remove_assumeinstalled(_handle, itemPtr);
     return err == 0;

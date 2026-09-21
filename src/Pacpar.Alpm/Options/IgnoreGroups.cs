@@ -21,7 +21,7 @@ internal class IgnoreGroups : ICollection<string>
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_ignoregroups(_handle));
 
   // ReSharper disable once MemberCanBePrivate.Global
-  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetEnumerator();
 
   IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

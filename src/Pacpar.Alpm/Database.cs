@@ -19,14 +19,14 @@ public unsafe class Database(byte* backingStruct)
     return new Package(pkg);
   }
 
-  public AlpmDisposableList<Package> GetPackageCache()
+  public AlpmList<Package> GetPackageCache()
   {
     var pkgCache = NativeMethods.alpm_db_get_pkgcache(backingStruct);
     if ((nint)pkgCache == IntPtr.Zero)
     {
       throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
     }
-    return new AlpmDisposableList<Package>(pkgCache, &Package.FactoryFromDatabase);
+    return AlpmList<Package>.Borrow(pkgCache, &Package.FactoryFromDatabase);
   }
 
   public AlpmStringList GetServers()
@@ -65,7 +65,7 @@ public unsafe class Database(byte* backingStruct)
     {
       throw ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle))!;
     }
-    return new AlpmList<Group>(groupCache, &Group.Factory);
+    return AlpmList<Group>.Borrow(groupCache, &Group.Factory);
   }
 
   public nint Handle => (nint)NativeMethods.alpm_db_get_handle(backingStruct);

@@ -32,9 +32,11 @@ public sealed class AlpmInitializationTests(AlpmEnvironmentFixture fixture)
   public void GetSyncDatabases_ReturnsEmptyList_WhenNoSyncDatabasesRegistered()
   {
     using var alpm = fixture.CreateAlpm();
-    using var databases = alpm.GetSyncDatabases();
 
-    Assert.Equal(0, databases.Count);
+    // Borrowed view: the list is owned by the handle, so there is nothing to dispose here.
+    var databases = alpm.GetSyncDatabases();
+
+    Assert.Empty(databases);
   }
 
   [Fact]

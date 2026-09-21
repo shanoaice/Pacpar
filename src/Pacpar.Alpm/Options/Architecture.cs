@@ -20,7 +20,7 @@ internal class Architecture : ICollection<string>
 
   public unsafe int Count => (int)NativeMethods.alpm_list_count(NativeMethods.alpm_option_get_architectures(_handle));
 
-  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetOwningEnumerator();
+  public AlpmList<string>.Enumerator GetEnumerator() => BackingList.GetEnumerator();
 
   IEnumerator<string> IEnumerable<string>.GetEnumerator() => GetEnumerator();
 

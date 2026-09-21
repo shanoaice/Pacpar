@@ -1,60 +1,64 @@
 using System.Collections;
+using System.Runtime.CompilerServices;
 using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm.List;
 
 /// <summary>
-/// Wraps an alpm_list_t from libalpm.
+/// Read-only view over an <c>alpm_list_t</c>.
 /// </summary>
-/// <typeparam name="T"></typeparam>
-public class AlpmList<T> : IDisposable, IReadOnlyList<T>
+/// <remarks>
+/// Ownership contract: <b>this type never owns the underlying list and never frees it.</b>
+/// It is used for lists libalpm owns internally (for example <c>alpm_get_syncdbs</c>,
+/// <c>alpm_db_get_pkgcache</c>, <c>alpm_pkg_get_depends</c>) and for caller-built lists that
+/// libalpm only borrows (the <c>alpm_option_set_*</c>/<c>alpm_db_set_servers</c> family, whose
+/// documentation states "the list will be duped and the original will still need to be freed by
+/// the caller").
+/// <para>
+/// Because a borrowed view cannot free, it deliberately does not implement
+/// <see cref="IDisposable"/> and has no finalizer: freeing library-owned memory from a GC
+/// callback is impossible by construction. Lists that the caller <i>must</i> free are either
+/// materialized into a managed collection inside the method that produced them, or wrapped in
+/// <see cref="AlpmOwnedList{T}"/> for the duration of that method.
+/// </para>
+/// </remarks>
+public abstract class AlpmList<T> : IReadOnlyList<T>
 {
-  internal unsafe _alpm_list_t* AlpmListNative;
-
-  // ReSharper disable once MemberCanBePrivate.Global
+  internal readonly unsafe _alpm_list_t* Native;
   internal readonly unsafe delegate*<void*, T> Factory;
-  protected bool Disposed;
-  private readonly bool _ownsList;
 
-  /// <summary>
-  /// Wraps an existing alpm_list_t* owned by libalpm (across FFI boundaries).
-  /// *Note*: This is intended for internal wrapping only.
-  /// </summary>
-  /// <param name="alpmList">existing alpm_list_t*</param>
-  /// <param name="factory">factory function to covert void* to T</param>
-  /// <param name="ownsList">whether .NET owns / frees the list</param>
-  internal unsafe AlpmList(_alpm_list_t* alpmList, delegate*<void*, T> factory, bool ownsList = true)
+  private protected unsafe AlpmList(_alpm_list_t* list, delegate*<void*, T> factory)
   {
-    AlpmListNative = alpmList;
+    Native = list;
     Factory = factory;
-    _ownsList = ownsList;
   }
 
   /// <summary>
-  /// Creates and wraps a new alpm_list_t* list head, owned by dotnet.
-  /// Note that subsequent list is probably owned across FFI boundaries
-  /// when sent to libalpm for item dumping, thus we only own the head.
-  /// The data is also probably owned by libalpm.
+  /// Wraps an existing <c>alpm_list_t</c> that this library does not own and must not free.
   /// </summary>
-  /// <param name="factory">factory function to covert void* to T</param>
-  public unsafe AlpmList(delegate*<void*, T> factory)
-  {
-    Factory = factory;
-    AlpmListNative = (_alpm_list_t*)IntPtr.Zero;
-    _ownsList = true;
-  }
+  /// <param name="list">The list to view. May be <c>null</c>, which yields an empty view.</param>
+  /// <param name="factory">Converts one native list item into <typeparamref name="T"/>.</param>
+  public static unsafe AlpmList<T> Borrow(_alpm_list_t* list, delegate*<void*, T> factory)
+    => new AlpmBorrowedList<T>(list, factory);
 
-  private void ThrowIfDisposed()
+  /// <summary>
+  /// A forward-only enumerator over the borrowed list. Disposing it only stops enumeration;
+  /// it never releases the underlying list.
+  /// </summary>
+  public unsafe struct Enumerator : IEnumerator<T>
   {
-    ObjectDisposedException.ThrowIf(Disposed, this);
-  }
-
-  public unsafe struct Enumerator(AlpmList<T> alpmList, bool disposeParent = false)
-    : IEnumerator<T>
-  {
-    private _alpm_list_t* _current = null;
-    private bool _started = false;
+    private readonly AlpmList<T> _list;
+    private _alpm_list_t* _current;
+    private bool _started;
     private bool _disposed;
+
+    internal Enumerator(AlpmList<T> list)
+    {
+      _list = list;
+      _current = null;
+      _started = false;
+      _disposed = false;
+    }
 
     public T Current
     {
@@ -62,16 +66,17 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
       {
         if (_disposed) throw new ObjectDisposedException(GetType().FullName);
         if (!_started || _current == null) throw new InvalidOperationException();
-        return alpmList.Factory(_current->data);
+        return _list.Factory(_current->data);
       }
     }
 
     public bool MoveNext()
     {
       if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+
       if (!_started)
       {
-        _current = alpmList.AlpmListNative;
+        _current = _list.Native;
         _started = true;
       }
       else if (_current != null)
@@ -91,71 +96,119 @@ public class AlpmList<T> : IDisposable, IReadOnlyList<T>
 
     public void Dispose()
     {
-      if (_disposed) return;
-      if (disposeParent) alpmList.Dispose();
-
       _disposed = true;
     }
 
     object IEnumerator.Current => Current!;
   }
 
-  public void Dispose()
-  {
-    Dispose(disposing: true);
-    GC.SuppressFinalize(this);
-  }
-
-  protected virtual unsafe void Dispose(bool disposing)
-  {
-    if (Disposed) return;
-    if (disposing)
-    {
-      // dispose managed state (managed objects)
-    }
-
-    if (_ownsList) NativeMethods.alpm_list_free(AlpmListNative);
-    AlpmListNative = null;
-
-    Disposed = true;
-  }
-
-  ~AlpmList()
-  {
-    Dispose(disposing: false);
-  }
-
-  public Enumerator GetEnumerator()
-  {
-    ThrowIfDisposed();
-    return new Enumerator(this);
-  }
-
-  public Enumerator GetOwningEnumerator()
-  {
-    ThrowIfDisposed();
-    return new Enumerator(this, true);
-  }
+  public Enumerator GetEnumerator() => new(this);
 
   IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
 
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-  public unsafe int Count
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return (int)NativeMethods.alpm_list_count(AlpmListNative);
-    }
-  }
+  public unsafe int Count => (int)NativeMethods.alpm_list_count(Native);
 
   public unsafe T this[int index]
   {
     get
     {
-      ThrowIfDisposed();
-      return Factory(NativeMethods.alpm_list_nth(AlpmListNative, (nuint)index));
+      ArgumentOutOfRangeException.ThrowIfNegative(index);
+      if (index >= Count) throw new ArgumentOutOfRangeException(nameof(index));
+
+      // alpm_list_nth returns the *node* for index n, so the item is node->data.
+      // Handing the node pointer to the factory instead was a long-standing bug.
+      return Factory(NativeMethods.alpm_list_nth(Native, (nuint)index)->data);
     }
+  }
+
+  /// <summary>
+  /// Materializes the view into a managed array. Useful when the underlying list is about to be
+  /// freed but its contents are still needed.
+  /// </summary>
+  public T[] ToArray()
+  {
+    var count = Count;
+    var result = new T[count];
+    for (var i = 0; i < count; ++i)
+    {
+      result[i] = this[i];
+    }
+
+    return result;
+  }
+}
+
+/// <summary>
+/// Concrete borrowed view produced by <see cref="AlpmList{T}.Borrow"/>.
+/// </summary>
+internal sealed class AlpmBorrowedList<T> : AlpmList<T>
+{
+  internal unsafe AlpmBorrowedList(_alpm_list_t* list, delegate*<void*, T> factory) : base(list, factory)
+  {
+  }
+}
+
+/// <summary>
+/// The single place in this library that frees native <c>alpm_list_t</c> memory.
+/// </summary>
+/// <remarks>
+/// Keeping <c>alpm_list_free</c>/<c>alpm_list_free_inner</c> here makes the ownership rule greppable:
+/// a list is freed only where the caller is documented to own it, never from a borrowed view.
+/// </remarks>
+internal static class AlpmNativeList
+{
+  /// <summary>
+  /// Frees a caller-owned list and optionally its elements. Safe with a <c>null</c> list.
+  /// </summary>
+  /// <param name="list">List the caller owns, or <c>null</c>.</param>
+  /// <param name="innerFree">
+  /// Element destructor, or <c>null</c> when the elements are owned elsewhere.
+  /// </param>
+  internal static unsafe void Free(_alpm_list_t* list, delegate* unmanaged[Cdecl]<void*, void> innerFree)
+  {
+    if (list == null) return;
+
+    if (innerFree != null) NativeMethods.alpm_list_free_inner(list, innerFree);
+    NativeMethods.alpm_list_free(list);
+  }
+}
+
+/// <summary>
+/// A list the caller owns and must free.
+/// </summary>
+/// <remarks>
+/// This is the only <i>type</i> in this library whose use results in <c>alpm_list_free</c>. The
+/// element destructor is a required constructor argument on purpose: there is no default, so every
+/// call site has to state how the elements are freed (or pass <c>null</c> for "elements are owned
+/// elsewhere").
+/// <para>
+/// There is no finalizer: a missed <see cref="Dispose"/> leaks memory, which is strictly safer
+/// than freeing native memory at an unpredictable GC point.
+/// </para>
+/// </remarks>
+internal sealed class AlpmOwnedList<T> : AlpmList<T>, IDisposable
+{
+  private readonly unsafe delegate* unmanaged[Cdecl]<void*, void> _innerFree;
+  private bool _disposed;
+
+  /// <param name="list">Caller-owned list, or <c>null</c>.</param>
+  /// <param name="factory">Converts one native list item into <typeparamref name="T"/>.</param>
+  /// <param name="innerFree">
+  /// Required element destructor, or <c>null</c> when the elements are owned elsewhere.
+  /// </param>
+  internal unsafe AlpmOwnedList(_alpm_list_t* list, delegate*<void*, T> factory,
+    delegate* unmanaged[Cdecl]<void*, void> innerFree) : base(list, factory)
+  {
+    _innerFree = innerFree;
+  }
+
+  public unsafe void Dispose()
+  {
+    if (_disposed) return;
+
+    AlpmNativeList.Free(Native, _innerFree);
+    _disposed = true;
   }
 }

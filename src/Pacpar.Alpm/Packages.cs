@@ -324,7 +324,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public AlpmDisposableList<Depend> Depends
+  public AlpmList<Depend> Depends
   {
     get
     {
@@ -333,7 +333,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public AlpmDisposableList<Depend> OptionalDepends
+  public AlpmList<Depend> OptionalDepends
   {
     get
     {
@@ -342,7 +342,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public AlpmDisposableList<Depend> CheckDepends
+  public AlpmList<Depend> CheckDepends
   {
     get
     {
@@ -351,7 +351,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public AlpmDisposableList<Depend> MakeDepends
+  public AlpmList<Depend> MakeDepends
   {
     get
     {
@@ -360,7 +360,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public AlpmDisposableList<Depend> Conflicts
+  public AlpmList<Depend> Conflicts
   {
     get
     {
@@ -369,7 +369,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public AlpmDisposableList<Depend> Provides
+  public AlpmList<Depend> Provides
   {
     get
     {
@@ -378,7 +378,7 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
     }
   }
 
-  public AlpmDisposableList<Depend> Replaces
+  public AlpmList<Depend> Replaces
   {
     get
     {
@@ -409,16 +409,29 @@ public unsafe class Package(byte* backingStruct, bool fromDatabase = true) : IDi
 
   // TODO: CHANGELOG
 
-  public AlpmStringList GetRequiredBy()
+  /// <summary>
+  /// Packages that require this package.
+  /// </summary>
+  /// <remarks>
+  /// libalpm computes this on demand and the caller owns the result ("a newly allocated list of
+  /// package names (char*), it should be freed by the caller"), so the names are copied into a
+  /// managed collection and the list plus its strings are freed here.
+  /// </remarks>
+  public IReadOnlyList<string> GetRequiredBy()
   {
     ThrowIfDisposed();
-    return new AlpmStringList(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct));
+    return AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct),
+      &MemoryManagement.CFreeExtern);
   }
 
-  public AlpmStringList GetOptionalFor()
+  /// <summary>
+  /// Packages that optionally require this package. See <see cref="GetRequiredBy"/> for ownership.
+  /// </summary>
+  public IReadOnlyList<string> GetOptionalFor()
   {
     ThrowIfDisposed();
-    return new AlpmStringList(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct));
+    return AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct),
+      &MemoryManagement.CFreeExtern);
   }
 
   public string? Base64Signature

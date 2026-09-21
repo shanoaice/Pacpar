@@ -140,7 +140,7 @@ public class Alpm : IDisposable
     var syncDatabases = NativeMethods.alpm_get_syncdbs(_handle);
     return *_errno != _alpm_errno_t.ALPM_ERR_OK
       ? throw ErrorHandler.GetException(*_errno)!
-      : new AlpmList<Database>(syncDatabases, &Database.Factory);
+      : AlpmList<Database>.Borrow(syncDatabases, &Database.Factory);
   }
 
   public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
