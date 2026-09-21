@@ -1,0 +1,17 @@
+FROM archlinux:base-devel
+
+RUN pacman -Syu --noconfirm \
+    && pacman -S --noconfirm --needed \
+      dotnet-sdk \
+      libalpm \
+      pkgconf \
+      rust \
+      cargo \
+      git \
+    && pacman -Scc --noconfirm
+
+WORKDIR /workspace
+
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_NOLOGO=1
+ENV PACPAR_ALPM_TEST_ENV=container
