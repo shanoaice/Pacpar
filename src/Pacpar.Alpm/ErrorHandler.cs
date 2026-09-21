@@ -1,42 +1,89 @@
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
-#pragma warning disable CA2208
-#pragma warning disable NotResolvedInText
 namespace Pacpar.Alpm;
 
 /// <summary>
-/// Represents exceptions during package handling (transactions).
-/// The corresponding package is available via the <see cref="Package"/> property.
-/// The corresponding errno is available via <see cref="Exception.InnerException"/>, in formatted exception form,
-/// or via <see cref="Errno"/>, in raw errno form.
-/// </summary>
-/// <param name="message"></param>
-/// <param name="package"></param>
-/// <param name="errno"></param>
-public class PackageException(string message, Package package, _alpm_errno_t errno) : Exception(message, ErrorHandler.GetException(errno))
-{
-  public Package Package => package;
-  public _alpm_errno_t Errno => errno;
-}
-
-/// <summary>
-/// A libalpm error whose errno has no more specific .NET exception mapping.
+/// The base type for every error libalpm reports.
 /// </summary>
 /// <remarks>
-/// The errno is known — only the .NET exception type is generic. Carrying the raw errno plus
-/// libalpm's own message keeps an error introduced by a newer libalpm diagnosable instead of
-/// turning into a null dereference at the throw site.
+/// C# has no <c>Result&lt;T, E&gt;</c> and a type cannot be both a BCL exception and this library's
+/// exception (single inheritance), so libalpm errors get one catchable base carrying the raw errno
+/// and libalpm's own message. <see cref="Errno"/> is always set: branch on it, not on the type,
+/// when the distinction matters.
+/// <para>
+/// The one deliberate exception to "everything derives from this": <c>ALPM_ERR_MEMORY</c> surfaces
+/// as <see cref="OutOfMemoryException"/>, because allocation failure is a runtime condition that
+/// should not be swallowed by a catch-all.
+/// </para>
 /// </remarks>
-public class AlpmException(string message, _alpm_errno_t errno, string? strError) : Exception(message)
+public class AlpmException : Exception
 {
-  /// <summary>The raw libalpm errno.</summary>
-  public _alpm_errno_t Errno { get; } = errno;
+  /// <summary>
+  /// Creates the exception for <paramref name="errno"/>.
+  /// </summary>
+  /// <param name="errno">The raw libalpm error code.</param>
+  /// <param name="strError">libalpm's message; defaults to <c>alpm_strerror(errno)</c> when omitted.</param>
+  /// <param name="context">Optional operation description, e.g. "Failed to add package: foo".</param>
+  /// <param name="inner">Optional inner exception.</param>
+  public AlpmException(_alpm_errno_t errno, string? strError = null, string? context = null, Exception? inner = null)
+    : base(BuildMessage(errno, strError ?? ErrorHandler.StrError(errno), context), inner)
+  {
+    Errno = errno;
+    StrError = strError ?? ErrorHandler.StrError(errno);
+  }
 
-  /// <summary>libalpm's own description of <see cref="Errno"/>, or <c>null</c>.</summary>
-  public string? StrError { get; } = strError;
+  /// <summary>The raw libalpm errno.</summary>
+  public _alpm_errno_t Errno { get; }
+
+  /// <summary>libalpm's own description of <see cref="Errno"/> (<c>alpm_strerror</c>), if any.</summary>
+  public string? StrError { get; }
+
+  private static string BuildMessage(_alpm_errno_t errno, string? strError, string? context)
+  {
+    var detail = string.IsNullOrEmpty(strError) ? errno.ToString() : $"{errno}: {strError}";
+
+    return string.IsNullOrEmpty(context) ? detail : $"{context} ({detail})";
+  }
 }
 
+/// <summary>An error from libalpm's database handling (<c>ALPM_ERR_DB_*</c>).</summary>
+public class AlpmDatabaseException(_alpm_errno_t errno, string? strError = null, string? context = null)
+  : AlpmException(errno, strError, context);
+
+/// <summary>An error from libalpm's transaction handling (<c>ALPM_ERR_TRANS_*</c>).</summary>
+public class AlpmTransactionException(_alpm_errno_t errno, string? strError = null, string? context = null)
+  : AlpmException(errno, strError, context);
+
+/// <summary>
+/// An error concerning a package (<c>ALPM_ERR_PKG_*</c>).
+/// </summary>
+/// <remarks>
+/// <see cref="Package"/> is set when the failing call already knew the package it was operating on;
+/// the errno-driven factory cannot fill it in.
+/// </remarks>
+public class AlpmPackageException(
+  _alpm_errno_t errno,
+  string? strError = null,
+  Package? package = null,
+  string? context = null)
+  : AlpmException(errno, strError, context)
+{
+  /// <summary>The package the failed call was operating on, when known.</summary>
+  public Package? Package { get; } = package;
+}
+
+/// <summary>A signature or keyring error (<c>ALPM_ERR_SIG_*</c>, missing signature support).</summary>
+public class AlpmSignatureException(_alpm_errno_t errno, string? strError = null, string? context = null)
+  : AlpmException(errno, strError, context);
+
+/// <summary>A download or retrieval error (<c>ALPM_ERR_RETRIEVE*</c>, libcurl, external downloader).</summary>
+public class AlpmRetrieveException(_alpm_errno_t errno, string? strError = null, string? context = null)
+  : AlpmException(errno, strError, context);
+
+/// <summary>
+/// Turns libalpm errnos into exceptions.
+/// </summary>
 public static class ErrorHandler
 {
   /// <summary>
@@ -44,16 +91,10 @@ public static class ErrorHandler
   /// <see cref="_alpm_errno_t.ALPM_ERR_OK"/> (there is no error to report).
   /// </summary>
   /// <remarks>
-  /// Every non-OK value yields a non-null exception. An errno without a specific mapping — for
-  /// example one added by a libalpm newer than this switch — falls back to
-  /// <see cref="AlpmException"/>, so a forgotten sync after a libalpm update surfaces as a
-  /// diagnosable error instead of a <see cref="NullReferenceException"/> thrown by
-  /// <c>throw GetException(...)!</c>.
-  /// <para>
-  /// A libalpm update that adds an errno is caught by
-  /// <c>ErrorHandlerTests.GetException_MapsEveryKnownErrno_ToASpecificException</c>: an unmapped
-  /// enum member fails that test rather than silently taking the fallback.
-  /// </para>
+  /// Every non-OK value yields a non-null exception. An errno this library does not classify - for
+  /// example one added by a libalpm newer than <see cref="Categorize"/> - still yields a concrete
+  /// <see cref="AlpmException"/> carrying the errno and libalpm's message, instead of a
+  /// <see cref="NullReferenceException"/> from <c>throw GetException(...)!</c>.
   /// </remarks>
   public static Exception? GetException(_alpm_errno_t errno)
     => errno == _alpm_errno_t.ALPM_ERR_OK ? null : Create(errno);
@@ -71,82 +112,140 @@ public static class ErrorHandler
         "ALPM_ERR_OK is not an error; there is no exception to report.")
       : Create(errno);
 
+  /// <summary>
+  /// libalpm's description of <paramref name="errno"/>; <c>null</c> when there is none.
+  /// </summary>
+  internal static string? StrError(_alpm_errno_t errno) => StrErrorCore(errno);
+
+  private static unsafe string? StrErrorCore(_alpm_errno_t errno)
+  {
+    // alpm_strerror is bounds-checked: out-of-range values come back as "unexpected error".
+    return Marshal.PtrToStringUTF8((nint)NativeMethods.alpm_strerror(errno));
+  }
+
   private static Exception Create(_alpm_errno_t errno)
   {
-    return errno switch
+    var strError = StrError(errno);
+
+    return Categorize(errno) switch
     {
-      _alpm_errno_t.ALPM_ERR_MEMORY => new OutOfMemoryException(),
-      _alpm_errno_t.ALPM_ERR_BADPERMS => new UnauthorizedAccessException(),
-      _alpm_errno_t.ALPM_ERR_SYSTEM => new SystemException(),
-      _alpm_errno_t.ALPM_ERR_NOT_A_FILE => new ArgumentException("Path is not a file", "file"),
-      _alpm_errno_t.ALPM_ERR_NOT_A_DIR => new ArgumentException("Path is not a directory", "directory"),
-      _alpm_errno_t.ALPM_ERR_WRONG_ARGS => new ArgumentException("Wrong arguments", "arguments"),
-      _alpm_errno_t.ALPM_ERR_DISK_SPACE => new IOException("Not enough disk space"),
-      _alpm_errno_t.ALPM_ERR_HANDLE_NULL => new ArgumentNullException("handle"),
-      _alpm_errno_t.ALPM_ERR_HANDLE_NOT_NULL => new ArgumentException("handle"),
-      _alpm_errno_t.ALPM_ERR_HANDLE_LOCK => new IOException("Failed to acquire lock"),
-      _alpm_errno_t.ALPM_ERR_DB_OPEN => new IOException("Failed to open database"),
-      _alpm_errno_t.ALPM_ERR_DB_CREATE => new IOException("Failed to create database"),
-      _alpm_errno_t.ALPM_ERR_DB_NULL => new ArgumentNullException("database"),
-      _alpm_errno_t.ALPM_ERR_DB_NOT_NULL => new ArgumentException("database should be null", "database"),
-      _alpm_errno_t.ALPM_ERR_DB_NOT_FOUND => new FileNotFoundException("database not found"),
-      _alpm_errno_t.ALPM_ERR_DB_INVALID => new InvalidOperationException("database is invalid"),
-      _alpm_errno_t.ALPM_ERR_DB_INVALID_SIG => new InvalidOperationException("database signature is invalid"),
-      _alpm_errno_t.ALPM_ERR_DB_VERSION => new InvalidOperationException("The localdb is in a newer/older format than libalpm expects"),
-      _alpm_errno_t.ALPM_ERR_DB_WRITE => new IOException("Failed to write to database"),
-      _alpm_errno_t.ALPM_ERR_DB_REMOVE => new Exception("Failed to remove entry from database"),
-      _alpm_errno_t.ALPM_ERR_SERVER_BAD_URL => new UriFormatException("Server URL is in an invalid format"),
-      _alpm_errno_t.ALPM_ERR_SERVER_NONE => new InvalidOperationException("The database has no configured servers"),
-      _alpm_errno_t.ALPM_ERR_TRANS_NOT_NULL => new InvalidOperationException("A transaction is already initialized"),
-      _alpm_errno_t.ALPM_ERR_TRANS_NULL => new InvalidOperationException("A transaction has not been initialized"),
-      _alpm_errno_t.ALPM_ERR_TRANS_DUP_TARGET => new InvalidOperationException("Duplicate target in transaction"),
-      _alpm_errno_t.ALPM_ERR_TRANS_DUP_FILENAME => new InvalidOperationException("Duplicate filename in transaction"),
-      _alpm_errno_t.ALPM_ERR_TRANS_NOT_INITIALIZED => new InvalidOperationException("A transaction has not been initialized"),
-      _alpm_errno_t.ALPM_ERR_TRANS_NOT_PREPARED => new InvalidOperationException("Transaction has not been prepared"),
-      _alpm_errno_t.ALPM_ERR_TRANS_ABORT => new Exception("Transaction was aborted"),
-      _alpm_errno_t.ALPM_ERR_TRANS_TYPE => new Exception("Failed to interrupt transaction"),
-      _alpm_errno_t.ALPM_ERR_TRANS_NOT_LOCKED => new InvalidOperationException("Tried to commit transaction without locking the database"),
-      _alpm_errno_t.ALPM_ERR_TRANS_HOOK_FAILED => new Exception("A hook failed to run"),
-      _alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND => new FileNotFoundException("Package not found"),
-      _alpm_errno_t.ALPM_ERR_PKG_IGNORED => new Exception("Package is in ignorepkg"),
-      _alpm_errno_t.ALPM_ERR_PKG_INVALID => new InvalidOperationException("Package is invalid"),
-      _alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM => new Exception("Package has an invalid checksum"),
-      _alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG => new Exception("Package has an invalid signature"),
-      _alpm_errno_t.ALPM_ERR_PKG_MISSING_SIG => new Exception("Package does not have a signature"),
-      _alpm_errno_t.ALPM_ERR_PKG_OPEN => new IOException("Cannot open the package file"),
-      _alpm_errno_t.ALPM_ERR_PKG_CANT_REMOVE => new IOException("Failed to remove package files"),
-      _alpm_errno_t.ALPM_ERR_PKG_INVALID_NAME => new ArgumentException("Package has an invalid name"),
-      _alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH => new ArgumentException("Package has an invalid architecture"),
-      _alpm_errno_t.ALPM_ERR_SIG_MISSING => new Exception("Signatures are missing"),
-      _alpm_errno_t.ALPM_ERR_SIG_INVALID => new Exception("Signatures are invalid"),
-      _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS => new Exception("Dependencies could not be satisfied"),
-      _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS => new Exception("Conflicting dependencies"),
-      _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS => new IOException("Files conflict"),
-      // "Download setup failed" — introduced with libalpm 16; this mapping was missing.
-      _alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE => new IOException("Download setup failed"),
-      _alpm_errno_t.ALPM_ERR_RETRIEVE => new Exception("Download failed"),
-      _alpm_errno_t.ALPM_ERR_INVALID_REGEX => new ArgumentException("Invalid Regex"),
-      _alpm_errno_t.ALPM_ERR_LIBARCHIVE => new Exception("Error in libarchive"),
-      _alpm_errno_t.ALPM_ERR_LIBCURL => new Exception("Error in libcurl"),
-      _alpm_errno_t.ALPM_ERR_EXTERNAL_DOWNLOAD => new Exception("Error in external download program"),
-      _alpm_errno_t.ALPM_ERR_GPGME => new Exception("Error in gpgme"),
-      _alpm_errno_t.ALPM_ERR_MISSING_CAPABILITY_SIGNATURES => new NotSupportedException("Missing compile-time features"),
-      _ => Unknown(errno)
+      // The one BCL type kept on purpose: an allocation failure is not a library-domain error and
+      // must not be caught by a broad `catch (AlpmException)`.
+      AlpmErrorCategory.Memory => new OutOfMemoryException(strError),
+      AlpmErrorCategory.Database => new AlpmDatabaseException(errno, strError),
+      AlpmErrorCategory.Package => new AlpmPackageException(errno, strError),
+      AlpmErrorCategory.Transaction => new AlpmTransactionException(errno, strError),
+      AlpmErrorCategory.Signature => new AlpmSignatureException(errno, strError),
+      AlpmErrorCategory.Retrieve => new AlpmRetrieveException(errno, strError),
+      _ => new AlpmException(errno, strError)
     };
   }
 
   /// <summary>
-  /// Fallback for an errno without a specific mapping: carries the raw errno and libalpm's own
-  /// message so the failure stays diagnosable.
+  /// Classifies an errno into the exception type libalpm errors of that kind are reported as.
   /// </summary>
-  private static unsafe AlpmException Unknown(_alpm_errno_t errno)
+  /// <remarks>
+  /// Every errno known to the bindings must be listed here; only values this library does not know
+  /// return <see cref="AlpmErrorCategory.Unknown"/>, and
+  /// <c>ErrorHandlerTests.Categorize_ClassifiesEveryKnownErrno</c> fails when a libalpm update adds
+  /// one. That is what keeps the mapping in sync instead of letting new errnos degrade silently.
+  /// </remarks>
+  internal static AlpmErrorCategory Categorize(_alpm_errno_t errno)
   {
-    // alpm_strerror is bounds-checked: out-of-range values come back as "unexpected error".
-    var strError = Marshal.PtrToStringUTF8((nint)NativeMethods.alpm_strerror(errno));
+    return errno switch
+    {
+      _alpm_errno_t.ALPM_ERR_MEMORY => AlpmErrorCategory.Memory,
 
-    return new AlpmException(
-      $"libalpm error {(int)errno} \"{strError}\" has no specific .NET exception mapping.",
-      errno,
-      strError);
+      _alpm_errno_t.ALPM_ERR_DB_OPEN
+        or _alpm_errno_t.ALPM_ERR_DB_CREATE
+        or _alpm_errno_t.ALPM_ERR_DB_NULL
+        or _alpm_errno_t.ALPM_ERR_DB_NOT_NULL
+        or _alpm_errno_t.ALPM_ERR_DB_NOT_FOUND
+        or _alpm_errno_t.ALPM_ERR_DB_INVALID
+        or _alpm_errno_t.ALPM_ERR_DB_INVALID_SIG
+        or _alpm_errno_t.ALPM_ERR_DB_VERSION
+        or _alpm_errno_t.ALPM_ERR_DB_WRITE
+        or _alpm_errno_t.ALPM_ERR_DB_REMOVE => AlpmErrorCategory.Database,
+
+      _alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND
+        or _alpm_errno_t.ALPM_ERR_PKG_IGNORED
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG
+        or _alpm_errno_t.ALPM_ERR_PKG_MISSING_SIG
+        or _alpm_errno_t.ALPM_ERR_PKG_OPEN
+        or _alpm_errno_t.ALPM_ERR_PKG_CANT_REMOVE
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_NAME
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH => AlpmErrorCategory.Package,
+
+      _alpm_errno_t.ALPM_ERR_TRANS_NOT_NULL
+        or _alpm_errno_t.ALPM_ERR_TRANS_NULL
+        or _alpm_errno_t.ALPM_ERR_TRANS_DUP_TARGET
+        or _alpm_errno_t.ALPM_ERR_TRANS_DUP_FILENAME
+        or _alpm_errno_t.ALPM_ERR_TRANS_NOT_INITIALIZED
+        or _alpm_errno_t.ALPM_ERR_TRANS_NOT_PREPARED
+        or _alpm_errno_t.ALPM_ERR_TRANS_ABORT
+        or _alpm_errno_t.ALPM_ERR_TRANS_TYPE
+        or _alpm_errno_t.ALPM_ERR_TRANS_NOT_LOCKED
+        or _alpm_errno_t.ALPM_ERR_TRANS_HOOK_FAILED => AlpmErrorCategory.Transaction,
+
+      _alpm_errno_t.ALPM_ERR_SIG_MISSING
+        or _alpm_errno_t.ALPM_ERR_SIG_INVALID
+        or _alpm_errno_t.ALPM_ERR_MISSING_CAPABILITY_SIGNATURES => AlpmErrorCategory.Signature,
+
+      _alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE
+        or _alpm_errno_t.ALPM_ERR_RETRIEVE
+        or _alpm_errno_t.ALPM_ERR_LIBCURL
+        or _alpm_errno_t.ALPM_ERR_EXTERNAL_DOWNLOAD => AlpmErrorCategory.Retrieve,
+
+      // No dedicated category: still an AlpmException, with the errno and libalpm's message.
+      _alpm_errno_t.ALPM_ERR_BADPERMS
+        or _alpm_errno_t.ALPM_ERR_SYSTEM
+        or _alpm_errno_t.ALPM_ERR_NOT_A_FILE
+        or _alpm_errno_t.ALPM_ERR_NOT_A_DIR
+        or _alpm_errno_t.ALPM_ERR_WRONG_ARGS
+        or _alpm_errno_t.ALPM_ERR_DISK_SPACE
+        or _alpm_errno_t.ALPM_ERR_HANDLE_NULL
+        or _alpm_errno_t.ALPM_ERR_HANDLE_NOT_NULL
+        or _alpm_errno_t.ALPM_ERR_HANDLE_LOCK
+        or _alpm_errno_t.ALPM_ERR_SERVER_BAD_URL
+        or _alpm_errno_t.ALPM_ERR_SERVER_NONE
+        or _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS
+        or _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS
+        or _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS
+        or _alpm_errno_t.ALPM_ERR_INVALID_REGEX
+        or _alpm_errno_t.ALPM_ERR_LIBARCHIVE
+        or _alpm_errno_t.ALPM_ERR_GPGME => AlpmErrorCategory.Generic,
+
+      _ => AlpmErrorCategory.Unknown
+    };
   }
+}
+
+/// <summary>The exception type an errno's errors are reported as.</summary>
+internal enum AlpmErrorCategory
+{
+  /// <summary>Not known to this library (a libalpm newer than the bindings); reported as <see cref="AlpmException"/>.</summary>
+  Unknown,
+
+  /// <summary>No dedicated category; reported as <see cref="AlpmException"/>.</summary>
+  Generic,
+
+  /// <summary>Reported as <see cref="OutOfMemoryException"/>.</summary>
+  Memory,
+
+  /// <summary>Reported as <see cref="AlpmDatabaseException"/>.</summary>
+  Database,
+
+  /// <summary>Reported as <see cref="AlpmPackageException"/>.</summary>
+  Package,
+
+  /// <summary>Reported as <see cref="AlpmTransactionException"/>.</summary>
+  Transaction,
+
+  /// <summary>Reported as <see cref="AlpmSignatureException"/>.</summary>
+  Signature,
+
+  /// <summary>Reported as <see cref="AlpmRetrieveException"/>.</summary>
+  Retrieve
 }

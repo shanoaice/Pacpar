@@ -137,7 +137,7 @@ public class Transactions : IDisposable
     var err = NativeMethods.alpm_add_pkg((byte*)_library.Handle, pkg.BackingStruct);
     if (err != 0)
     {
-      throw new PackageException($"Failed to add package: {pkg.Name}", pkg, _library.Errno);
+      throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to add package: {pkg.Name}");
     }
   }
 
@@ -147,7 +147,7 @@ public class Transactions : IDisposable
     var err = NativeMethods.alpm_remove_pkg((byte*)_library.Handle, pkg.BackingStruct);
     if (err != 0)
     {
-      throw new PackageException($"Failed to remove package: {pkg.Name}", pkg, _library.Errno);
+      throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to remove package: {pkg.Name}");
     }
   }
 
