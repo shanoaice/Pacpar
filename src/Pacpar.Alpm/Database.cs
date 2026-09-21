@@ -19,33 +19,40 @@ public unsafe class Database(byte* backingStruct)
     return new Package(pkg);
   }
 
+  /// <summary>
+  /// The package cache of this database.
+  /// </summary>
+  /// <remarks>
+  /// A <c>null</c> native cache with an ok errno is a legitimately empty cache and yields an empty
+  /// view; any other errno is thrown. The view is borrowed and never frees the cache (see
+  /// <see cref="AlpmList{T}"/>).
+  /// </remarks>
   public AlpmList<Package> GetPackageCache()
   {
     var pkgCache = NativeMethods.alpm_db_get_pkgcache(backingStruct);
-    if ((nint)pkgCache == IntPtr.Zero)
-    {
-      throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)Handle));
-    }
+    ThrowIfErrnoSet();
     return AlpmList<Package>.Borrow(pkgCache, &Package.FactoryFromDatabase);
   }
 
+  /// <summary>
+  /// The servers configured for this database; empty when none are set.
+  /// </summary>
+  /// <remarks>The list is borrowed from the database and is never freed by the view.</remarks>
   public AlpmStringList GetServers()
   {
     var servers = NativeMethods.alpm_db_get_servers(backingStruct);
-    if (servers == null)
-    {
-      return new AlpmStringList();
-    }
+    ThrowIfErrnoSet();
     return new AlpmStringList(servers);
   }
 
+  /// <summary>
+  /// The cache servers configured for this database; empty when none are set.
+  /// </summary>
+  /// <remarks>The list is borrowed from the database and is never freed by the view.</remarks>
   public AlpmStringList GetCacheServers()
   {
     var servers = NativeMethods.alpm_db_get_cache_servers(backingStruct);
-    if (servers == null)
-    {
-      return new AlpmStringList();
-    }
+    ThrowIfErrnoSet();
     return new AlpmStringList(servers);
   }
 
@@ -58,13 +65,13 @@ public unsafe class Database(byte* backingStruct)
     return new Group(group);
   }
 
+  /// <summary>
+  /// The group cache of this database. See <see cref="GetPackageCache"/> for the null/errno rule.
+  /// </summary>
   public AlpmList<Group> GetGroupCache()
   {
     var groupCache = NativeMethods.alpm_db_get_groupcache(backingStruct);
-    if ((nint)groupCache == IntPtr.Zero)
-    {
-      throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)Handle));
-    }
+    ThrowIfErrnoSet();
     return AlpmList<Group>.Borrow(groupCache, &Group.Factory);
   }
 
@@ -80,10 +87,41 @@ public unsafe class Database(byte* backingStruct)
     if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)Handle));
   }
 
-  public (bool, Exception?) Validate()
+  /// <summary>
+  /// Whether this database is valid. Never throws: an invalid database is a normal answer.
+  /// </summary>
+  /// <remarks>libalpm reports validity as <c>0</c> == valid, <c>-1</c> == invalid.</remarks>
+  public bool IsValid => NativeMethods.alpm_db_get_valid(backingStruct) == 0;
+
+  /// <summary>
+  /// Validates this database, throwing when it is invalid.
+  /// </summary>
+  /// <remarks>
+  /// libalpm sets the handle errno when it reports an invalid database, and that errno becomes the
+  /// thrown exception's. Use <see cref="IsValid"/> when an invalid database is an expected answer
+  /// rather than an error.
+  /// </remarks>
+  public void Validate()
   {
-    var valid = NativeMethods.alpm_db_get_valid(backingStruct);
-    if (valid == 0) return (true, null);
-    return (false, ErrorHandler.GetException(NativeMethods.alpm_errno((byte*)Handle)));
+    if (IsValid) return;
+
+    var errno = NativeMethods.alpm_errno((byte*)Handle);
+    throw errno == _alpm_errno_t.ALPM_ERR_OK
+      ? new InvalidOperationException("The database is invalid but libalpm did not set an error code.")
+      : ErrorHandler.ToException(errno);
+  }
+
+  /// <summary>
+  /// Throws when libalpm set the handle errno.
+  /// </summary>
+  /// <remarks>
+  /// Used after a native call whose <c>null</c> return is legitimate when there is no error (an
+  /// empty list, for instance): <c>null</c> plus an ok errno means "empty", <c>null</c> plus an
+  /// errno means "failed".
+  /// </remarks>
+  private void ThrowIfErrnoSet()
+  {
+    var errno = NativeMethods.alpm_errno((byte*)Handle);
+    if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
   }
 }

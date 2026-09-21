@@ -108,9 +108,12 @@ public class AlpmOptions
     }
   }
 
-  public unsafe string LogFile
+  /// <summary>
+  /// The logfile path, or <c>null</c> when libalpm has none configured (its default).
+  /// </summary>
+  public unsafe string? LogFile
   {
-    get => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_option_get_logfile(_handle))!;
+    get => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_option_get_logfile(_handle));
     set
     {
       var ptr = Marshal.StringToHGlobalAnsi(value);
@@ -138,9 +141,12 @@ public class AlpmOptions
 
   public unsafe string Lockfile => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_option_get_lockfile(_handle))!;
 
-  public unsafe string GpgDirectory
+  /// <summary>
+  /// libalpm's GnuPG home directory, or <c>null</c> when it has none configured (its default).
+  /// </summary>
+  public unsafe string? GpgDirectory
   {
-    get => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_option_get_gpgdir(_handle))!;
+    get => Marshal.PtrToStringAnsi((nint)NativeMethods.alpm_option_get_gpgdir(_handle));
     set
     {
       var ptr = Marshal.StringToHGlobalAnsi(value);
