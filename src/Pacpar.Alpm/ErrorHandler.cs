@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
 #pragma warning disable CA2208
@@ -19,19 +20,67 @@ public class PackageException(string message, Package package, _alpm_errno_t err
   public _alpm_errno_t Errno => errno;
 }
 
+/// <summary>
+/// A libalpm error whose errno has no more specific .NET exception mapping.
+/// </summary>
+/// <remarks>
+/// The errno is known — only the .NET exception type is generic. Carrying the raw errno plus
+/// libalpm's own message keeps an error introduced by a newer libalpm diagnosable instead of
+/// turning into a null dereference at the throw site.
+/// </remarks>
+public class AlpmException(string message, _alpm_errno_t errno, string? strError) : Exception(message)
+{
+  /// <summary>The raw libalpm errno.</summary>
+  public _alpm_errno_t Errno { get; } = errno;
+
+  /// <summary>libalpm's own description of <see cref="Errno"/>, or <c>null</c>.</summary>
+  public string? StrError { get; } = strError;
+}
+
 public static class ErrorHandler
 {
+  /// <summary>
+  /// The exception describing <paramref name="errno"/>, or <c>null</c> if and only if it is
+  /// <see cref="_alpm_errno_t.ALPM_ERR_OK"/> (there is no error to report).
+  /// </summary>
+  /// <remarks>
+  /// Every non-OK value yields a non-null exception. An errno without a specific mapping — for
+  /// example one added by a libalpm newer than this switch — falls back to
+  /// <see cref="AlpmException"/>, so a forgotten sync after a libalpm update surfaces as a
+  /// diagnosable error instead of a <see cref="NullReferenceException"/> thrown by
+  /// <c>throw GetException(...)!</c>.
+  /// <para>
+  /// A libalpm update that adds an errno is caught by
+  /// <c>ErrorHandlerTests.GetException_MapsEveryKnownErrno_ToASpecificException</c>: an unmapped
+  /// enum member fails that test rather than silently taking the fallback.
+  /// </para>
+  /// </remarks>
   public static Exception? GetException(_alpm_errno_t errno)
+    => errno == _alpm_errno_t.ALPM_ERR_OK ? null : Create(errno);
+
+  /// <summary>
+  /// The exception describing a non-OK <paramref name="errno"/>; never <c>null</c>.
+  /// </summary>
+  /// <remarks>Prefer this over <c>GetException(...)!</c> at throw sites.</remarks>
+  /// <exception cref="ArgumentOutOfRangeException">
+  /// <paramref name="errno"/> is <see cref="_alpm_errno_t.ALPM_ERR_OK"/> — there is no error to report.
+  /// </exception>
+  public static Exception ToException(_alpm_errno_t errno)
+    => errno == _alpm_errno_t.ALPM_ERR_OK
+      ? throw new ArgumentOutOfRangeException(nameof(errno), errno,
+        "ALPM_ERR_OK is not an error; there is no exception to report.")
+      : Create(errno);
+
+  private static Exception Create(_alpm_errno_t errno)
   {
     return errno switch
     {
-      _alpm_errno_t.ALPM_ERR_OK => null,
       _alpm_errno_t.ALPM_ERR_MEMORY => new OutOfMemoryException(),
       _alpm_errno_t.ALPM_ERR_BADPERMS => new UnauthorizedAccessException(),
       _alpm_errno_t.ALPM_ERR_SYSTEM => new SystemException(),
-      _alpm_errno_t.ALPM_ERR_NOT_A_FILE => new ArgumentException("file"),
-      _alpm_errno_t.ALPM_ERR_NOT_A_DIR => new ArgumentException("directory"),
-      _alpm_errno_t.ALPM_ERR_WRONG_ARGS => new ArgumentException("arguments"),
+      _alpm_errno_t.ALPM_ERR_NOT_A_FILE => new ArgumentException("Path is not a file", "file"),
+      _alpm_errno_t.ALPM_ERR_NOT_A_DIR => new ArgumentException("Path is not a directory", "directory"),
+      _alpm_errno_t.ALPM_ERR_WRONG_ARGS => new ArgumentException("Wrong arguments", "arguments"),
       _alpm_errno_t.ALPM_ERR_DISK_SPACE => new IOException("Not enough disk space"),
       _alpm_errno_t.ALPM_ERR_HANDLE_NULL => new ArgumentNullException("handle"),
       _alpm_errno_t.ALPM_ERR_HANDLE_NOT_NULL => new ArgumentException("handle"),
@@ -73,6 +122,8 @@ public static class ErrorHandler
       _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS => new Exception("Dependencies could not be satisfied"),
       _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS => new Exception("Conflicting dependencies"),
       _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS => new IOException("Files conflict"),
+      // "Download setup failed" — introduced with libalpm 16; this mapping was missing.
+      _alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE => new IOException("Download setup failed"),
       _alpm_errno_t.ALPM_ERR_RETRIEVE => new Exception("Download failed"),
       _alpm_errno_t.ALPM_ERR_INVALID_REGEX => new ArgumentException("Invalid Regex"),
       _alpm_errno_t.ALPM_ERR_LIBARCHIVE => new Exception("Error in libarchive"),
@@ -80,7 +131,22 @@ public static class ErrorHandler
       _alpm_errno_t.ALPM_ERR_EXTERNAL_DOWNLOAD => new Exception("Error in external download program"),
       _alpm_errno_t.ALPM_ERR_GPGME => new Exception("Error in gpgme"),
       _alpm_errno_t.ALPM_ERR_MISSING_CAPABILITY_SIGNATURES => new NotSupportedException("Missing compile-time features"),
-      _ => null
+      _ => Unknown(errno)
     };
+  }
+
+  /// <summary>
+  /// Fallback for an errno without a specific mapping: carries the raw errno and libalpm's own
+  /// message so the failure stays diagnosable.
+  /// </summary>
+  private static unsafe AlpmException Unknown(_alpm_errno_t errno)
+  {
+    // alpm_strerror is bounds-checked: out-of-range values come back as "unexpected error".
+    var strError = Marshal.PtrToStringUTF8((nint)NativeMethods.alpm_strerror(errno));
+
+    return new AlpmException(
+      $"libalpm error {(int)errno} \"{strError}\" has no specific .NET exception mapping.",
+      errno,
+      strError);
   }
 }

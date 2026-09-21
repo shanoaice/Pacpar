@@ -37,4 +37,55 @@ public sealed class ErrorHandlerTests
 
     Assert.Equal(parameterName, exception.ParamName);
   }
+
+  [Fact]
+  public void GetException_MapsRetrievePrepare_AfterTheLibalpmUpdate()
+  {
+    // Regression: ALPM_ERR_RETRIEVE_PREPARE ("Download setup failed") arrived with libalpm 16 and
+    // the hand-written switch was not updated, so this call used to return null.
+    var exception = ErrorHandler.GetException(_alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE);
+
+    Assert.NotNull(exception);
+    Assert.IsNotType<AlpmException>(exception);
+  }
+
+  /// <summary>
+  /// Every errno the bindings know about must have an explicit mapping. A libalpm update that adds an
+  /// errno fails this test instead of silently degrading to the fallback at runtime.
+  /// </summary>
+  [Fact]
+  public void GetException_MapsEveryKnownErrno_ToASpecificException()
+  {
+    var unmapped = Enum.GetValues<_alpm_errno_t>()
+      .Where(errno => errno != _alpm_errno_t.ALPM_ERR_OK)
+      .Where(errno => ErrorHandler.GetException(errno) is null or AlpmException)
+      .ToArray();
+
+    Assert.Empty(unmapped);
+  }
+
+  [Fact]
+  public void GetException_ReturnsFallback_ForAnErrnoTheBindingsDoNotKnow()
+  {
+    var errno = (_alpm_errno_t)ushort.MaxValue;
+
+    var exception = Assert.IsType<AlpmException>(ErrorHandler.GetException(errno));
+
+    Assert.Equal(errno, exception.Errno);
+    Assert.Contains(((int)errno).ToString(), exception.Message);
+    Assert.False(string.IsNullOrEmpty(exception.StrError));
+  }
+
+  [Fact]
+  public void ToException_Throws_ForOk()
+    => Assert.Throws<ArgumentOutOfRangeException>(() => ErrorHandler.ToException(_alpm_errno_t.ALPM_ERR_OK));
+
+  [Fact]
+  public void ToException_NeverReturnsNull_ForAnyKnownErrno()
+  {
+    foreach (var errno in Enum.GetValues<_alpm_errno_t>().Where(e => e != _alpm_errno_t.ALPM_ERR_OK))
+    {
+      Assert.NotNull(ErrorHandler.ToException(errno));
+    }
+  }
 }
