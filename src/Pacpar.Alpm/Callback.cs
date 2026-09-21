@@ -19,7 +19,6 @@ namespace Pacpar.Alpm;
 /// </remarks>
 public sealed class Callback
 {
-  private bool _disposed;
 
   // do not Dispose this before the callback class has been disposed
   // otherwise it will screw up the callbacks
@@ -178,23 +177,6 @@ public sealed class Callback
   /// </summary>
   internal void Dispose()
   {
-    GC.SuppressFinalize(this);
-    Dispose(disposing: true);
-  }
-
-  private void Dispose(bool disposing)
-  {
-    if (_disposed) return;
-    if (disposing)
-    {
-      if (_ctxHandle.IsAllocated) _ctxHandle.Dispose();
-    }
-
-    _disposed = true;
-  }
-
-  ~Callback()
-  {
-    Dispose(disposing: false);
+    if (_ctxHandle.IsAllocated) _ctxHandle.Dispose();
   }
 }
