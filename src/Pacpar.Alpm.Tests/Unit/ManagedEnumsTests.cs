@@ -30,6 +30,9 @@ public sealed class ManagedEnumsTests
   public void ProgressType_MatchesTheNativeEnum() => AssertMirrors<_alpm_progress_t, ProgressType>();
 
   [Fact]
+  public void LogLevel_MatchesTheNativeEnum() => AssertMirrors<_alpm_loglevel_t, LogLevel>();
+
+  [Fact]
   public void PublicMembersUseTheManagedTypes()
   {
     Assert.Equal(typeof(PackageOrigin), typeof(Package).GetProperty(nameof(Package.Origin))!.PropertyType);
@@ -41,6 +44,10 @@ public sealed class ManagedEnumsTests
       typeof(EventType.PackageOperationStart).GetProperty(nameof(EventType.PackageOperationStart.Operation))!.PropertyType);
     Assert.Equal(typeof(ProgressType),
       typeof(Callback).GetProperty(nameof(Callback.ProgressHandler))!.PropertyType.GenericTypeArguments[0]);
+    Assert.Equal(typeof(LogLevel),
+      typeof(Callback).GetProperty(nameof(Callback.LogHandler))!.PropertyType.GenericTypeArguments[0]);
+    Assert.Equal(typeof(FetchResult),
+      typeof(Callback).GetProperty(nameof(Callback.FetchHandler))!.PropertyType.GenericTypeArguments[^1]);
 
     Assert.Equal(typeof(bool),
       typeof(QuestionType.InstallIgnoredPackage).GetProperty(nameof(QuestionType.InstallIgnoredPackage.Install))!.PropertyType);

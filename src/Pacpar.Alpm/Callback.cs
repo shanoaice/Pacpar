@@ -1,3 +1,4 @@
+#pragma warning disable SYSLIB1054
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
@@ -17,6 +18,39 @@ public enum ProgressType : uint
   IntegrityStart = 7,
   LoadStart = 8,
   KeyringStart = 9
+}
+
+/// <summary>The severity of a log message (libalpm's <c>_alpm_loglevel_t</c>).</summary>
+/// <remarks>
+/// A bitmask, not a scale: libalpm calls <c>alpm_cb_log</c> once per message with a single flag, and
+/// consumers that want a subset test the flags (pacman and paru both filter on their own side, since
+/// libalpm emits DEBUG and FUNCTION messages regardless).
+/// </remarks>
+[Flags]
+public enum LogLevel : uint
+{
+  Error = 1,
+  Warning = 2,
+  Debug = 4,
+  Function = 8
+}
+
+/// <summary>The outcome a fetch handler reports back to libalpm.</summary>
+/// <remarks>
+/// Replaces the bare <c>int</c> of <c>alpm_cb_fetch</c>, whose contract is "0 on success, 1 if the
+/// file exists and is identical, -1 on error" (alpm.h). Any other value is not something libalpm
+/// defines, so returning an arbitrary number should not be expressible.
+/// </remarks>
+public enum FetchResult
+{
+  /// <summary>The file was fetched (0).</summary>
+  Success = 0,
+
+  /// <summary>The local file already exists and is identical, so nothing was transferred (1).</summary>
+  UpToDate = 1,
+
+  /// <summary>The fetch failed (-1).</summary>
+  Error = -1
 }
 
 
@@ -57,8 +91,8 @@ public sealed class Callback
       var urlString = Marshal.PtrToStringAnsi((IntPtr)url) ?? "";
       var localPathString = Marshal.PtrToStringAnsi((IntPtr)localPath) ?? "";
 
-      return callback.FetchHandler?.Invoke(urlString, localPathString, force != 0) ?? 0;
-    }, -1, callback.HandlerException);
+      return (int)(callback.FetchHandler?.Invoke(urlString, localPathString, force != 0) ?? FetchResult.Success);
+    }, (int)FetchResult.Error, callback.HandlerException);
   }
 
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -87,6 +121,20 @@ public sealed class Callback
         DownloadEventType.FromUnion(eventType, data)), callback.HandlerException);
   }
 
+  /// <summary>
+  /// Log thunk. This is the one libalpm callback that does not receive expanded arguments: it gets a
+  /// <c>(fmt, va_list)</c> pair, so the message is expanded by <see cref="LogMessageFormatter"/>.
+  /// The <c>va_list</c> is delivered as an opaque pointer, which is the only way it can reach C#.
+  /// </summary>
+  [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+  private static unsafe void LogAgent(void* ctx, _alpm_loglevel_t level, byte* fmt, void* vaList)
+  {
+    var callback = GCHandle<Callback>.FromIntPtr((nint)ctx).Target;
+    SafeInvoke(
+      () => callback.LogHandler?.Invoke((LogLevel)(uint)level, LogMessageFormatter.Format(fmt, vaList) ?? ""),
+      callback.HandlerException);
+  }
+
   internal unsafe Callback(byte* alpmHandle)
   {
     _ctxHandle = new GCHandle<Callback>(this);
@@ -110,11 +158,29 @@ public sealed class Callback
     err = NativeMethods.alpm_option_set_dlcb(alpmHandle, &DownloadAgent,
       (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle));
     if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(alpmHandle));
+
+    err = SetLogCallback(alpmHandle, &LogAgent, (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle));
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(alpmHandle));
   }
+
+  /// <summary>
+  /// <c>alpm_option_set_logcb</c>, declared by hand rather than taken from the generated bindings.
+  /// </summary>
+  /// <remarks>
+  /// The generated declaration names the <c>va_list</c> parameter <c>__va_list_tag*</c>, which is
+  /// the x86_64 SysV representation of it. That type does not exist on AArch64 (where bindgen emits
+  /// a 32-byte <c>va_list</c> struct instead), so regenerating the bindings on another architecture
+  /// would leave this call site referring to a type that is no longer generated. Declaring the
+  /// parameter as <see cref="void"/> keeps the managed side architecture-independent: a
+  /// <c>va_list</c> argument is delivered as a pointer on every ABI .NET supports on Linux.
+  /// </remarks>
+  [DllImport("libalpm", EntryPoint = "alpm_option_set_logcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+  private static extern unsafe int SetLogCallback(byte* handle,
+    delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, void*, void> callback, void* ctx);
 
   public Action<EventType>? EventHandler { get; set; }
 
-  public Func<string, string, bool, int>? FetchHandler { get; set; }
+  public Func<string, string, bool, FetchResult>? FetchHandler { get; set; }
 
   public Action<QuestionType>? QuestionHandler { get; set; }
 
@@ -123,9 +189,19 @@ public sealed class Callback
   public Action<ProgressType, string, int, nuint, nuint>? ProgressHandler { get; set; }
 
   /// <summary>
+  /// Receives libalpm's log messages, already expanded from the <c>(fmt, va_list)</c> pair the
+  /// native callback is given.
+  /// </summary>
+  /// <remarks>
+  /// A message that could not be expanded (a null format string, or an allocation failure) arrives
+  /// as an empty string rather than as <see langword="null"/>.
+  /// </remarks>
+  public Action<LogLevel, string>? LogHandler { get; set; }
+
+  /// <summary>
   /// Optional observer for exceptions thrown by the user handlers (<see cref="EventHandler"/>,
   /// <see cref="FetchHandler"/>, <see cref="QuestionHandler"/>, <see cref="DownloadHandler"/>,
-  /// <see cref="ProgressHandler"/>).
+  /// <see cref="ProgressHandler"/>, <see cref="LogHandler"/>).
   /// </summary>
   /// <remarks>
   /// Handler exceptions never cross the FFI boundary: they are caught inside the native thunks
