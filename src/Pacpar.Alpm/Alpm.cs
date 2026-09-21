@@ -170,17 +170,20 @@ public class Alpm : IDisposable
   protected virtual unsafe void Dispose(bool disposing)
   {
     if (_disposed) return;
-    if (disposing)
-    {
-      // dispose managed state (managed objects)
-      Callback.Dispose();
-    }
 
     // even when alpm_release fails with -1 the handle is invalidated, regardless
     // the handle pointer is not owned by us, so we don't need to free it
     // we should set it to zero anyway, just in case
     _ = NativeMethods.alpm_release(_handle);
     _handle = (byte*)IntPtr.Zero;
+
+    if (disposing)
+    {
+      // The callback context must stay alive until native code can no longer call back, and
+      // alpm_release itself may still fire events. Release the ctx handle only now that
+      // alpm_release has returned.
+      Callback.Dispose();
+    }
 
     Marshal.FreeHGlobal((nint)_errno);
     _disposed = true;
