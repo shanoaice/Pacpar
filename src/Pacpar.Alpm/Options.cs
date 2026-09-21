@@ -162,8 +162,10 @@ public class AlpmOptions
     }
   }
 
-  // alpm_option_get_disable_dl_timeout is not included in g.cs
+  // alpm_option_get_disable_dl_timeout and alpm_option_set_disable_dl_timeout are bound in
+  // NativeMethods.libalpm.g.cs, but AlpmOptions exposes no property for them.
 
-  // Sandbox related parts are also incomplete.
-  // We will add them when we need them, or later when I had time to diagnose bindgen issues.
+  // The sandbox options (alpm_option_get/set_disable_sandbox, _disable_sandbox_filesystem,
+  // _disable_sandbox_network, _disable_sandbox_syscalls and _sandboxuser) are bound in
+  // NativeMethods.libalpm.g.cs, but AlpmOptions exposes no properties for them.
 }
