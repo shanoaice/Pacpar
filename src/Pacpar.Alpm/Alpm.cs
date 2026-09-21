@@ -131,7 +131,7 @@ public class Alpm : IDisposable
     if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
   }
 
-  public unsafe Package LoadPackage(string filename, bool full, SigLevel level)
+  public unsafe LoadedPackage LoadPackage(string filename, bool full, SigLevel level)
   {
     ThrowIfDisposed();
     var filenamePtr = NativeString.ToNative(filename);
@@ -147,7 +147,7 @@ public class Alpm : IDisposable
       }
 
       // The Package class now takes ownership of the native handle *pkgOutPtr
-      return new Package(*pkgOutPtr, false);
+      return new LoadedPackage(*pkgOutPtr);
     }
     finally
     {

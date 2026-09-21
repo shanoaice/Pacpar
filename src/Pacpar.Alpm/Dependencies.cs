@@ -239,12 +239,8 @@ public unsafe class Conflict : IDisposable
   {
     if (!_disposed)
     {
-      if (disposing)
-      {
-        // dispose managed state (managed objects)
-        Package1.Dispose();
-        Package2.Dispose();
-      }
+      // Package1/Package2 are database packages owned by their database, so there is nothing to
+      // release here; alpm_conflict_free only frees the conflict itself.
       NativeMethods.alpm_conflict_free(BackingStruct);
       _disposed = true;
     }

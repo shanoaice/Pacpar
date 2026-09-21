@@ -21,7 +21,7 @@ public unsafe class Group
   /// <summary>
   /// Packages that belong to this group. The list is owned by the group, so the view never frees it.
   /// </summary>
-  public AlpmList<Package> Packages => AlpmList<Package>.Borrow(backingStruct->packages, &Package.FactoryFromDatabase);
+  public AlpmList<Package> Packages => AlpmList<Package>.Borrow(backingStruct->packages, &Package.Factory);
 
   /// <summary>
   /// Finds group members across <paramref name="dbs"/>.
@@ -42,7 +42,7 @@ public unsafe class Group
         var packages = new List<Package>();
         for (var node = result; node != null; node = NativeMethods.alpm_list_next(node))
         {
-          packages.Add(Package.FactoryFromDatabase(node->data));
+          packages.Add(Package.Factory(node->data));
         }
 
         return packages;

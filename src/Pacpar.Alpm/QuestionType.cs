@@ -92,7 +92,7 @@ public abstract class QuestionType
 
     public bool Skip => backingStruct->remove_pkgs.skip != 0;
     public AlpmList<Package> Packages =>
-      AlpmList<Package>.Borrow(backingStruct->remove_pkgs.packages, &Package.FactoryFromDatabase);
+      AlpmList<Package>.Borrow(backingStruct->remove_pkgs.packages, &Package.Factory);
   }
 
   public unsafe class SelectProvider : QuestionType
@@ -106,7 +106,7 @@ public abstract class QuestionType
 
     public bool UseIndex => backingStruct->select_provider.use_index != 0;
     public AlpmList<Package> Providers =>
-      AlpmList<Package>.Borrow(backingStruct->select_provider.providers, &Package.FactoryFromDatabase);
+      AlpmList<Package>.Borrow(backingStruct->select_provider.providers, &Package.Factory);
     public string Name => field ??= NativeString.FromNative((nint)backingStruct->select_provider.depend->name) ?? "";
     public string Version => field ??= NativeString.FromNative((nint)backingStruct->select_provider.depend->version) ?? "";
     public string Description => field ??= NativeString.FromNative((nint)backingStruct->select_provider.depend->desc) ?? "";

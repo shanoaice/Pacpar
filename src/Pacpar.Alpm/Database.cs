@@ -39,7 +39,7 @@ public unsafe class Database
   {
     var pkgCache = NativeMethods.alpm_db_get_pkgcache(backingStruct);
     ThrowIfErrnoSet();
-    return AlpmList<Package>.Borrow(pkgCache, &Package.FactoryFromDatabase);
+    return AlpmList<Package>.Borrow(pkgCache, &Package.Factory);
   }
 
   /// <summary>

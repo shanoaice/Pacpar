@@ -126,22 +126,26 @@ public enum PackageValidation : uint
 }
 // ReSharper restore InconsistentNaming
 
-public unsafe class Package : IDisposable
+/// <summary>
+/// A package libalpm owns: a database package, a transaction member, or one reached through a
+/// group. Nothing here frees it, which is why this type is deliberately not
+/// <see cref="IDisposable"/>; a package loaded from a file is a <see cref="LoadedPackage"/>.
+/// </summary>
+public unsafe class Package
 {
   internal readonly byte* BackingStruct;
-  // ReSharper disable once RedundantDefaultMemberInitializer
-  private bool _disposed = false;
-  public readonly bool FromDatabase;
 
-  internal Package(byte* backingStruct, bool fromDatabase = true)
+  internal Package(byte* backingStruct)
   {
     BackingStruct = backingStruct;
-    FromDatabase = fromDatabase;
   }
 
-  private void ThrowIfDisposed()
+  /// <summary>Set by <see cref="LoadedPackage"/> once it has released the package.</summary>
+  private protected bool Disposed;
+
+  private protected void ThrowIfDisposed()
   {
-    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+    if (Disposed) throw new ObjectDisposedException(GetType().FullName);
   }
 
   internal byte* LibraryHandle
@@ -153,40 +157,7 @@ public unsafe class Package : IDisposable
     }
   }
 
-  internal static Package FactoryFromDatabase(void* ptr) => new((byte*)ptr);
-  internal static Package FactoryNotFromDatabase(void* ptr) => new((byte*)ptr, false);
-
-  public void Dispose()
-  {
-    Dispose(true);
-    GC.SuppressFinalize(this);
-  }
-
-  protected virtual void Dispose(bool disposing)
-  {
-    if (_disposed) return;
-    if (disposing)
-    {
-      // dispose managed state (managed objects)
-    }
-    if (!FromDatabase)
-    {
-      // free package if not loaded from database
-      // packages loaded from database are automatically freed
-      // if it fails with -1, there's not much we can do
-      // program shouldn't abort if this fails
-      // we are not going to throw any errors, since users
-      // will not catch such error during automatic disposal
-      // or when finalizer is called, so just ignore it
-      _ = NativeMethods.alpm_pkg_free(BackingStruct);
-    }
-    _disposed = true;
-  }
-
-  ~Package()
-  {
-    Dispose(false);
-  }
+  internal static Package Factory(void* ptr) => new((byte*)ptr);
 
   public string Name
   {
@@ -514,4 +485,34 @@ public unsafe class Package : IDisposable
     }
     return _signature;
   }
+}
+
+/// <summary>
+/// A package this library loaded from a file with <c>alpm_pkg_load</c>. Unlike
+/// <see cref="Package"/>, this instance owns the package and releases it on <see cref="Dispose"/>,
+/// or from the finalizer when the caller forgets.
+/// </summary>
+public sealed unsafe class LoadedPackage : Package, IDisposable
+{
+  internal LoadedPackage(byte* backingStruct) : base(backingStruct)
+  {
+  }
+
+  public void Dispose()
+  {
+    Dispose(true);
+    GC.SuppressFinalize(this);
+  }
+
+  private void Dispose(bool disposing)
+  {
+    if (Disposed) return;
+
+    // A failing alpm_pkg_free leaves nothing useful to do: the caller either disposed explicitly
+    // or the finalizer is running, and neither can handle a thrown error.
+    _ = NativeMethods.alpm_pkg_free(BackingStruct);
+    Disposed = true;
+  }
+
+  ~LoadedPackage() => Dispose(false);
 }

@@ -198,7 +198,7 @@ public class Transactions : IDisposable
   {
     ThrowIfDisposed();
     return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_add((byte*)_library.AsHandle()),
-      &Package.FactoryFromDatabase);
+      &Package.Factory);
   }
 
   public unsafe TransactionFlags GetFlags()
@@ -211,7 +211,7 @@ public class Transactions : IDisposable
   {
     ThrowIfDisposed();
     return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_remove((byte*)_library.AsHandle()),
-      &Package.FactoryFromDatabase);
+      &Package.Factory);
   }
 
   /// <summary>
