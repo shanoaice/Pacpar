@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace Pacpar.Alpm.Tests.Unit;
 
@@ -98,5 +99,43 @@ public sealed class CallbackTests
     Assert.Equal(typeof(Action<Exception>), property.PropertyType);
     Assert.True(property.CanRead);
     Assert.True(property.CanWrite);
+  }
+
+  /// <summary>
+  /// The finalizer path must release the callback ctx handle. <see cref="Callback"/> is strongly
+  /// rooted by that very handle, so nothing but <see cref="Alpm"/> can ever free it: without this,
+  /// dropping an <see cref="Alpm"/> without disposing it leaks the Callback and everything its
+  /// handler delegates keep alive.
+  /// </summary>
+  [Fact]
+  public void AlpmFinalizer_ReleasesTheCallbackContext()
+  {
+    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-finalizer-tests", Guid.NewGuid().ToString("n"));
+    var root = Path.Combine(workspace, "root");
+    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
+    Directory.CreateDirectory(root);
+    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
+    Directory.CreateDirectory(Path.Combine(root, "tmp"));
+
+    var callback = CreateAlpmWithoutDisposing(root, dbpath);
+
+    for (var i = 0; i < 10 && callback.IsAlive; ++i)
+    {
+      GC.Collect();
+      GC.WaitForPendingFinalizers();
+    }
+
+    Assert.False(callback.IsAlive,
+      "Callback is still rooted after Alpm was finalized: its ctx GCHandle was not released.");
+  }
+
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  private static WeakReference CreateAlpmWithoutDisposing(string root, string dbpath)
+  {
+    var alpm = new Alpm(root, dbpath);
+    var weak = new WeakReference(alpm.Callback);
+
+    // Intentionally not disposed: this exercises ~Alpm().
+    return weak;
   }
 }

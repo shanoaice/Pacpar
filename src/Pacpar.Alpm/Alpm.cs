@@ -177,12 +177,27 @@ public class Alpm : IDisposable
     _ = NativeMethods.alpm_release(_handle);
     _handle = (byte*)IntPtr.Zero;
 
+    // The callback context must stay alive until native code can no longer call back, and
+    // alpm_release itself may still fire events, so it is released only now that alpm_release has
+    // returned. This must also happen on the finalizer path: Callback is strongly rooted by its own
+    // GCHandle, so if Alpm does not release it, nothing ever will (the Callback and every object its
+    // handler delegates keep alive would leak for the life of the process).
     if (disposing)
     {
-      // The callback context must stay alive until native code can no longer call back, and
-      // alpm_release itself may still fire events. Release the ctx handle only now that
-      // alpm_release has returned.
       Callback.Dispose();
+    }
+    else
+    {
+      // A finalizer must never throw - an exception escaping it terminates the process - and the
+      // only work here is freeing one GC handle, so failure is not worth propagating.
+      try
+      {
+        Callback.Dispose();
+      }
+      catch (Exception)
+      {
+        // Best-effort cleanup on the finalizer thread; skipping it merely leaks the handle.
+      }
     }
 
     Marshal.FreeHGlobal((nint)_errno);
