@@ -10,22 +10,23 @@ public class Alpm : IDisposable
   // opaque handle to libalpm, details not exposed
   private unsafe byte* _handle;
 
-  // ReSharper disable once MemberCanBePrivate.Global
-  private readonly unsafe _alpm_errno_t* _errno;
+  // The out-parameter of alpm_initialize: libalpm writes it only when initialization fails. The
+  // handle's *current* error is a different thing and is read with alpm_errno(handle) - see Errno.
+  private readonly unsafe _alpm_errno_t* _initializeErrno;
 
   // ReSharper disable once RedundantDefaultMemberInitializer
   private bool _disposed = false;
 
   public unsafe Alpm(string root, string dbpath)
   {
-    _errno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
-    *_errno = _alpm_errno_t.ALPM_ERR_OK;
+    _initializeErrno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
+    *_initializeErrno = _alpm_errno_t.ALPM_ERR_OK;
 
     var rootPtr = Marshal.StringToHGlobalAnsi(root);
     var dbpathPtr = Marshal.StringToHGlobalAnsi(dbpath);
     try
     {
-      _handle = NativeMethods.alpm_initialize((byte*)rootPtr, (byte*)dbpathPtr, _errno);
+      _handle = NativeMethods.alpm_initialize((byte*)rootPtr, (byte*)dbpathPtr, _initializeErrno);
     }
     finally
     {
@@ -33,7 +34,10 @@ public class Alpm : IDisposable
       Marshal.FreeHGlobal(dbpathPtr);
     }
 
-    if (_handle == null) throw ErrorHandler.GetException(*_errno) ?? new Exception("Failed to initialize libalpm.");
+    if (_handle == null)
+    {
+      throw ErrorHandler.GetException(*_initializeErrno) ?? new Exception("Failed to initialize libalpm.");
+    }
 
     Options = new AlpmOptions(_handle);
     Callback = new Callback(_handle);
@@ -69,14 +73,19 @@ public class Alpm : IDisposable
   }
 
   /// <summary>
-  /// The current errno of libalpm
+  /// The handle's current errno, as reported by libalpm.
   /// </summary>
+  /// <remarks>
+  /// Read from the handle itself (<c>alpm_errno(handle)</c>). The out-parameter of
+  /// <c>alpm_initialize</c> is a different value: libalpm writes it only when initialization fails,
+  /// so using it here reported <c>ALPM_ERR_OK</c> for the entire lifetime of a healthy handle.
+  /// </remarks>
   public unsafe _alpm_errno_t Errno
   {
     get
     {
       ThrowIfDisposed();
-      return *_errno;
+      return NativeMethods.alpm_errno(_handle);
     }
   }
 
@@ -93,6 +102,31 @@ public class Alpm : IDisposable
     return ErrorHandler.GetException(Errno);
   }
 
+  /// <summary>
+  /// The current error as an exception; never <c>null</c>.
+  /// </summary>
+  /// <remarks>
+  /// Use this at sites that have already observed a native failure: a failing libalpm call that did
+  /// not set an errno is a contract violation and must still surface, instead of becoming
+  /// <c>null</c> and then a <see cref="NullReferenceException"/> at the throw site.
+  /// </remarks>
+  internal Exception GetRequiredCurrentError()
+    => GetCurrentError() ?? new InvalidOperationException(
+      "libalpm reported a failure without setting an error code.");
+
+  /// <summary>
+  /// Throws when the handle's current errno reports an error.
+  /// </summary>
+  /// <remarks>
+  /// Used right after a native call that signals failure through the handle errno, and whose return
+  /// value can also be a <c>null</c> pointer that is legitimate when there is no error.
+  /// </remarks>
+  private unsafe void ThrowIfCurrentError()
+  {
+    var errno = Errno;
+    if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
+  }
+
   public unsafe Package LoadPackage(string filename, bool full, SigLevel level)
   {
     ThrowIfDisposed();
@@ -105,7 +139,7 @@ public class Alpm : IDisposable
       if (err != 0)
       {
         // Note: alpm_pkg_load sets the handle errno on failure.
-        throw GetCurrentError() ?? new Exception($"Failed to load package: {GetCurrentErrorString()}");
+        throw GetRequiredCurrentError();
       }
 
       // The Package class now takes ownership of the native handle *pkgOutPtr
@@ -129,36 +163,39 @@ public class Alpm : IDisposable
   {
     ThrowIfDisposed();
     var databasePtr = NativeMethods.alpm_get_localdb(_handle);
-    return *_errno != _alpm_errno_t.ALPM_ERR_OK
-      ? throw ErrorHandler.ToException(*_errno)
-      : new Database(databasePtr);
+    ThrowIfCurrentError();
+    return new Database(databasePtr);
   }
 
   public unsafe AlpmList<Database> GetSyncDatabases()
   {
     ThrowIfDisposed();
     var syncDatabases = NativeMethods.alpm_get_syncdbs(_handle);
-    return *_errno != _alpm_errno_t.ALPM_ERR_OK
-      ? throw ErrorHandler.ToException(*_errno)
-      : AlpmList<Database>.Borrow(syncDatabases, &Database.Factory);
+    ThrowIfCurrentError();
+    return AlpmList<Database>.Borrow(syncDatabases, &Database.Factory);
   }
 
   public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
   {
     ThrowIfDisposed();
     var treeNameCString = Marshal.StringToHGlobalAnsi(treename);
-    var database = NativeMethods.alpm_register_syncdb(_handle, (byte*)treeNameCString, (int)level);
-    Marshal.FreeHGlobal(treeNameCString);
-    return *_errno != _alpm_errno_t.ALPM_ERR_OK
-      ? throw ErrorHandler.ToException(*_errno)
-      : new Database(database);
+    try
+    {
+      var database = NativeMethods.alpm_register_syncdb(_handle, (byte*)treeNameCString, (int)level);
+      ThrowIfCurrentError();
+      return new Database(database);
+    }
+    finally
+    {
+      Marshal.FreeHGlobal(treeNameCString);
+    }
   }
 
   public unsafe void UnregisterAllSyncDatabases()
   {
     ThrowIfDisposed();
     var err = NativeMethods.alpm_unregister_all_syncdbs(_handle);
-    if (err != 0) throw ErrorHandler.ToException(*_errno);
+    if (err != 0) throw GetRequiredCurrentError();
   }
 
   public void Dispose()
@@ -200,7 +237,7 @@ public class Alpm : IDisposable
       }
     }
 
-    Marshal.FreeHGlobal((nint)_errno);
+    Marshal.FreeHGlobal((nint)_initializeErrno);
     _disposed = true;
   }
 

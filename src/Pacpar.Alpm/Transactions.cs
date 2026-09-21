@@ -87,7 +87,7 @@ public class Transactions : IDisposable
     var err = NativeMethods.alpm_trans_init((byte*)_library.Handle, (int)flags);
     if (err != 0)
     {
-      throw _library.GetCurrentError()!;
+      throw _library.GetRequiredCurrentError();
     }
   }
 
@@ -114,7 +114,7 @@ public class Transactions : IDisposable
       var err = NativeMethods.alpm_trans_prepare((byte*)_library.Handle, &list);
       if (err != 0)
       {
-        throw _library.GetCurrentError()!;
+        throw _library.GetRequiredCurrentError();
       }
 
       var result = new List<DepMissing>();
@@ -157,7 +157,7 @@ public class Transactions : IDisposable
     var err = NativeMethods.alpm_sync_sysupgrade((byte*)_library.Handle, enableDowngrade ? 1 : 0);
     if (err != 0)
     {
-      throw _library.GetCurrentError()!;
+      throw _library.GetRequiredCurrentError();
     }
   }
 
@@ -167,7 +167,7 @@ public class Transactions : IDisposable
     var err = NativeMethods.alpm_trans_interrupt((byte*)_library.Handle);
     if (err != 0)
     {
-      throw _library.GetCurrentError()!;
+      throw _library.GetRequiredCurrentError();
     }
   }
 
@@ -188,7 +188,7 @@ public class Transactions : IDisposable
     if (err != 0)
     {
       AlpmNativeList.Free(messages, &MemoryManagement.CFreeExtern);
-      throw _library.GetCurrentError()!;
+      throw _library.GetRequiredCurrentError();
     }
 
     return AlpmStringList.TakeOwned(messages, &MemoryManagement.CFreeExtern);
@@ -214,27 +214,21 @@ public class Transactions : IDisposable
       &Package.FactoryFromDatabase);
   }
 
-  public void Dispose()
+  /// <summary>
+  /// Releases the transaction (and its database lock) deterministically.
+  /// </summary>
+  /// <remarks>
+  /// There is deliberately no finalizer. The transaction is owned by the libalpm handle, which
+  /// releases an active transaction during <c>alpm_release</c>, so a finalizer adds no cleanup — but
+  /// it can run after the handle is already disposed or released, and an exception escaping a
+  /// finalizer terminates the process (that is exactly what <c>~Transactions()</c> used to do via
+  /// <see cref="Alpm.Handle"/>'s disposed check).
+  /// </remarks>
+  public unsafe void Dispose()
   {
-    Dispose(disposing: true);
-    GC.SuppressFinalize(this);
-  }
+    if (_released) return;
 
-  ~Transactions()
-  {
-    Dispose(disposing: false);
-  }
-
-  protected virtual unsafe void Dispose(bool disposing)
-  {
-    if (!_released)
-    {
-      if (disposing)
-      {
-        // dispose managed state (managed objects)
-      }
-      _ = NativeMethods.alpm_trans_release((byte*)_library.Handle);
-      _released = true;
-    }
+    _released = true;
+    _ = NativeMethods.alpm_trans_release((byte*)_library.Handle);
   }
 }
