@@ -4,10 +4,10 @@ using Pacpar.Alpm.Bindings;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Covers the non-string branch of the option-collection template (design report §K):
-/// <see cref="Depend"/> elements are borrowed rather than marshalled, compared by identity, and a
-/// detached snapshot must be rejected by <c>Add</c> while the read-only operations answer
-/// <c>false</c> for it.
+/// Covers the non-string branch of the option-collection template (design report §K) now that
+/// <see cref="Depend"/> is a managed snapshot: <c>Add</c> materialises the snapshot for libalpm,
+/// while <c>Contains</c> and <c>Remove</c> resolve the snapshot to the element libalpm stored by
+/// comparing values.
 /// </summary>
 /// <remarks>
 /// Like <see cref="OptionCollectionTests"/>, this builds an isolated libalpm handle under
@@ -42,14 +42,26 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
     }
   }
 
-  private static _alpm_depend_t* ParseDepend(string spec)
+  /// <summary>
+  /// Parses a dependency with libalpm, then frees the native struct and hands back the snapshot: from
+  /// this point on the test only holds managed values.
+  /// </summary>
+  private static Depend Parse(string spec)
   {
     var specPtr = NativeString.ToNative(spec);
     try
     {
-      var depend = NativeMethods.alpm_dep_from_string(specPtr);
-      Assert.True(depend != null, $"libalpm could not parse the dependency spec '{spec}'.");
-      return depend;
+      var native = NativeMethods.alpm_dep_from_string(specPtr);
+      Assert.True(native != null, $"libalpm could not parse the dependency spec '{spec}'.");
+
+      try
+      {
+        return Depend.Snapshot(native);
+      }
+      finally
+      {
+        NativeMethods.alpm_dep_free(native);
+      }
     }
     finally
     {
@@ -57,50 +69,100 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
     }
   }
 
-  [Fact]
-  public void Add_BorrowsTheDependency_AndStoresACopy()
+  /// <summary>
+  /// Builds a dependency through the same struct layout <see cref="Depend.ToNative"/> uses, so a test
+  /// can describe a value libalpm's parser cannot produce - a dependency with a description.
+  /// </summary>
+  private static Depend HandBuilt(string name, string? version, string? description, DepMod mod)
   {
-    // libalpm 16 only accepts DepMod.Any/Equal for assume-installed (verified against the .so),
-    // which is why the spec uses "=" and not ">=".
-    var native = ParseDepend("foobar=1.0");
+    var native = (_alpm_depend_t*)Marshal.AllocHGlobal(sizeof(_alpm_depend_t));
+    native->name = NativeString.ToNative(name);
+    native->version = NativeString.ToNative(version);
+    native->desc = NativeString.ToNative(description);
+    native->name_hash = default;
+    native->mod_ = (_alpm_depmod_t)(uint)mod;
+
     try
     {
-      var collection = _alpm.Options.AssumeInstalled;
-      Assert.Empty(collection);
-
-      collection.Add(Depend.Factory(native));
-
-      var stored = Assert.Single(collection);
-      Assert.Equal("foobar", stored.Name);
-      Assert.Equal("1.0", stored.Version);
+      return Depend.Snapshot(native);
     }
     finally
     {
-      NativeMethods.alpm_dep_free(native);
+      Depend.FreeNative(native);
     }
   }
 
+  [Fact]
+  public void Add_StoresACopyOfTheSnapshot()
+  {
+    var collection = _alpm.Options.AssumeInstalled;
+    Assert.Empty(collection);
+
+    collection.Add(Parse("foobar=1.0"));
+
+    var stored = Assert.Single(collection);
+    Assert.Equal("foobar", stored.Name);
+    Assert.Equal("1.0", stored.Version);
+    Assert.Equal(DepMod.EQUAL, stored.Depmod);
+
+    // The snapshot is a value, not a pointer into the list, and the list is not the snapshot's owner.
+    collection.Clear();
+    Assert.Equal("foobar", stored.Name);
+  }
+
+  [Fact]
+  public void Add_KeepsTheDescription()
+  {
+    var collection = _alpm.Options.AssumeInstalled;
+
+    collection.Add(HandBuilt("foobar", "1.0", "needed by a test", DepMod.EQUAL));
+
+    Assert.Equal("needed by a test", Assert.Single(collection).Description);
+  }
+
+  [Fact]
+  public void Add_AcceptsADependencyWithoutAVersion()
+  {
+    var collection = _alpm.Options.AssumeInstalled;
+
+    collection.Add(Parse("foobar"));
+
+    var stored = Assert.Single(collection);
+    Assert.Equal("foobar", stored.Name);
+    Assert.Null(stored.Version);
+    Assert.Equal(DepMod.ANY, stored.Depmod);
+    Assert.True(collection.Contains(Parse("foobar")));
+  }
+
   /// <summary>
-  /// <c>Contains</c> uses <c>alpm_list_find_ptr</c>, so only the element actually stored in the
-  /// list (the copy libalpm made) matches; the caller's original struct does not.
+  /// The identity comparison <c>Contains</c> used to rely on cannot answer this: libalpm stores its
+  /// own copy of the dependency (probed with <c>alpm_list_find_ptr</c>), so a snapshot that was never
+  /// in the list is the only thing a caller ever has.
   /// </summary>
   [Fact]
-  public void Contains_MatchesOnlyTheStoredElement()
+  public void Contains_ComparesByValue()
   {
-    var native = ParseDepend("foobar");
-    try
-    {
-      var collection = _alpm.Options.AssumeInstalled;
-      collection.Add(Depend.Factory(native));
+    var collection = _alpm.Options.AssumeInstalled;
+    collection.Add(Parse("foobar=1.0"));
 
-      var stored = Assert.Single(collection);
-      Assert.True(collection.Contains(stored));
-      Assert.False(collection.Contains(Depend.Factory(native)));
-    }
-    finally
-    {
-      NativeMethods.alpm_dep_free(native);
-    }
+    Assert.True(collection.Contains(Parse("foobar=1.0")));
+    Assert.False(collection.Contains(Parse("foobar=2.0")));
+    Assert.False(collection.Contains(Parse("barfoo=1.0")));
+  }
+
+  /// <summary>
+  /// Probed against libalpm 16.0.1: removing with a dependency whose description differs still
+  /// removes the entry, so the description must not take part in the comparison this layer uses
+  /// either - otherwise <c>Contains</c> would answer <c>false</c> for an entry <c>Remove</c> removes.
+  /// </summary>
+  [Fact]
+  public void Contains_IgnoresTheDescription()
+  {
+    var collection = _alpm.Options.AssumeInstalled;
+    collection.Add(HandBuilt("foobar", "1.0", "stored description", DepMod.EQUAL));
+
+    Assert.True(collection.Contains(HandBuilt("foobar", "1.0", "another description", DepMod.EQUAL)));
+    Assert.True(collection.Contains(Parse("foobar=1.0")));
   }
 
   /// <summary>
@@ -113,67 +175,58 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Remove_ReportsWhetherTheDependencyWasThere()
   {
-    var native = ParseDepend("foobar=1.0");
-    try
-    {
-      var collection = _alpm.Options.AssumeInstalled;
-      collection.Add(Depend.Factory(native));
+    var collection = _alpm.Options.AssumeInstalled;
+    collection.Add(Parse("foobar=1.0"));
 
-      // The entry does go away, and Remove says so.
-      Assert.True(collection.Remove(Depend.Factory(native)));
-      Assert.Empty(collection);
+    // The entry does go away although the argument is a different snapshot of the same value.
+    Assert.True(collection.Remove(Parse("foobar=1.0")));
+    Assert.Empty(collection);
 
-      // Nothing left to remove.
-      Assert.False(collection.Remove(Depend.Factory(native)));
-    }
-    finally
-    {
-      NativeMethods.alpm_dep_free(native);
-    }
+    // Nothing left to remove.
+    Assert.False(collection.Remove(Parse("foobar=1.0")));
+  }
+
+  [Fact]
+  public void Remove_OnDuplicateValues_RemovesOneEntry()
+  {
+    var collection = _alpm.Options.AssumeInstalled;
+    collection.Add(Parse("foobar=1.0"));
+    collection.Add(Parse("foobar=1.0"));
+    Assert.Equal(2, collection.Count);
+
+    Assert.True(collection.Remove(Parse("foobar=1.0")));
+
+    Assert.Equal("foobar", Assert.Single(collection).Name);
   }
 
   [Fact]
   public void Clear_RemovesEveryDependency()
   {
-    var native = ParseDepend("foobar=1.0");
-    try
-    {
-      var collection = _alpm.Options.AssumeInstalled;
-      collection.Add(Depend.Factory(native));
-      collection.Add(Depend.Factory(native));
-      Assert.Equal(2, collection.Count);
+    var collection = _alpm.Options.AssumeInstalled;
+    collection.Add(Parse("foobar=1.0"));
+    collection.Add(Parse("barfoo=2.0"));
+    Assert.Equal(2, collection.Count);
 
-      collection.Clear();
+    collection.Clear();
 
-      Assert.Empty(collection);
-    }
-    finally
-    {
-      NativeMethods.alpm_dep_free(native);
-    }
+    Assert.Empty(collection);
   }
 
   /// <summary>
-  /// The bug from design report §D was that <c>Add</c> accepted a detached snapshot and handed
-  /// libalpm a null pointer instead of throwing.
+  /// Probed against libalpm 16.0.1: <c>alpm_option_add_assumeinstalled</c> answers -1 with
+  /// <c>ALPM_ERR_WRONG_ARGS</c> for any modifier other than "any" and "=", while its header documents
+  /// no such restriction. The wrapper must surface that instead of storing something libalpm would
+  /// never match.
   /// </summary>
   [Fact]
-  public void DetachedSnapshot_IsRejectedByAddAndAbsentFromReads()
+  public void Add_RejectsAModifierLibalpmDoesNotSupport()
   {
-    var native = ParseDepend("foobar");
-    try
-    {
-      var detached = Depend.Snapshot(native);
-      var collection = _alpm.Options.AssumeInstalled;
+    var collection = _alpm.Options.AssumeInstalled;
 
-      Assert.Throws<ArgumentException>(() => collection.Add(detached));
-      Assert.False(collection.Contains(detached));
-      Assert.False(collection.Remove(detached));
-      Assert.Empty(collection);
-    }
-    finally
-    {
-      NativeMethods.alpm_dep_free(native);
-    }
+    var exception = Assert.Throws<AlpmException>(
+      () => collection.Add(HandBuilt("foobar", "1.0", null, DepMod.GREATER_OR_EQUAL)));
+
+    Assert.Equal(_alpm_errno_t.ALPM_ERR_WRONG_ARGS, exception.Errno);
+    Assert.Empty(collection);
   }
 }

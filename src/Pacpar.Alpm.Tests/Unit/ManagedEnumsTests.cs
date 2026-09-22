@@ -51,7 +51,10 @@ public sealed class ManagedEnumsTests
 
     Assert.Equal(typeof(bool),
       typeof(QuestionType.InstallIgnoredPackage).GetProperty(nameof(QuestionType.InstallIgnoredPackage.Install))!.PropertyType);
-    Assert.Equal(typeof(AlpmList<Package>),
+
+    // A callback payload is a snapshot, so the member lists inside it are copied rather than viewed:
+    // libalpm's question union and the list hanging off it are built on the calling thread's stack.
+    Assert.Equal(typeof(IReadOnlyList<Package>),
       typeof(QuestionType.RemovePkgs).GetProperty(nameof(QuestionType.RemovePkgs.Packages))!.PropertyType);
   }
 

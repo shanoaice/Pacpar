@@ -32,6 +32,12 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   /// <summary>The native list getter, for example <c>alpm_option_get_ignorepkgs</c>.</summary>
   private protected abstract _alpm_list_t* GetList(byte* handle);
 
+  /// <summary>
+  /// The list libalpm currently exposes, for a subclass whose <see cref="Acquire"/> has to search it
+  /// (see <see cref="AssumeInstalled"/>, whose elements libalpm keeps its own copy of).
+  /// </summary>
+  private protected _alpm_list_t* NativeList => GetList(_handle);
+
   /// <summary>The native adder. Returns 0 on success, anything else on failure.</summary>
   private protected abstract int AddNative(byte* handle, byte* item);
 
@@ -41,7 +47,11 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   /// </summary>
   private protected abstract int RemoveNative(byte* handle, byte* item);
 
-  /// <summary>Borrows or marshals an item for a native lookup or removal.</summary>
+  /// <summary>
+  /// Produces the native item that a lookup or removal must hand to libalpm: usually a marshalled
+  /// needle, or - when the list stores copies and compares them by value rather than by pointer - the
+  /// stored element itself.
+  /// </summary>
   /// <param name="owned">Whether <see cref="Release"/> must free the returned pointer.</param>
   private protected abstract byte* Acquire(T item, out bool owned);
 
@@ -52,14 +62,18 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   private protected abstract AlpmList<T> View(_alpm_list_t* list);
 
   /// <summary>
-  /// Marshals an item for <see cref="Add"/>. Defaults to <see cref="Acquire"/>; a type that cannot
-  /// be handed back to libalpm overrides this to throw instead of passing a null pointer.
+  /// Marshals an item for <see cref="Add"/>. Defaults to <see cref="Acquire"/>; a list that copies
+  /// what it is given overrides this, because the value it needs is the item itself and not whatever
+  /// element an earlier add stored.
   /// </summary>
   private protected virtual byte* AcquireForAdd(T item, out bool owned) => Acquire(item, out owned);
 
   /// <summary>
-  /// Finds an item in the native list. libalpm's string finder returns the stored element, so the
-  /// caller compares the result with the needle pointer it just passed in.
+  /// Finds an item in the native list: <c>null</c> when the list holds no match, otherwise the stored
+  /// element. libalpm's string finder returns the <i>stored</i> element rather than the needle
+  /// (probed: <c>alpm_list_find_str</c> returned the list's own <c>char*</c>), so a caller may only
+  /// test the result for null - comparing it with the needle would report "absent" for every string
+  /// list.
   /// </summary>
   private protected virtual byte* FindIn(_alpm_list_t* list, byte* item)
     => NativeMethods.alpm_list_find_str(list, item);
@@ -95,7 +109,11 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
     {
       // A detached item that libalpm knows nothing about is never contained.
       if (itemPtr == null) return false;
-      return FindIn(GetList(_handle), itemPtr) == itemPtr;
+
+      // Only "did libalpm find something" may be asked of the result: its finders answer with the
+      // element they stored, not with the needle, which for a string option list is a fresh buffer
+      // this method allocated. Comparing the two rejected every element that *is* present.
+      return FindIn(GetList(_handle), itemPtr) != null;
     }
     finally
     {

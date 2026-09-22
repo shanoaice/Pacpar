@@ -21,7 +21,21 @@ public enum PackageOperation : uint
   Remove = 5
 }
 
-
+/// <summary>
+/// An event libalpm reports to a callback handler (<c>alpm_event_t</c>).
+/// </summary>
+/// <remarks>
+/// Every case is a managed snapshot: its fields are copied out of libalpm's union while the callback
+/// runs, which is the only time that union exists (probed: libalpm builds it on the calling thread's
+/// stack and overwrites it as soon as the callback returns, so a view read afterwards silently
+/// returned zeros - report item F9). Keeping a case and reading it after the callback is therefore
+/// safe, which the borrowed views this replaces were not.
+/// <para>
+/// The packages a case exposes remain <see cref="Package"/> views, because that is what a package
+/// always is: libalpm owns it and this library reads through its accessors. They outlive the
+/// callback (they belong to the transaction or a database), unlike the event union itself.
+/// </para>
+/// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class EventType
 {
@@ -110,32 +124,32 @@ public abstract class EventType
   {
   }
 
-  public unsafe class PackageOperationStart : EventType
+  public class PackageOperationStart : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal PackageOperationStart(_alpm_event_t* backingStruct)
+    internal unsafe PackageOperationStart(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      NewPackage = new Package(native->package_operation.newpkg);
+      OldPackage = new Package(native->package_operation.oldpkg);
+      Operation = (PackageOperation)(uint)native->package_operation.operation;
     }
 
-    public Package NewPackage => new(backingStruct->package_operation.newpkg);
-    public Package OldPackage => new(backingStruct->package_operation.oldpkg);
-    public PackageOperation Operation => (PackageOperation)(uint)backingStruct->package_operation.operation;
+    public Package NewPackage { get; }
+    public Package OldPackage { get; }
+    public PackageOperation Operation { get; }
   }
 
-  public unsafe class PackageOperationDone : EventType
+  public class PackageOperationDone : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal PackageOperationDone(_alpm_event_t* backingStruct)
+    internal unsafe PackageOperationDone(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      NewPackage = new Package(native->package_operation.newpkg);
+      OldPackage = new Package(native->package_operation.oldpkg);
+      Operation = (PackageOperation)(uint)native->package_operation.operation;
     }
 
-    public Package NewPackage => new(backingStruct->package_operation.newpkg);
-    public Package OldPackage => new(backingStruct->package_operation.oldpkg);
-    public PackageOperation Operation => (PackageOperation)(uint)backingStruct->package_operation.operation;
+    public Package NewPackage { get; }
+    public Package OldPackage { get; }
+    public PackageOperation Operation { get; }
   }
 
   public class IntegrityStart : EventType
@@ -154,16 +168,14 @@ public abstract class EventType
   {
   }
 
-  public unsafe class ScriptletInfo : EventType
+  public class ScriptletInfo : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal ScriptletInfo(_alpm_event_t* backingStruct)
+    internal unsafe ScriptletInfo(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      Line = NativeString.FromNative((nint)native->scriptlet_info.line) ?? "";
     }
 
-    public string Line => field ??= (NativeString.FromNative((nint)backingStruct->scriptlet_info.line) ?? "");
+    public string Line { get; }
   }
 
   public class RetrieveStart : EventType
@@ -186,30 +198,26 @@ public abstract class EventType
   {
   }
 
-  public unsafe class OptionalDependencyRemoval : EventType
+  public class OptionalDependencyRemoval : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal OptionalDependencyRemoval(_alpm_event_t* backingStruct)
+    internal unsafe OptionalDependencyRemoval(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      OptionalDependency = Depend.Snapshot(native->optdep_removal.optdep);
+      Package = new Package(native->optdep_removal.pkg);
     }
 
-    public Depend OptionalDependency => new(backingStruct->optdep_removal.optdep);
-    public Package Package => new(backingStruct->optdep_removal.pkg);
+    public Depend OptionalDependency { get; }
+    public Package Package { get; }
   }
 
-  public unsafe class DatabaseMissing : EventType
+  public class DatabaseMissing : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal DatabaseMissing(_alpm_event_t* backingStruct)
+    internal unsafe DatabaseMissing(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      DatabaseName = NativeString.FromNative((nint)native->database_missing.dbname) ?? "";
     }
 
-    public string DatabaseName =>
-      field ??= (NativeString.FromNative((nint)backingStruct->database_missing.dbname) ?? "");
+    public string DatabaseName { get; }
   }
 
   public class KeyringStart : EventType
@@ -228,124 +236,119 @@ public abstract class EventType
   {
   }
 
-  public unsafe class PacnewCreated : EventType
+  public class PacnewCreated : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal PacnewCreated(_alpm_event_t* backingStruct)
+    internal unsafe PacnewCreated(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      FromNoUpgrade = native->pacnew_created.from_noupgrade != 0;
+      OldPackage = new Package(native->pacnew_created.oldpkg);
+      NewPackage = new Package(native->pacnew_created.newpkg);
+      File = NativeString.FromNative((nint)native->pacnew_created.file) ?? "";
     }
 
-    public bool FromNoUpgrade => backingStruct->pacnew_created.from_noupgrade != 0;
-    public Package OldPackage => new(backingStruct->pacnew_created.oldpkg);
-    public Package NewPackage => new(backingStruct->pacnew_created.newpkg);
-    public string File => field ??= (NativeString.FromNative((nint)backingStruct->pacnew_created.file) ?? "");
+    public bool FromNoUpgrade { get; }
+    public Package OldPackage { get; }
+    public Package NewPackage { get; }
+    public string File { get; }
   }
 
-  public unsafe class PacsaveCreated : EventType
+  public class PacsaveCreated : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal PacsaveCreated(_alpm_event_t* backingStruct)
+    internal unsafe PacsaveCreated(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      OldPackage = new Package(native->pacsave_created.oldpkg);
+      File = NativeString.FromNative((nint)native->pacsave_created.file) ?? "";
     }
 
-    public Package OldPackage => new(backingStruct->pacsave_created.oldpkg);
-    public string File => field ??= (NativeString.FromNative((nint)backingStruct->pacsave_created.file) ?? "");
+    public Package OldPackage { get; }
+    public string File { get; }
   }
 
-  public unsafe class HookStart : EventType
+  public class HookStart : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal HookStart(_alpm_event_t* backingStruct)
+    internal unsafe HookStart(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      When = (HookWhen)(uint)native->hook.when;
     }
 
-    public HookWhen When => (HookWhen)(uint)backingStruct->hook.when;
+    public HookWhen When { get; }
   }
 
-  public unsafe class HookDone : EventType
+  public class HookDone : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal HookDone(_alpm_event_t* backingStruct)
+    internal unsafe HookDone(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      When = (HookWhen)(uint)native->hook.when;
     }
 
-    public HookWhen When => (HookWhen)(uint)backingStruct->hook.when;
+    public HookWhen When { get; }
   }
 
-  public unsafe class HookRunStart : EventType
+  public class HookRunStart : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal HookRunStart(_alpm_event_t* backingStruct)
+    internal unsafe HookRunStart(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      Name = NativeString.FromNative((nint)native->hook_run.name) ?? "";
+      Description = NativeString.FromNative((nint)native->hook_run.desc) ?? "";
+      Position = native->hook_run.position;
+      Total = native->hook_run.total;
     }
 
-    public string Name => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.name) ?? "");
-    public string Description => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.desc) ?? "");
-    public nuint Position => backingStruct->hook_run.position;
-    public nuint Total => backingStruct->hook_run.total;
+    public string Name { get; }
+    public string Description { get; }
+    public nuint Position { get; }
+    public nuint Total { get; }
   }
 
-  public unsafe class HookRunDone : EventType
+  public class HookRunDone : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal HookRunDone(_alpm_event_t* backingStruct)
+    internal unsafe HookRunDone(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      Name = NativeString.FromNative((nint)native->hook_run.name) ?? "";
+      Description = NativeString.FromNative((nint)native->hook_run.desc) ?? "";
+      Position = native->hook_run.position;
+      Total = native->hook_run.total;
     }
 
-    public string Name => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.name) ?? "");
-    public string Description => field ??= (NativeString.FromNative((nint)backingStruct->hook_run.desc) ?? "");
-    public nuint Position => backingStruct->hook_run.position;
-    public nuint Total => backingStruct->hook_run.total;
+    public string Name { get; }
+    public string Description { get; }
+    public nuint Position { get; }
+    public nuint Total { get; }
   }
 
-  public unsafe class PackageRetrieveStart : EventType
+  public class PackageRetrieveStart : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal PackageRetrieveStart(_alpm_event_t* backingStruct)
+    internal unsafe PackageRetrieveStart(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      PackageCount = native->pkg_retrieve.num;
+      TotalSize = native->pkg_retrieve.total_size;
     }
 
-    public nuint PackageCount => backingStruct->pkg_retrieve.num;
-    public CLong TotalSize => backingStruct->pkg_retrieve.total_size;
+    public nuint PackageCount { get; }
+    public CLong TotalSize { get; }
   }
 
-  public unsafe class PackageRetrieveDone : EventType
+  public class PackageRetrieveDone : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal PackageRetrieveDone(_alpm_event_t* backingStruct)
+    internal unsafe PackageRetrieveDone(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      PackageCount = native->pkg_retrieve.num;
+      TotalSize = native->pkg_retrieve.total_size;
     }
 
-    public nuint PackageCount => backingStruct->pkg_retrieve.num;
-    public CLong TotalSize => backingStruct->pkg_retrieve.total_size;
+    public nuint PackageCount { get; }
+    public CLong TotalSize { get; }
   }
 
-  public unsafe class PackageRetrieveFailed : EventType
+  public class PackageRetrieveFailed : EventType
   {
-    private readonly _alpm_event_t* backingStruct;
-
-    internal PackageRetrieveFailed(_alpm_event_t* backingStruct)
+    internal unsafe PackageRetrieveFailed(_alpm_event_t* native)
     {
-      this.backingStruct = backingStruct;
+      PackageCount = native->pkg_retrieve.num;
+      TotalSize = native->pkg_retrieve.total_size;
     }
 
-    public nuint PackageCount => backingStruct->pkg_retrieve.num;
-    public CLong TotalSize => backingStruct->pkg_retrieve.total_size;
+    public nuint PackageCount { get; }
+    public CLong TotalSize { get; }
   }
 }

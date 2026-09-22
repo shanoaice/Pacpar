@@ -189,4 +189,29 @@ public sealed class OptionCollectionTests : IDisposable
     Assert.False(architectures.Remove("riscv64"));
     Assert.Equal("aarch64", Assert.Single(architectures));
   }
+
+  /// <summary>
+  /// <c>Contains</c> used to compare libalpm's finder result with the needle it had just allocated.
+  /// <c>alpm_list_find_str</c> answers with the element stored in the list - probed: a list holding
+  /// its own <c>strdup("abc")</c> returned that pointer, not the equal buffer the caller passed - so
+  /// the comparison held for no string list at all and <c>Contains</c> answered <c>false</c> for
+  /// every item that *was* present. Nothing covered it: <c>Remove</c> never used the comparison, and
+  /// <c>Clear</c> ignores what <c>Remove</c> returns.
+  /// </summary>
+  [Fact]
+  public void Contains_ReportsItemsThatArePresent()
+  {
+    var architectures = Architectures;
+    architectures.Add("x86_64");
+    architectures.Add("aarch64");
+
+    Assert.True(architectures.Contains("x86_64"));
+    Assert.True(architectures.Contains("aarch64"));
+    Assert.False(architectures.Contains("riscv64"));
+
+    // Removing one must not make the other unreachable.
+    Assert.True(architectures.Remove("x86_64"));
+    Assert.False(architectures.Contains("x86_64"));
+    Assert.True(architectures.Contains("aarch64"));
+  }
 }

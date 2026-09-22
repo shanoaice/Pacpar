@@ -30,20 +30,49 @@ public enum PackageReason : uint
   Unknown = 2
 }
 
-public unsafe class Version : IComparable<Version>
+/// <summary>
+/// A package version (<c>alpm_pkg_get_version</c>), ordered by libalpm's own
+/// <c>alpm_pkg_vercmp</c>.
+/// </summary>
+/// <remarks>
+/// A managed snapshot: the version text is copied on construction, so a value taken from
+/// <see cref="Package.Version"/> stays readable after the package that produced it is gone.
+/// libalpm can only compare native strings, so <see cref="CompareTo"/> marshals both operands for
+/// the duration of the call instead of holding a pointer to package-owned memory.
+/// </remarks>
+public class Version : IComparable<Version>
 {
-  private readonly byte* version;
+  private readonly string _value;
 
-  internal Version(byte* version)
+  internal unsafe Version(byte* version)
   {
-    this.version = version;
+    _value = NativeString.FromNative((nint)version) ?? string.Empty;
   }
 
-  internal byte* VersionPtr => version;
+  public unsafe int CompareTo(Version? other)
+  {
+    if (other == null) return 1;
 
-  public int CompareTo(Version? other) => other == null ? 1 : NativeMethods.alpm_pkg_vercmp(version, other.VersionPtr);
+    var left = NativeString.ToNative(_value);
+    try
+    {
+      var right = NativeString.ToNative(other._value);
+      try
+      {
+        return NativeMethods.alpm_pkg_vercmp(left, right);
+      }
+      finally
+      {
+        Marshal.FreeHGlobal((nint)right);
+      }
+    }
+    finally
+    {
+      Marshal.FreeHGlobal((nint)left);
+    }
+  }
 
-  public override string ToString() => NativeString.FromNative((nint)version)!;
+  public override string ToString() => _value;
 }
 
 public unsafe class Signature : IDisposable

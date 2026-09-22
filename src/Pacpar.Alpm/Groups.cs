@@ -4,24 +4,32 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
-public unsafe class Group
+/// <summary>
+/// A package group (<c>alpm_group_t</c>).
+/// </summary>
+/// <remarks>
+/// A managed snapshot: the name and the member list are copied on construction, so a group obtained
+/// from <see cref="Database.GetGroup"/> or <see cref="Database.GetGroupCache"/> stays readable after
+/// libalpm's group cache moves on. Its members are <see cref="Package"/> views, because that is what
+/// a package always is: libalpm owns it and this library reads through its accessors.
+/// </remarks>
+public class Group
 {
-  private readonly _alpm_group_t* backingStruct;
-
-  internal Group(_alpm_group_t* backingStruct)
+  internal unsafe Group(_alpm_group_t* backingStruct)
   {
-    this.backingStruct = backingStruct;
+    Name = NativeString.FromNative((nint)backingStruct->name)!;
+    Packages = [.. AlpmList<Package>.Borrow(backingStruct->packages, &Package.Factory)];
   }
 
-  internal static Group Factory(void* ptr) => new((_alpm_group_t*)ptr);
+  internal static unsafe Group Factory(void* ptr) => new((_alpm_group_t*)ptr);
 
   // ReSharper disable once MemberCanBePrivate.Global
-  public string Name => field ??= NativeString.FromNative((nint)backingStruct->name)!;
+  public string Name { get; }
 
   /// <summary>
-  /// Packages that belong to this group. The list is owned by the group, so the view never frees it.
+  /// Packages that belong to this group, copied out of the group when this snapshot was made.
   /// </summary>
-  public AlpmList<Package> Packages => AlpmList<Package>.Borrow(backingStruct->packages, &Package.Factory);
+  public IReadOnlyList<Package> Packages { get; }
 
   /// <summary>
   /// Finds group members across <paramref name="dbs"/>.
@@ -31,7 +39,7 @@ public unsafe class Group
   /// <c>alpm_list_free</c>"), so it is copied into a managed collection and freed here. The
   /// packages themselves stay owned by the databases.
   /// </remarks>
-  public IReadOnlyList<Package> FindGroupPackages(AlpmList<Database> dbs)
+  public unsafe IReadOnlyList<Package> FindGroupPackages(AlpmList<Database> dbs)
   {
     var namePtr = NativeString.ToNative(Name);
     try

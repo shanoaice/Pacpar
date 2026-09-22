@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
@@ -25,27 +26,26 @@ public enum DepMod : uint
   LESS = 6
 }
 
-
 /// <summary>
 /// A dependency (<c>alpm_depend_t</c>).
 /// </summary>
 /// <remarks>
-/// This is a borrowed view: it never frees the underlying struct, because every dependency reachable
-/// today is owned by a package, a database or an option list. Strings are copied out on
-/// construction, so the properties stay valid for as long as the containing list does.
+/// A managed snapshot: construction copies every field out of the native struct, and no pointer to
+/// it is retained. The instance stays valid after the package, database or option list it came from
+/// is gone, but - like libalpm's own <c>alpm_depend_t</c> - it is a value, not a handle, so
+/// <i>changing</i> the dependency means replacing the entry in the list that owns it.
 /// <para>
-/// Instances produced by <see cref="Snapshot"/> carry no native pointer at all; they are detached
-/// copies used by <see cref="DepMissing"/>. Such an instance cannot be handed back to libalpm list
-/// operations.
+/// Handing a snapshot back to libalpm is explicit: <see cref="ToNative"/> materialises a struct for
+/// the calls that take one, and <see cref="AssumeInstalled"/> uses it for <c>Add</c>. Lookups
+/// (<c>Contains</c>, <c>Remove</c>) compare by value through <see cref="Matches"/> instead, because
+/// libalpm's removal predicate also compares the internal <c>name_hash</c>, which only a struct
+/// libalpm built itself carries.
 /// </para>
 /// </remarks>
 public unsafe class Depend
 {
-  private readonly _alpm_depend_t* _backingStruct;
-
   internal Depend(_alpm_depend_t* backingStruct)
   {
-    _backingStruct = backingStruct;
     Name = NativeString.FromNative((nint)backingStruct->name);
     Version = NativeString.FromNative((nint)backingStruct->version);
     Description = NativeString.FromNative((nint)backingStruct->desc);
@@ -54,7 +54,6 @@ public unsafe class Depend
 
   private Depend(string? name, string? version, string? description, DepMod depmod)
   {
-    _backingStruct = null;
     Name = name;
     Version = version;
     Description = description;
@@ -77,21 +76,6 @@ public unsafe class Depend
       NativeString.FromNative((nint)native->desc),
       (DepMod)(uint)native->mod_);
 
-  /// <summary>
-  /// The native struct used by list operations, or <c>null</c> for a detached snapshot.
-  /// </summary>
-  internal _alpm_depend_t* BackingStruct => _backingStruct;
-
-  /// <summary>
-  /// The native struct, or an exception when this instance is a detached snapshot that libalpm must
-  /// not be handed.
-  /// </summary>
-  internal _alpm_depend_t* NativePtrOrThrow(string paramName)
-    => _backingStruct != null
-      ? _backingStruct
-      : throw new ArgumentException(
-        "This Depend is a detached snapshot and cannot be passed back to libalpm.", paramName);
-
   public string? Description { get; }
 
   public string? Name { get; }
@@ -99,6 +83,50 @@ public unsafe class Depend
   public string? Version { get; }
 
   public DepMod Depmod { get; }
+
+  /// <summary>
+  /// Value equality as libalpm's own option-list removal predicate sees it, probed against
+  /// libalpm 16.0.1: <see cref="Name"/>, <see cref="Version"/> and <see cref="Depmod"/> take part,
+  /// <see cref="Description"/> does not.
+  /// </summary>
+  internal bool Matches(Depend other)
+    => string.Equals(Name, other.Name, StringComparison.Ordinal)
+       && string.Equals(Version ?? string.Empty, other.Version ?? string.Empty, StringComparison.Ordinal)
+       && Depmod == other.Depmod;
+
+  /// <summary>
+  /// Materialises a native <c>alpm_depend_t</c> carrying this snapshot, for the libalpm calls that
+  /// take a dependency by pointer. The caller owns the result and releases it with
+  /// <see cref="FreeNative"/>.
+  /// </summary>
+  /// <remarks>
+  /// <c>name_hash</c> is deliberately left zero. libalpm recomputes it in the copy it stores -
+  /// verified with a probe that handed <c>alpm_option_add_assumeinstalled</c> a hand-built struct
+  /// with a zero hash and read back libalpm's own hash - while the removal predicate <i>compares</i>
+  /// the field, so only a struct libalpm itself produced (or the element it stored) can be removed.
+  /// <see cref="AssumeInstalled"/> therefore never passes a materialised struct to <c>Remove</c>.
+  /// </remarks>
+  internal _alpm_depend_t* ToNative()
+  {
+    var native = (_alpm_depend_t*)Marshal.AllocHGlobal(sizeof(_alpm_depend_t));
+    native->name = NativeString.ToNative(Name);
+    native->version = NativeString.ToNative(Version);
+    native->desc = NativeString.ToNative(Description);
+    native->name_hash = default;
+    native->mod_ = (_alpm_depmod_t)(uint)Depmod;
+    return native;
+  }
+
+  /// <summary>Releases a struct produced by <see cref="ToNative"/>.</summary>
+  internal static void FreeNative(_alpm_depend_t* native)
+  {
+    if (native == null) return;
+
+    if (native->name != null) Marshal.FreeHGlobal((nint)native->name);
+    if (native->version != null) Marshal.FreeHGlobal((nint)native->version);
+    if (native->desc != null) Marshal.FreeHGlobal((nint)native->desc);
+    Marshal.FreeHGlobal((nint)native);
+  }
 }
 
 /// <summary>
@@ -130,121 +158,39 @@ public sealed class DepMissing
   public string? Target { get; }
 }
 
-public unsafe class FileConflict : IDisposable
+public class FileConflict
 {
-  internal readonly _alpm_fileconflict_t* BackingStruct;
+  public string? Ctarget;
+  public string? File;
+  public string? Target;
 
-  internal FileConflict(_alpm_fileconflict_t* backingStruct)
+  internal unsafe FileConflict(_alpm_fileconflict_t* backingStruct)
   {
-    BackingStruct = backingStruct;
+    Ctarget = NativeString.FromNative((nint)backingStruct->ctarget);
+    File = NativeString.FromNative((nint)backingStruct->file);
+    Target = NativeString.FromNative((nint)backingStruct->target);
   }
 
-  internal static FileConflict Factory(void* ptr) => new((_alpm_fileconflict_t*)ptr);
-
-  private bool _disposed;
-
-  protected void ThrowIfDisposed()
-  {
-    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-  }
-
-  public string? Ctarget
-  {
-    get
-    {
-      ThrowIfDisposed();
-      field ??= NativeString.FromNative((IntPtr)BackingStruct->ctarget);
-      return field;
-    }
-  }
-  public string? File
-  {
-    get
-    {
-      ThrowIfDisposed();
-      field ??= NativeString.FromNative((IntPtr)BackingStruct->file);
-      return field;
-    }
-  }
-  public string? Target
-  {
-    get
-    {
-      ThrowIfDisposed();
-      field ??= NativeString.FromNative((IntPtr)BackingStruct->target);
-      return field;
-    }
-  }
-
-  public void Dispose()
-  {
-    GC.SuppressFinalize(this);
-    Dispose(disposing: true);
-  }
-
-  protected virtual void Dispose(bool disposing)
-  {
-    if (!_disposed)
-    {
-      if (disposing)
-      {
-        // dispose managed state (managed objects)
-      }
-      NativeMethods.alpm_fileconflict_free(BackingStruct);
-      _disposed = true;
-    }
-  }
-
-  ~FileConflict() => Dispose(disposing: false);
+  internal static unsafe FileConflict Factory(void* ptr) => new((_alpm_fileconflict_t*)ptr);
 }
 
-public unsafe class Conflict : IDisposable
+public class Conflict
 {
-  internal readonly _alpm_conflict_t* BackingStruct;
+  public string Package1Name;
+  public string Package2Name;
 
-  public Package Package1;
-  public Package Package2;
-
-  internal Conflict(_alpm_conflict_t* backingStruct)
+  internal unsafe Conflict(_alpm_conflict_t* backingStruct)
   {
-    BackingStruct = backingStruct;
-    Package1 = new Package(backingStruct->package1);
-    Package2 = new Package(backingStruct->package2);
     Reason = new Depend(backingStruct->reason);
+    Package1Name = new Package(backingStruct->package1).Name;
+    Package2Name = new Package(backingStruct->package2).Name;
   }
 
-  internal static Conflict Factory(void* ptr) => new((_alpm_conflict_t*)ptr);
+  internal static unsafe Conflict Factory(void* ptr) => new((_alpm_conflict_t*)ptr);
 
   /// <summary>
   /// The conflicting dependency. Borrowed from the conflict struct: it is released by
   /// <c>alpm_conflict_free</c>, not by this type.
   /// </summary>
   public Depend Reason;
-
-  private bool _disposed;
-
-  protected void ThrowIfDisposed()
-  {
-    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-  }
-
-
-  public void Dispose()
-  {
-    GC.SuppressFinalize(this);
-    Dispose(disposing: true);
-  }
-
-  protected virtual void Dispose(bool disposing)
-  {
-    if (!_disposed)
-    {
-      // Package1/Package2 are database packages owned by their database, so there is nothing to
-      // release here; alpm_conflict_free only frees the conflict itself.
-      NativeMethods.alpm_conflict_free(BackingStruct);
-      _disposed = true;
-    }
-  }
-
-  ~Conflict() => Dispose(disposing: false);
 }
