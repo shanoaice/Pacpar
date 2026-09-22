@@ -17,13 +17,13 @@ internal static class MemoryManagement
   /// A method cannot carry both <see cref="DllImportAttribute"/> and
   /// <see cref="UnmanagedCallersOnlyAttribute"/>, so this thunk forwards to <see cref="CFree"/>.
   /// </remarks>
-  [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+  [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   internal static unsafe void CFreeExtern(void* ptr)
   {
     CFree(ptr);
   }
 
-  [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+  [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   internal unsafe static void UnmanagedFreeExtern(void* ptr)
   {
     Marshal.FreeHGlobal((nint)ptr);
@@ -32,9 +32,24 @@ internal static class MemoryManagement
   /// <summary>
   /// Element destructor for lists of <c>alpm_depmissing_t</c> that the caller owns.
   /// </summary>
-  [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+  [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   internal static unsafe void DepMissingFreeExtern(void* ptr)
   {
     NativeMethods.alpm_depmissing_free((_alpm_depmissing_t*)ptr);
+  }
+
+  /// <summary>
+  /// Element destructor for lists of <c>alpm_conflict_t</c> that the caller owns.
+  /// </summary>
+  [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+  internal static unsafe void ConflictFreeExtern(void* ptr)
+  {
+    NativeMethods.alpm_conflict_free((_alpm_conflict_t*)ptr);
+  }
+
+  [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+  internal static unsafe void FileConflictFreeExtern(void* ptr)
+  {
+    NativeMethods.alpm_fileconflict_free((_alpm_fileconflict_t*)ptr);
   }
 }
