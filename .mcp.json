@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "sharplens": {
+      "type": "stdio",
+      "command": "sharplens",
+      "args": [],
+      "env": {
+        "DOTNET_SOLUTION_PATH": "Pacpar.slnx"
+      }
+    }
+  }
+}
