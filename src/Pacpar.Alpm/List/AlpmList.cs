@@ -204,6 +204,13 @@ internal sealed class AlpmOwnedList<T> : AlpmList<T>, IDisposable
     _innerFree = innerFree;
   }
 
+  internal static unsafe IReadOnlyList<T> Take(_alpm_list_t* list, delegate*<void*, T> factory,
+    delegate* unmanaged[Cdecl]<void*, void> innerFree)
+  {
+    using var owned = new AlpmOwnedList<T>(list, factory, innerFree);
+    return [.. owned];
+  }
+
   public unsafe void Dispose()
   {
     if (_disposed) return;

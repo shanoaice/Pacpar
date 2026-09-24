@@ -143,10 +143,10 @@ public sealed class DepMissing
     Depend = depend;
   }
 
-  internal static unsafe DepMissing FromNative(_alpm_depmissing_t* native)
-    => new(NativeString.FromNative((nint)native->target),
-      NativeString.FromNative((nint)native->causingpkg),
-      native->depend != null ? new Depend(native->depend) : null);
+  internal static unsafe DepMissing Factory(void* native)
+    => new(NativeString.FromNative((nint)((_alpm_depmissing_t*)native)->target),
+      NativeString.FromNative((nint)((_alpm_depmissing_t*)native)->causingpkg),
+      ((_alpm_depmissing_t*)native)->depend != null ? new Depend(((_alpm_depmissing_t*)native)->depend) : null);
 
   public Depend? Depend { get; }
 

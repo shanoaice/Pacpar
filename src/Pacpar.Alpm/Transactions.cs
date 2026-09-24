@@ -97,37 +97,25 @@ public class Transactions : IDisposable
   }
 
   /// <summary>
-  /// Prepares the transaction and returns the missing dependencies, if any.
+  /// Prepares the transaction: the dependency, conflict and architecture checks.
   /// </summary>
   /// <remarks>
-  /// libalpm dumps a caller-owned list of <c>alpm_depmissing_t</c> into the output parameter, so the
-  /// list is copied into managed <see cref="DepMissing"/> snapshots and freed here — list and
-  /// elements both, following the <c>FREELIST</c> recipe from <c>man 3 libalpm_list</c>.
+  /// A successful call has nothing to report - libalpm leaves the list it dumps into the output
+  /// parameter empty (measured), which is why this method answers <c>void</c>. A failure is reported
+  /// as the <see cref="AlpmTransactionException"/> case that matches the errno, carrying the payload
+  /// as a managed snapshot; the native list is freed at the same moment, with the element destructor
+  /// the errno requires (see the exception's <c>TakeFailure</c> factory).
   /// </remarks>
-  public unsafe IReadOnlyList<DepMissing> Prepare()
+  public unsafe void Prepare()
   {
     ThrowIfDisposed();
 
-    _alpm_list_t* list = null;
-    try
-    {
-      var err = NativeMethods.alpm_trans_prepare((byte*)_library.AsHandle(), &list);
-      if (err != 0)
-      {
-        throw _library.GetRequiredCurrentError();
-      }
+    _alpm_list_t* errData = null;
 
-      var result = new List<DepMissing>();
-      for (var node = list; node != null; node = NativeMethods.alpm_list_next(node))
-      {
-        result.Add(DepMissing.FromNative((_alpm_depmissing_t*)node->data));
-      }
-
-      return result;
-    }
-    finally
+    var err = NativeMethods.alpm_trans_prepare((byte*)_library.AsHandle(), &errData);
+    if (err != 0)
     {
-      AlpmNativeList.Free(list, &MemoryManagement.DepMissingFreeExtern);
+      throw AlpmTransactionException.TakeFailure(_library.Errno, errData, "Failed to prepare transaction");
     }
   }
 
@@ -218,14 +206,16 @@ public class Transactions : IDisposable
   }
 
   /// <summary>
-  /// Commits the transaction. On success the (usually empty) list of error descriptions is returned.
+  /// Commits the transaction.
   /// </summary>
   /// <remarks>
-  /// libalpm dumps a caller-owned, <c>malloc</c>-allocated string list into the output parameter, so
-  /// its contents are copied into a managed collection and the list is freed here — on the error
-  /// path too, which previously leaked it.
+  /// A successful commit has nothing to report - libalpm leaves the output parameter empty
+  /// (measured), which is why this method answers <c>void</c>. A failure is reported as the
+  /// <see cref="AlpmTransactionException"/> case that matches the errno: conflicting files, or a list
+  /// of package names, depending on the errno. The native list is freed at the same moment, with the
+  /// element destructor that errno requires (see the exception's <c>TakeFailure</c> factory).
   /// </remarks>
-  public unsafe IReadOnlyList<string> Commit()
+  public unsafe void Commit()
   {
     ThrowIfDisposed();
 
@@ -233,11 +223,8 @@ public class Transactions : IDisposable
     var err = NativeMethods.alpm_trans_commit((byte*)_library.AsHandle(), &messages);
     if (err != 0)
     {
-      AlpmNativeList.Free(messages, &MemoryManagement.CFreeExtern);
-      throw _library.GetRequiredCurrentError();
+      throw AlpmTransactionException.TakeFailure(_library.Errno, messages,  "Failed to commit transaction");
     }
-
-    return AlpmStringList.TakeOwned(messages, &MemoryManagement.CFreeExtern);
   }
 
   public unsafe AlpmList<Package> GetAddedPackages()
