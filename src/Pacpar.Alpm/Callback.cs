@@ -135,7 +135,7 @@ public sealed class Callback
       callback.HandlerException);
   }
 
-  internal unsafe Callback(byte* alpmHandle)
+  internal unsafe Callback(_alpm_handle_t* alpmHandle)
   {
     _ctxHandle = new GCHandle<Callback>(this);
 
@@ -175,7 +175,7 @@ public sealed class Callback
   /// <c>va_list</c> argument is delivered as a pointer on every ABI .NET supports on Linux.
   /// </remarks>
   [DllImport("libalpm", EntryPoint = "alpm_option_set_logcb", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-  private static extern unsafe int SetLogCallback(byte* handle,
+  private static extern unsafe int SetLogCallback(_alpm_handle_t* handle,
     delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, void*, void> callback, void* ctx);
 
   public Action<EventType>? EventHandler { get; set; }

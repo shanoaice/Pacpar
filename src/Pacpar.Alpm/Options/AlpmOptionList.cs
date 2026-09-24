@@ -22,15 +22,15 @@ namespace Pacpar.Alpm.Options;
 /// </remarks>
 internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 {
-  private readonly byte* _handle;
+  private readonly _alpm_handle_t* _handle;
 
-  private protected AlpmOptionList(byte* handle)
+  private protected AlpmOptionList(_alpm_handle_t* handle)
   {
     _handle = handle;
   }
 
   /// <summary>The native list getter, for example <c>alpm_option_get_ignorepkgs</c>.</summary>
-  private protected abstract _alpm_list_t* GetList(byte* handle);
+  private protected abstract _alpm_list_t* GetList(_alpm_handle_t* handle);
 
   /// <summary>
   /// The list libalpm currently exposes, for a subclass whose <see cref="Acquire"/> has to search it
@@ -39,13 +39,13 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   private protected _alpm_list_t* NativeList => GetList(_handle);
 
   /// <summary>The native adder. Returns 0 on success, anything else on failure.</summary>
-  private protected abstract int AddNative(byte* handle, byte* item);
+  private protected abstract int AddNative(_alpm_handle_t* handle, byte* item);
 
   /// <summary>
   /// The native remover, returning libalpm's raw result: <c>1</c> when it removed the entry,
   /// <c>0</c> when it found nothing and <c>-1</c> on error.
   /// </summary>
-  private protected abstract int RemoveNative(byte* handle, byte* item);
+  private protected abstract int RemoveNative(_alpm_handle_t* handle, byte* item);
 
   /// <summary>
   /// Produces the native item that a lookup or removal must hand to libalpm: usually a marshalled
@@ -175,7 +175,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 /// <summary>
 /// <see cref="AlpmOptionList{T}"/> for the option lists whose elements are C strings.
 /// </summary>
-internal abstract unsafe class AlpmStringOptionList(byte* handle) : AlpmOptionList<string>(handle)
+internal abstract unsafe class AlpmStringOptionList(_alpm_handle_t* handle) : AlpmOptionList<string>(handle)
 {
   private protected override byte* Acquire(string item, out bool owned)
   {

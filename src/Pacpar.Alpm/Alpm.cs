@@ -9,7 +9,7 @@ namespace Pacpar.Alpm;
 public class Alpm : IDisposable
 {
   // opaque handle to libalpm, details not exposed
-  private unsafe byte* _handle;
+  private unsafe _alpm_handle_t* _handle;
 
   // The out-parameter of alpm_initialize: libalpm writes it only when initialization fails. The
   // handle's *current* error is a different thing and is read with alpm_errno(handle) - see Errno.
@@ -136,7 +136,7 @@ public class Alpm : IDisposable
     ThrowIfDisposed();
     var filenamePtr = NativeString.ToNative(filename);
     // This is a pointer to a pointer, where libalpm will write the package handle.
-    var pkgOutPtr = (byte**)Marshal.AllocHGlobal(sizeof(nint));
+    var pkgOutPtr = (_alpm_pkg_t**)Marshal.AllocHGlobal(sizeof(nint));
     try
     {
       var err = NativeMethods.alpm_pkg_load(_handle, filenamePtr, full ? 1 : 0, (int)level, pkgOutPtr);
@@ -216,7 +216,7 @@ public class Alpm : IDisposable
     // the handle pointer is not owned by us, so we don't need to free it
     // we should set it to zero anyway, just in case
     _ = NativeMethods.alpm_release(_handle);
-    _handle = (byte*)IntPtr.Zero;
+    _handle = (_alpm_handle_t*)IntPtr.Zero;
 
     // The callback context must stay alive until native code can no longer call back, and
     // alpm_release itself may still fire events, so it is released only now that alpm_release has

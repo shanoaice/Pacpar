@@ -309,9 +309,9 @@ public sealed unsafe class ManagedSnapshotTests
     {
       native->type_ = _alpm_question_type_t.ALPM_QUESTION_REPLACE_PKG;
       native->replace.replace = 1;
-      native->replace.oldpkg = oldPackage;
-      native->replace.newpkg = newPackage;
-      native->replace.newdb = newDatabase;
+      native->replace.oldpkg = (_alpm_pkg_t*)oldPackage;
+      native->replace.newpkg = (_alpm_pkg_t*)newPackage;
+      native->replace.newdb = (_alpm_db_t*)newDatabase;
 
       var payload = QuestionType.FromUnion(native);
 

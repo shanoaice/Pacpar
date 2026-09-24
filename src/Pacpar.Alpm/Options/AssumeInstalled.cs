@@ -24,14 +24,14 @@ namespace Pacpar.Alpm.Options;
 /// </description></item>
 /// </list>
 /// </remarks>
-internal sealed unsafe class AssumeInstalled(byte* handle) : AlpmOptionList<Depend>(handle)
+internal sealed unsafe class AssumeInstalled(_alpm_handle_t* handle) : AlpmOptionList<Depend>(handle)
 {
-  private protected override _alpm_list_t* GetList(byte* h) => NativeMethods.alpm_option_get_assumeinstalled(h);
+  private protected override _alpm_list_t* GetList(_alpm_handle_t* h) => NativeMethods.alpm_option_get_assumeinstalled(h);
 
-  private protected override int AddNative(byte* h, byte* item)
+  private protected override int AddNative(_alpm_handle_t* h, byte* item)
     => NativeMethods.alpm_option_add_assumeinstalled(h, (_alpm_depend_t*)item);
 
-  private protected override int RemoveNative(byte* h, byte* item)
+  private protected override int RemoveNative(_alpm_handle_t* h, byte* item)
     => NativeMethods.alpm_option_remove_assumeinstalled(h, (_alpm_depend_t*)item);
 
   /// <summary>

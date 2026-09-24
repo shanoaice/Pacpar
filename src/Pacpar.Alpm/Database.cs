@@ -7,14 +7,14 @@ namespace Pacpar.Alpm;
 
 public unsafe class Database
 {
-  private readonly byte* backingStruct;
+  private readonly _alpm_db_t* backingStruct;
 
-  internal Database(byte* backingStruct)
+  internal Database(_alpm_db_t* backingStruct)
   {
     this.backingStruct = backingStruct;
   }
 
-  internal static Database Factory(void* ptr) => new((byte*)ptr);
+  internal static Database Factory(void* ptr) => new((_alpm_db_t*)ptr);
 
   public string Name => field ??= NativeString.FromNative((nint)NativeMethods.alpm_db_get_name(backingStruct))!;
 
@@ -94,7 +94,7 @@ public unsafe class Database
   public void Unregister()
   {
     var err = NativeMethods.alpm_db_unregister(backingStruct);
-    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno((byte*)AsHandle()));
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno((_alpm_handle_t*)AsHandle()));
   }
 
   /// <summary>
@@ -115,7 +115,7 @@ public unsafe class Database
   {
     if (IsValid) return;
 
-    var errno = NativeMethods.alpm_errno((byte*)AsHandle());
+    var errno = NativeMethods.alpm_errno((_alpm_handle_t*)AsHandle());
     throw errno == _alpm_errno_t.ALPM_ERR_OK
       ? new InvalidOperationException("The database is invalid but libalpm did not set an error code.")
       : ErrorHandler.ToException(errno);
@@ -131,7 +131,7 @@ public unsafe class Database
   /// </remarks>
   private void ThrowIfErrnoSet()
   {
-    var errno = NativeMethods.alpm_errno((byte*)AsHandle());
+    var errno = NativeMethods.alpm_errno((_alpm_handle_t*)AsHandle());
     if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
   }
 }

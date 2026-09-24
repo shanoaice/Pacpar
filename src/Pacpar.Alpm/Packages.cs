@@ -175,9 +175,9 @@ public enum PackageValidation : uint
 /// </remarks>
 public abstract unsafe class PackageBase
 {
-  internal readonly byte* BackingStruct;
+  internal readonly _alpm_pkg_t* BackingStruct;
 
-  private protected PackageBase(byte* backingStruct)
+  private protected PackageBase(_alpm_pkg_t* backingStruct)
   {
     BackingStruct = backingStruct;
   }
@@ -194,7 +194,7 @@ public abstract unsafe class PackageBase
     if (Disposed) throw new ObjectDisposedException(GetType().FullName);
   }
 
-  internal byte* LibraryHandle
+  internal _alpm_handle_t* LibraryHandle
   {
     get
     {
@@ -541,11 +541,11 @@ public abstract unsafe class PackageBase
 /// </remarks>
 public sealed unsafe class Package : PackageBase
 {
-  internal Package(byte* backingStruct) : base(backingStruct)
+  internal Package(_alpm_pkg_t* backingStruct) : base(backingStruct)
   {
   }
 
-  internal static Package Factory(void* ptr) => new((byte*)ptr);
+  internal static Package Factory(void* ptr) => new((_alpm_pkg_t*)ptr);
 }
 
 /// <summary>
@@ -561,10 +561,9 @@ public sealed unsafe class Package : PackageBase
 /// </remarks>
 public sealed unsafe class LoadedPackage : PackageBase, IDisposable
 {
-  internal LoadedPackage(byte* backingStruct) : base(backingStruct)
+  internal LoadedPackage(_alpm_pkg_t* backingStruct) : base(backingStruct)
   {
   }
-
   /// <summary>Whether this instance still owns the package (it stops owning it on dispose or hand-over).</summary>
   internal bool OwnsPackage => !Disposed;
 

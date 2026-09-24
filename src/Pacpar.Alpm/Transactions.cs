@@ -84,7 +84,7 @@ public class Transactions : IDisposable
   internal unsafe Transactions(Alpm alpmLibrary, TransactionFlags flags)
   {
     _library = alpmLibrary;
-    var err = NativeMethods.alpm_trans_init((byte*)_library.AsHandle(), (int)flags);
+    var err = NativeMethods.alpm_trans_init((_alpm_handle_t*)_library.AsHandle(), (int)flags);
     if (err != 0)
     {
       throw _library.GetRequiredCurrentError();
@@ -112,7 +112,7 @@ public class Transactions : IDisposable
 
     _alpm_list_t* errData = null;
 
-    var err = NativeMethods.alpm_trans_prepare((byte*)_library.AsHandle(), &errData);
+    var err = NativeMethods.alpm_trans_prepare((_alpm_handle_t*)_library.AsHandle(), &errData);
     if (err != 0)
     {
       throw AlpmTransactionException.TakeFailure(_library.Errno, errData, "Failed to prepare transaction");
@@ -168,7 +168,7 @@ public class Transactions : IDisposable
   /// <summary>Adds <paramref name="pkg"/> to the transaction, without deciding who owns it.</summary>
   private unsafe void AddCore(PackageBase pkg)
   {
-    var err = NativeMethods.alpm_add_pkg((byte*)_library.AsHandle(), pkg.BackingStruct);
+    var err = NativeMethods.alpm_add_pkg((_alpm_handle_t*)_library.AsHandle(), pkg.BackingStruct);
     if (err != 0)
     {
       throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to add package: {pkg.Name}");
@@ -178,7 +178,7 @@ public class Transactions : IDisposable
   public unsafe void RemovePackage(Package pkg)
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_remove_pkg((byte*)_library.AsHandle(), pkg.BackingStruct);
+    var err = NativeMethods.alpm_remove_pkg((_alpm_handle_t*)_library.AsHandle(), pkg.BackingStruct);
     if (err != 0)
     {
       throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to remove package: {pkg.Name}");
@@ -188,7 +188,7 @@ public class Transactions : IDisposable
   public unsafe void SystemUpgrade(bool enableDowngrade)
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_sync_sysupgrade((byte*)_library.AsHandle(), enableDowngrade ? 1 : 0);
+    var err = NativeMethods.alpm_sync_sysupgrade((_alpm_handle_t*)_library.AsHandle(), enableDowngrade ? 1 : 0);
     if (err != 0)
     {
       throw _library.GetRequiredCurrentError();
@@ -198,7 +198,7 @@ public class Transactions : IDisposable
   public unsafe void Interrupt()
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_trans_interrupt((byte*)_library.AsHandle());
+    var err = NativeMethods.alpm_trans_interrupt((_alpm_handle_t*)_library.AsHandle());
     if (err != 0)
     {
       throw _library.GetRequiredCurrentError();
@@ -220,7 +220,7 @@ public class Transactions : IDisposable
     ThrowIfDisposed();
 
     _alpm_list_t* messages = null;
-    var err = NativeMethods.alpm_trans_commit((byte*)_library.AsHandle(), &messages);
+    var err = NativeMethods.alpm_trans_commit((_alpm_handle_t*)_library.AsHandle(), &messages);
     if (err != 0)
     {
       throw AlpmTransactionException.TakeFailure(_library.Errno, messages,  "Failed to commit transaction");
@@ -230,20 +230,20 @@ public class Transactions : IDisposable
   public unsafe AlpmList<Package> GetAddedPackages()
   {
     ThrowIfDisposed();
-    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_add((byte*)_library.AsHandle()),
+    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_add((_alpm_handle_t*)_library.AsHandle()),
       &Package.Factory);
   }
 
   public unsafe TransactionFlags GetFlags()
   {
     ThrowIfDisposed();
-    return (TransactionFlags)NativeMethods.alpm_trans_get_flags((byte*)_library.AsHandle());
+    return (TransactionFlags)NativeMethods.alpm_trans_get_flags((_alpm_handle_t*)_library.AsHandle());
   }
 
   public unsafe AlpmList<Package> GetRemovedPackages()
   {
     ThrowIfDisposed();
-    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_remove((byte*)_library.AsHandle()),
+    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_remove((_alpm_handle_t*)_library.AsHandle()),
       &Package.Factory);
   }
 
@@ -268,6 +268,6 @@ public class Transactions : IDisposable
     if (_released) return;
 
     _released = true;
-    _ = NativeMethods.alpm_trans_release((byte*)_library.AsHandle());
+    _ = NativeMethods.alpm_trans_release((_alpm_handle_t*)_library.AsHandle());
   }
 }

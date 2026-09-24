@@ -11,9 +11,9 @@ namespace Pacpar.Alpm;
 /// </summary>
 public class AlpmOptions
 {
-  private readonly unsafe byte* _handle;
+  private readonly unsafe _alpm_handle_t* _handle;
 
-  internal unsafe AlpmOptions(byte* handle)
+  internal unsafe AlpmOptions(_alpm_handle_t* handle)
   {
     _handle = handle;
   }
@@ -34,7 +34,7 @@ public class AlpmOptions
   /// The setter arrives as a <c>delegate* managed</c> because <c>delegate* unmanaged[Cdecl]</c>
   /// cannot point at a <c>[DllImport]</c> method (CS8786).
   /// </remarks>
-  private unsafe void SetStringOption(string? value, delegate* managed<byte*, byte*, int> setter)
+  private unsafe void SetStringOption(string? value, delegate* managed<_alpm_handle_t*, byte*, int> setter)
   {
     var ptr = NativeString.ToNative(value);
     try

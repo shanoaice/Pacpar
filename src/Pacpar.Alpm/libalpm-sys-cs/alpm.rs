@@ -187,12 +187,27 @@ unsafe extern "C" {
         size: usize,
     ) -> *mut ::std::os::raw::c_void;
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _alpm_handle_t {
+    _unused: [u8; 0],
+}
 #[doc = " The libalpm context handle.\n\n This struct represents an instance of libalpm.\n @ingroup libalpm_handle"]
-pub type alpm_handle_t = u8;
+pub type alpm_handle_t = _alpm_handle_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _alpm_db_t {
+    _unused: [u8; 0],
+}
 #[doc = " A database.\n\n A database is a container that stores metadata about packages.\n\n A database can be located on the local filesystem or on a remote server.\n\n To use a database, it must first be registered via \\link alpm_register_syncdb \\endlink.\n If the database is already present in dbpath then it will be usable. Otherwise,\n the database needs to be downloaded using \\link alpm_db_update \\endlink. Even if the\n source of the database is the local filesystem.\n\n After this, the database can be used to query packages and groups. Any packages or groups\n from the database will continue to be owned by the database and do not need to be freed by\n the user. They will be freed when the database is unregistered.\n\n Databases are automatically unregistered when the \\link alpm_handle_t \\endlink is released.\n @ingroup libalpm_databases"]
-pub type alpm_db_t = u8;
+pub type alpm_db_t = _alpm_db_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _alpm_pkg_t {
+    _unused: [u8; 0],
+}
 #[doc = " A package.\n\n A package can be loaded from disk via \\link alpm_pkg_load \\endlink or retrieved from a database.\n Packages from databases are automatically freed when the database is unregistered. Packages loaded\n from a file must be freed manually.\n\n Packages can then be queried for metadata or added to a transaction\n to be added or removed from the system.\n @ingroup libalpm_packages"]
-pub type alpm_pkg_t = u8;
+pub type alpm_pkg_t = _alpm_pkg_t;
 #[doc = " The extended data type used to store non-standard package data fields\n @ingroup libalpm_packages"]
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
