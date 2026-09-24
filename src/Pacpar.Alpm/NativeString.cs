@@ -11,13 +11,6 @@ namespace Pacpar.Alpm;
 /// names and database names routinely contain non-ASCII text. The conversions are therefore
 /// explicit here instead of going through the platform-ANSI marshal helpers, which encode and
 /// decode with the host's ANSI code page and thus silently mojibake libalpm's UTF-8 on Windows.
-/// <para>
-/// <see cref="ToNative"/> deliberately keeps <see cref="Marshal.AllocHGlobal"/> as its allocator:
-/// its buffers are released with <see cref="Marshal.FreeHGlobal"/>, directly or through
-/// <c>MemoryManagement.UnmanagedFreeExtern</c> as an <c>alpm_list_free_inner</c> destructor. The
-/// BCL's UTF-8 counterpart, <c>Marshal.StringToCoTaskMemUTF8</c>, pairs with
-/// <c>Marshal.FreeCoTaskMem</c> instead, so using it would mismatch every free site.
-/// </para>
 /// </remarks>
 internal static unsafe class NativeString
 {
