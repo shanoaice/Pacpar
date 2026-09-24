@@ -12,20 +12,24 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// </summary>
 public sealed class AlpmErrorStateTests
 {
+  /// <summary>A path that is guaranteed not to exist, so loading it fails inside libalpm.</summary>
+  private static string MissingPackage =>
+    Path.Combine(Path.GetTempPath(), $"pacpar-missing-{Guid.NewGuid():n}.pkg.tar.zst");
+
   [Fact]
   public void Errno_ReportsTheHandleError_NotTheInitializeOutParameter()
   {
     using var environment = new IsolatedAlpmEnvironment();
     var alpm = environment.Alpm;
-    using var first = alpm.BeginTransaction(TransactionFlags.ALPM_TRANS_FLAG_NOLOCK);
 
-    // A second transaction cannot be initialized: libalpm reports ALPM_ERR_TRANS_NOT_NULL.
-    var exception = Record.Exception(() => alpm.BeginTransaction(TransactionFlags.ALPM_TRANS_FLAG_NOLOCK));
+    // A failure libalpm reports through the handle. (This used to be a second BeginTransaction,
+    // which is a join of the active transaction now, so the handle stays clean.)
+    var exception = Record.Exception(() => alpm.LoadPackage(MissingPackage, false, SigLevel.ALPM_SIG_USE_DEFAULT));
 
     Assert.NotNull(exception);
     Assert.IsNotType<NullReferenceException>(exception);
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_TRANS_NOT_NULL, alpm.Errno);
-    Assert.Contains("transaction already initialized", alpm.GetCurrentErrorString());
+    Assert.Equal(_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND, alpm.Errno);
+    Assert.Contains("could not find or read package", alpm.GetCurrentErrorString());
   }
 
   [Fact]
@@ -33,9 +37,8 @@ public sealed class AlpmErrorStateTests
   {
     using var environment = new IsolatedAlpmEnvironment();
     var alpm = environment.Alpm;
-    using var first = alpm.BeginTransaction(TransactionFlags.ALPM_TRANS_FLAG_NOLOCK);
 
-    Record.Exception(() => alpm.BeginTransaction(TransactionFlags.ALPM_TRANS_FLAG_NOLOCK));
+    Record.Exception(() => alpm.LoadPackage(MissingPackage, false, SigLevel.ALPM_SIG_USE_DEFAULT));
 
     Assert.NotNull(alpm.GetCurrentError());
   }

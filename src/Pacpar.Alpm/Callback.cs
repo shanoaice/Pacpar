@@ -65,7 +65,8 @@ public enum FetchResult
 /// through <c>SafeInvoke</c>, which swallows handler
 /// exceptions at the FFI boundary and reports them through <see cref="HandlerException"/> when
 /// that observer is set. The ctx handle is owned by <see cref="Alpm"/>, which is the only type
-/// allowed to release it.
+/// allowed to release it - and which keeps it when the native handle could not be released, because
+/// that handle still points at it.
 /// </remarks>
 public sealed class Callback
 {
@@ -264,9 +265,15 @@ public sealed class Callback
 
   /// <summary>
   /// Releases the callback ctx handle. Deliberately <c>internal</c>: the handle is owned by
-  /// <see cref="Alpm"/>, which releases it after <c>alpm_release</c> returned. A public entry
-  /// point would let a consumer invalidate the ctx while native code may still call back.
+  /// <see cref="Alpm"/>, which releases it once <c>alpm_release</c> has returned successfully. A
+  /// public entry point would let a consumer invalidate the ctx while native code may still call
+  /// back.
   /// </summary>
+  /// <remarks>
+  /// Not called when <c>alpm_release</c> failed: the handle it belongs to is still alive then (it is
+  /// what leaked), and its native thunks would dereference this ctx handle - see
+  /// <see cref="Alpm.Dispose()"/>.
+  /// </remarks>
   internal void Dispose()
   {
     if (_ctxHandle.IsAllocated) _ctxHandle.Dispose();

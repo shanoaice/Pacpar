@@ -6,6 +6,15 @@ namespace Pacpar.Alpm;
 /// <summary>
 ///  Transaction flags
 /// </summary>
+/// <remarks>
+/// <c>0</c> — the value the optional parameter of <see cref="Alpm.BeginTransaction"/> defaults to — is
+/// libalpm's default mode rather than "no configuration": every dependency, conflict and file-conflict
+/// check runs, hooks and scriptlets are executed, the database is locked and the filesystem is
+/// written. Every member below deviates from that, either as an opt-out
+/// (<c>NODEPS</c>, <c>NOCONFLICTS</c>, <c>NOSAVE</c>, <c>NOLOCK</c>, <c>DBONLY</c>, …) or as an
+/// explicit opt-in (<c>CASCADE</c>, <c>RECURSE</c>, <c>ALLDEPS</c>, …), so a caller who does not want
+/// one of those deviations has nothing to pass.
+/// </remarks>
 [Flags]
 public enum TransactionFlags : uint
 {
@@ -256,11 +265,18 @@ public class Transactions : IDisposable
   /// handed out earlier by <see cref="GetAddedPackages"/> - still points at a live package. Packages
   /// added through <see cref="AddPackage(Package)"/> are not affected: libalpm owns those.
   /// <para>
-  /// There is deliberately no finalizer. The transaction is owned by the libalpm handle, which
-  /// releases an active transaction during <c>alpm_release</c>, so a finalizer adds no cleanup — but
-  /// it can run after the handle is already disposed or released, and an exception escaping a
-  /// finalizer terminates the process (that is exactly what <c>~Transactions()</c> used to do via
-  /// <see cref="Alpm.AsHandle"/>'s disposed check).
+  /// There is deliberately no finalizer. An initialized transaction is released by
+  /// <see cref="Alpm.Dispose()"/> before it releases the handle, because <c>alpm_release</c> does
+  /// <b>not</b> release an active transaction: it answers <c>ALPM_ERR_TRANS_NOT_NULL</c> and frees
+  /// nothing, which leaks the handle and <c>db.lck</c>. A finalizer here would run after that
+  /// release, with the handle already gone, and an exception escaping it terminates the process
+  /// (that is what <c>~Transactions()</c> used to do through <see cref="Alpm.AsHandle"/>'s disposed
+  /// check).
+  /// </para>
+  /// <para>
+  /// <see cref="GC.SuppressFinalize"/> is still called, so a derived type that adds its own
+  /// finalizer does not have to override <see cref="Dispose"/> to suppress it: the native
+  /// transaction this instance owns is already released by the time it would run.
   /// </para>
   /// </remarks>
   public unsafe void Dispose()
@@ -268,6 +284,14 @@ public class Transactions : IDisposable
     if (_released) return;
 
     _released = true;
+
+    GC.SuppressFinalize(this);
+
+    if (_library.Disposed) return;
+
+    // The library is still alive, so release the native transaction - which drops the database lock
+    // - and clear the handle's reference to it, so Alpm.Dispose finds nothing left to release.
     _ = NativeMethods.alpm_trans_release((_alpm_handle_t*)_library.AsHandle());
+    _library.CurrentTransaction = null;
   }
 }

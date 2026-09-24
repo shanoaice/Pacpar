@@ -102,7 +102,8 @@ public sealed class CallbackTests
   }
 
   /// <summary>
-  /// The finalizer path must release the callback ctx handle. <see cref="Callback"/> is strongly
+  /// The finalizer path must release the callback ctx handle once the handle itself was released.
+  /// <see cref="Callback"/> is strongly
   /// rooted by that very handle, so nothing but <see cref="Alpm"/> can ever free it: without this,
   /// dropping an <see cref="Alpm"/> without disposing it leaks the Callback and everything its
   /// handler delegates keep alive.
@@ -134,6 +135,54 @@ public sealed class CallbackTests
   {
     var alpm = new Alpm(root, dbpath);
     var weak = new WeakReference(alpm.Callback);
+
+    // Intentionally not disposed: this exercises ~Alpm().
+    return weak;
+  }
+
+  /// <summary>
+  /// The other half of the finalizer contract: when the native handle cannot be released, it stays
+  /// alive - still holding this ctx handle, which its thunks dereference - so the context must be
+  /// kept with it. Freeing it cleans nothing up and leaves the leaked handle pointing at a freed
+  /// GCHandle, so the next callback entered from that handle (a log message during a later
+  /// <c>alpm_trans_release</c>, say) throws inside <c>LogAgent</c> and takes the process down.
+  /// </summary>
+  [Fact]
+  public void AlpmFinalizer_KeepsTheCallbackContext_WhenTheHandleCouldNotBeReleased()
+  {
+    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-finalizer-tests", Guid.NewGuid().ToString("n"));
+    var root = Path.Combine(workspace, "root");
+    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
+    Directory.CreateDirectory(root);
+    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
+    Directory.CreateDirectory(Path.Combine(root, "tmp"));
+
+    var callback = CreateAlpmWithAnUnreleasableHandle(root, dbpath);
+
+    for (var i = 0; i < 10 && callback.IsAlive; ++i)
+    {
+      GC.Collect();
+      GC.WaitForPendingFinalizers();
+    }
+
+    Assert.True(callback.IsAlive,
+      "Callback was freed although the leaked handle still points at its ctx GCHandle.");
+
+    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
+  }
+
+  /// <summary>
+  /// An <see cref="Alpm"/> whose release must fail: the transaction it owns is hidden from the
+  /// wrapper, which is the state a consumer's forgotten transaction leaves libalpm in. The handle
+  /// (and its lock) then leak for the life of the process, which is what this test needs.
+  /// </summary>
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  private static WeakReference CreateAlpmWithAnUnreleasableHandle(string root, string dbpath)
+  {
+    var alpm = new Alpm(root, dbpath);
+    var weak = new WeakReference(alpm.Callback);
+    _ = alpm.BeginTransaction((TransactionFlags)0);
+    alpm.CurrentTransaction = null;
 
     // Intentionally not disposed: this exercises ~Alpm().
     return weak;

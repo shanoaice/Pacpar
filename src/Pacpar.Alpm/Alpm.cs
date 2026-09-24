@@ -16,7 +16,6 @@ public class Alpm : IDisposable
   private readonly unsafe _alpm_errno_t* _initializeErrno;
 
   // ReSharper disable once RedundantDefaultMemberInitializer
-  private bool _disposed = false;
 
   public unsafe Alpm(string root, string dbpath)
   {
@@ -46,18 +45,36 @@ public class Alpm : IDisposable
 
   private void ThrowIfDisposed()
   {
-    ObjectDisposedException.ThrowIf(_disposed, this);
+    ObjectDisposedException.ThrowIf(Disposed, this);
   }
 
   /// <summary>
-  /// Exposes methods to set libalpm options.
+  /// Exposes properties to set libalpm options.
   /// </summary>
   public AlpmOptions Options { get; }
 
   /// <summary>
-  /// Expose methods to set libalpm callbacks.
+  /// Exposes properties to set libalpm callbacks.
   /// </summary>
   public Callback Callback { get; }
+
+  /// <summary>
+  /// The transaction currently initialized on this handle, or <c>null</c> when there is none.
+  /// </summary>
+  /// <remarks>
+  /// libalpm allows one transaction per handle at a time, and <see cref="BeginTransaction"/> hands
+  /// this one back instead of initializing a second (it refuses the join when the requested flags
+  /// differ). The property is cleared when the transaction is disposed.
+  /// <para>
+  /// <see cref="Dispose()"/> releases this transaction before releasing the handle: an initialized
+  /// transaction holds the database lock, and <c>alpm_release</c> refuses to run while one exists
+  /// (<c>ALPM_ERR_TRANS_NOT_NULL</c>, freeing nothing), which would leak the handle and
+  /// <c>db.lck</c>.
+  /// </para>
+  /// </remarks>
+  public Transactions? CurrentTransaction { get; internal set; }
+
+  internal bool Disposed { get; private set; } = false;
 
   /// <summary>
   /// The raw handle to libalpm, as an <see cref="IntPtr"/> so it can be passed around without
@@ -157,10 +174,43 @@ public class Alpm : IDisposable
     }
   }
 
-  public Transactions BeginTransaction(TransactionFlags flags)
+  /// <summary>
+  /// Returns the transaction this handle has initialized, beginning one with <paramref name="flags"/>
+  /// when there is none.
+  /// </summary>
+  /// <param name="flags">
+  /// The transaction's flags. The default, <c>0</c>, is libalpm's fully-checked mode - see
+  /// <see cref="TransactionFlags"/> for what each deviation from it means.
+  /// </param>
+  /// <returns>The new transaction, or the active one this call joined.</returns>
+  /// <remarks>
+  /// libalpm initializes at most one transaction per handle, so an active transaction is joined
+  /// instead of a second native one being refused.
+  /// </remarks>
+  /// <exception cref="InvalidOperationException">
+  /// A transaction is already active and was initialized with different flags. The flags decide
+  /// whether the transaction locks the database, writes to the filesystem and runs hooks, so a
+  /// request for one mode must not be answered with a transaction configured for another.
+  /// </exception>
+  public Transactions BeginTransaction(TransactionFlags flags = default)
   {
     ThrowIfDisposed();
-    return new Transactions(this, flags);
+
+    if (CurrentTransaction is { } active)
+    {
+      if (active.GetFlags() != flags)
+      {
+        throw new InvalidOperationException(
+          $"A transaction with flags {active.GetFlags()} is already active on this handle; dispose it " +
+          $"before starting one with flags {flags}.");
+      }
+
+      return active;
+    }
+
+    var transaction = new Transactions(this, flags);
+    CurrentTransaction = transaction;
+    return transaction;
   }
 
   public unsafe Database GetLocalDatabase()
@@ -210,39 +260,49 @@ public class Alpm : IDisposable
 
   protected virtual unsafe void Dispose(bool disposing)
   {
-    if (_disposed) return;
+    if (Disposed) return;
 
-    // even when alpm_release fails with -1 the handle is invalidated, regardless
-    // the handle pointer is not owned by us, so we don't need to free it
-    // we should set it to zero anyway, just in case
-    _ = NativeMethods.alpm_release(_handle);
+    // An initialized transaction holds the database lock, and libalpm refuses to release a handle
+    // while one exists: alpm_release answers ALPM_ERR_TRANS_NOT_NULL and frees nothing, which leaks
+    // the handle and <dbpath>/db.lck. Releasing the transaction first drops the lock, so the
+    // release below can succeed.
+    CurrentTransaction?.Dispose();
+
+    var releaseErr = NativeMethods.alpm_release(_handle);
+    // A failed release leaves the handle alive, so its errno can still be read; the failure is only
+    // reported at the end, once the wrapper itself is fully disposed. Not from the finalizer path,
+    // where an escaping exception would terminate the process.
+    var releaseFailure = disposing && releaseErr != 0 ? ErrorHandler.ToException(Errno) : null;
     _handle = (_alpm_handle_t*)IntPtr.Zero;
 
     // The callback context must stay alive until native code can no longer call back, and
     // alpm_release itself may still fire events, so it is released only now that alpm_release has
-    // returned. This must also happen on the finalizer path: Callback is strongly rooted by its own
-    // GCHandle, so if Alpm does not release it, nothing ever will (the Callback and every object its
-    // handler delegates keep alive would leak for the life of the process).
-    if (disposing)
+    // returned. A release that failed, on the other hand, leaves the handle alive - and that handle
+    // still holds the context's GCHandle, which its native thunks dereference: a freed handle
+    // resolves to a null target, so the next callback entered from it dereferences null in LogAgent
+    // and the exception escaping that [UnmanagedCallersOnly] thunk terminates the process (measured).
+    // The context therefore stays with the handle it belongs to.
+    // On the success path this must also happen on the finalizer path: Callback is strongly rooted by
+    // its own GCHandle, so if Alpm does not release it, nothing ever will (the Callback and every
+    // object its handler delegates keep alive would leak for the life of the process).
+    if (releaseErr == 0)
     {
+
+      // Deliberately not guarded, although Dispose should not throw: this call cannot, so a guard
+      // would only hide a future defect in this wrapper's own bookkeeping. Callback.Dispose is an
+      // IsAllocated check around GCHandle<T>.Dispose, and that call is idempotent - a repeat call
+      // is a no-op (measured, sequentially and under 8 threads racing on one handle).
+      // Similarly, not guarded on finalizer path since currently it cannot throw, and if there's
+      // a future defect it is alarming that it crashes directly.
       Callback.Dispose();
-    }
-    else
-    {
-      // A finalizer must never throw - an exception escaping it terminates the process - and the
-      // only work here is freeing one GC handle, so failure is not worth propagating.
-      try
-      {
-        Callback.Dispose();
-      }
-      catch (Exception)
-      {
-        // Best-effort cleanup on the finalizer thread; skipping it merely leaks the handle.
-      }
     }
 
     Marshal.FreeHGlobal((nint)_initializeErrno);
-    _disposed = true;
+    Disposed = true;
+
+    // Thrown last, after the wrapper is fully disposed, and never from the finalizer path: a failed
+    // alpm_release is the only sign that the handle and its lock leaked.
+    if (releaseFailure != null) throw releaseFailure;
   }
 
   ~Alpm()
