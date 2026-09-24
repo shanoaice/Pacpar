@@ -8,6 +8,13 @@
         "docfx"
       ],
       "rollForward": false
+    },
+    "sharplensmcp": {
+      "version": "1.6.3",
+      "commands": [
+        "sharplens"
+      ],
+      "rollForward": false
     }
   }
 }
