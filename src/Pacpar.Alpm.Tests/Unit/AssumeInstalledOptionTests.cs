@@ -56,7 +56,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
 
       try
       {
-        return Depend.Snapshot(native);
+        return new Depend(native);
       }
       finally
       {
@@ -84,7 +84,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
 
     try
     {
-      return Depend.Snapshot(native);
+      return new Depend(native);
     }
     finally
     {

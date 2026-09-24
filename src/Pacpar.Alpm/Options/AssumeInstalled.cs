@@ -53,7 +53,7 @@ internal sealed unsafe class AssumeInstalled(byte* handle) : AlpmOptionList<Depe
     for (var node = NativeList; node != null; node = NativeMethods.alpm_list_next(node))
     {
       var stored = (_alpm_depend_t*)node->data;
-      if (Depend.Snapshot(stored).Matches(item)) return (byte*)stored;
+      if (new Depend(stored).Matches(item)) return (byte*)stored;
     }
 
     return null;

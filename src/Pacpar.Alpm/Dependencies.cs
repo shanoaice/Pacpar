@@ -44,6 +44,7 @@ public enum DepMod : uint
 /// </remarks>
 public unsafe class Depend
 {
+  /// <summary>Creates a detached, fully managed copy of a native dependency.</summary>
   internal Depend(_alpm_depend_t* backingStruct)
   {
     Name = NativeString.FromNative((nint)backingStruct->name);
@@ -52,6 +53,9 @@ public unsafe class Depend
     Depmod = (DepMod)(uint)backingStruct->mod_;
   }
 
+  /// <summary>
+  /// Creates a new copy of <see cref="Depend"/> from managed components
+  /// </summary>
   private Depend(string? name, string? version, string? description, DepMod depmod)
   {
     Name = name;
@@ -68,13 +72,6 @@ public unsafe class Depend
   /// </summary>
   internal static AlpmList<Depend> ListFactory(_alpm_list_t* alpmList)
     => AlpmList<Depend>.Borrow(alpmList, &Factory);
-
-  /// <summary>Creates a detached, fully managed copy of a native dependency.</summary>
-  internal static Depend Snapshot(_alpm_depend_t* native)
-    => new(NativeString.FromNative((nint)native->name),
-      NativeString.FromNative((nint)native->version),
-      NativeString.FromNative((nint)native->desc),
-      (DepMod)(uint)native->mod_);
 
   public string? Description { get; }
 
@@ -149,7 +146,7 @@ public sealed class DepMissing
   internal static unsafe DepMissing FromNative(_alpm_depmissing_t* native)
     => new(NativeString.FromNative((nint)native->target),
       NativeString.FromNative((nint)native->causingpkg),
-      native->depend != null ? Depend.Snapshot(native->depend) : null);
+      native->depend != null ? new Depend(native->depend) : null);
 
   public Depend? Depend { get; }
 

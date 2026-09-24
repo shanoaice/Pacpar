@@ -202,7 +202,7 @@ public abstract class EventType
   {
     internal unsafe OptionalDependencyRemoval(_alpm_event_t* native)
     {
-      OptionalDependency = Depend.Snapshot(native->optdep_removal.optdep);
+      OptionalDependency = new Depend(native->optdep_removal.optdep);
       Package = new Package(native->optdep_removal.pkg);
     }
 
