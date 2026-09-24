@@ -59,17 +59,18 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
 /// </summary>
 /// <remarks>
 /// <see cref="Package"/> is set when the failing call already knew the package it was operating on;
-/// the errno-driven factory cannot fill it in.
+/// the errno-driven factory cannot fill it in. It is typed as the shared read-only surface, because a
+/// failing call may have been operating on either kind of package.
 /// </remarks>
 public class AlpmPackageException(
   _alpm_errno_t errno,
   string? strError = null,
-  Package? package = null,
+  PackageBase? package = null,
   string? context = null)
   : AlpmException(errno, strError, context)
 {
   /// <summary>The package the failed call was operating on, when known.</summary>
-  public Package? Package { get; } = package;
+  public PackageBase? Package { get; } = package;
 }
 
 /// <summary>A signature or keyring error (<c>ALPM_ERR_SIG_*</c>, missing signature support).</summary>

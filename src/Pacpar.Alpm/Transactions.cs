@@ -131,9 +131,55 @@ public class Transactions : IDisposable
     }
   }
 
+  /// <summary>
+  /// Adds a package that libalpm already owns (a database package, for example a member of the local
+  /// database).
+  /// </summary>
+  /// <remarks>
+  /// The transaction only borrows it: releasing the transaction does not free it. A package this
+  /// library loaded from a file must go through <see cref="AddPackage(LoadedPackage)"/> instead, which
+  /// is the only overload that can take over the release - the two overloads cannot be confused,
+  /// because <see cref="Package"/> and <see cref="LoadedPackage"/> do not convert to one another.
+  /// </remarks>
   public unsafe void AddPackage(Package pkg)
   {
     ThrowIfDisposed();
+    AddCore(pkg);
+  }
+
+  /// <summary>
+  /// Adds a package this library loaded from a file, handing over its ownership: libalpm frees such a
+  /// package when the transaction is released (<c>alpm.h</c>: "If the package was loaded by
+  /// <c>alpm_pkg_load()</c>, it will be freed upon <c>alpm_trans_release</c> invocation").
+  /// </summary>
+  /// <returns>
+  /// A borrowed view of the package, valid while the transaction owns it. It replaces the wrapper
+  /// whose ownership was given up, which stops answering reads after this call; the view does not own
+  /// anything, so giving it to <see cref="AddPackage(Package)"/> never transfers ownership.
+  /// </returns>
+  /// <exception cref="ObjectDisposedException">
+  /// The package was already released or handed to a transaction.
+  /// </exception>
+  public unsafe Package AddPackage(LoadedPackage pkg)
+  {
+    ThrowIfDisposed();
+
+    // Before touching libalpm: this instance is already inert when it was handed over once, and
+    // repeating the call is a caller error rather than something libalpm could act on.
+    pkg.ThrowIfNotOwned();
+
+    AddCore(pkg);
+
+    // The pointer is now the transaction's to free; the wrapper must never release it again. Read the
+    // views off it first, because the hand-over retires the wrapper for reads too.
+    var view = new Package(pkg.BackingStruct);
+    pkg.Disown();
+    return view;
+  }
+
+  /// <summary>Adds <paramref name="pkg"/> to the transaction, without deciding who owns it.</summary>
+  private unsafe void AddCore(PackageBase pkg)
+  {
     var err = NativeMethods.alpm_add_pkg((byte*)_library.AsHandle(), pkg.BackingStruct);
     if (err != 0)
     {
@@ -218,11 +264,17 @@ public class Transactions : IDisposable
   /// Releases the transaction (and its database lock) deterministically.
   /// </summary>
   /// <remarks>
+  /// Releasing also <b>frees every file-loaded package that was handed over</b> (see
+  /// <see cref="AddPackage(LoadedPackage)"/>), so after this call no wrapper - and no borrowed view
+  /// handed out earlier by <see cref="GetAddedPackages"/> - still points at a live package. Packages
+  /// added through <see cref="AddPackage(Package)"/> are not affected: libalpm owns those.
+  /// <para>
   /// There is deliberately no finalizer. The transaction is owned by the libalpm handle, which
   /// releases an active transaction during <c>alpm_release</c>, so a finalizer adds no cleanup — but
   /// it can run after the handle is already disposed or released, and an exception escaping a
   /// finalizer terminates the process (that is exactly what <c>~Transactions()</c> used to do via
   /// <see cref="Alpm.AsHandle"/>'s disposed check).
+  /// </para>
   /// </remarks>
   public unsafe void Dispose()
   {

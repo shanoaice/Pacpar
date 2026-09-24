@@ -156,20 +156,37 @@ public enum PackageValidation : uint
 // ReSharper restore InconsistentNaming
 
 /// <summary>
-/// A package libalpm owns: a database package, a transaction member, or one reached through a
-/// group. Nothing here frees it, which is why this type is deliberately not
-/// <see cref="IDisposable"/>; a package loaded from a file is a <see cref="LoadedPackage"/>.
+/// The read-only surface of a package: everything libalpm exposes about one, whoever owns it.
 /// </summary>
-public unsafe class Package
+/// <remarks>
+/// There are exactly two concrete kinds, and they are deliberately <b>siblings</b> rather than one
+/// deriving from the other:
+/// <list type="bullet">
+/// <item><description><see cref="Package"/> - libalpm owns it (a database package, a transaction
+/// member, one reached through a group). It is not <see cref="IDisposable"/>.</description></item>
+/// <item><description><see cref="LoadedPackage"/> - this library loaded it from a file and owns it,
+/// so it is <see cref="IDisposable"/> and can hand the ownership to a transaction.</description></item>
+/// </list>
+/// Because neither type converts to the other, an overload pair such as
+/// <see cref="Transactions.AddPackage(Package)"/> / <see cref="Transactions.AddPackage(LoadedPackage)"/>
+/// cannot be reached with the wrong kind: the compiler picks the borrow overload for a database
+/// package and the ownership-transferring one for a file package, and no run-time check is needed.
+/// This base type is the common parameter type for code that only reads.
+/// </remarks>
+public abstract unsafe class PackageBase
 {
   internal readonly byte* BackingStruct;
 
-  internal Package(byte* backingStruct)
+  private protected PackageBase(byte* backingStruct)
   {
     BackingStruct = backingStruct;
   }
 
-  /// <summary>Set by <see cref="LoadedPackage"/> once it has released the package.</summary>
+  /// <summary>
+  /// Set by <see cref="LoadedPackage"/> once it has released the package or handed it to a
+  /// transaction. It retires the wrapper as a whole, reads included: after a hand-over the pointer
+  /// stays valid only until the transaction is released, which this wrapper cannot observe.
+  /// </summary>
   private protected bool Disposed;
 
   private protected void ThrowIfDisposed()
@@ -185,8 +202,6 @@ public unsafe class Package
       return NativeMethods.alpm_pkg_get_handle(BackingStruct);
     }
   }
-
-  internal static Package Factory(void* ptr) => new((byte*)ptr);
 
   public string Name
   {
@@ -517,14 +532,67 @@ public unsafe class Package
 }
 
 /// <summary>
-/// A package this library loaded from a file with <c>alpm_pkg_load</c>. Unlike
-/// <see cref="Package"/>, this instance owns the package and releases it on <see cref="Dispose"/>,
-/// or from the finalizer when the caller forgets.
+/// A package libalpm owns: a database package, a transaction member, or one reached through a group.
 /// </summary>
-public sealed unsafe class LoadedPackage : Package, IDisposable
+/// <remarks>
+/// Nothing here frees it, which is why this type is deliberately not <see cref="IDisposable"/>; a
+/// package this library loaded from a file is a <see cref="LoadedPackage"/> instead, and the two do
+/// not convert to one another (see <see cref="PackageBase"/>).
+/// </remarks>
+public sealed unsafe class Package : PackageBase
+{
+  internal Package(byte* backingStruct) : base(backingStruct)
+  {
+  }
+
+  internal static Package Factory(void* ptr) => new((byte*)ptr);
+}
+
+/// <summary>
+/// A package this library loaded from a file with <c>alpm_pkg_load</c>. It owns the package and
+/// releases it on <see cref="Dispose"/>, or from the finalizer when the caller forgets.
+/// </summary>
+/// <remarks>
+/// Ownership can also be handed to a transaction, which takes over the release
+/// (<see cref="Transactions.AddPackage(LoadedPackage)"/> and <c>alpm.h</c>: a package loaded by
+/// <c>alpm_pkg_load()</c> is freed upon <c>alpm_trans_release</c>). After that hand-over this
+/// instance is inert: <see cref="Dispose"/> and the finalizer do nothing, and reading the package
+/// throws, so the pointer cannot be released twice.
+/// </remarks>
+public sealed unsafe class LoadedPackage : PackageBase, IDisposable
 {
   internal LoadedPackage(byte* backingStruct) : base(backingStruct)
   {
+  }
+
+  /// <summary>Whether this instance still owns the package (it stops owning it on dispose or hand-over).</summary>
+  internal bool OwnsPackage => !Disposed;
+
+  /// <summary>Throws when the package was already released or handed to a transaction.</summary>
+  /// <remarks>
+  /// Checked by the caller <i>before</i> it touches libalpm: a hand-over that already happened is a
+  /// caller error, and repeating the native call would be pointless (libalpm dedupes the same
+  /// package pointer in a transaction's list anyway, probed).
+  /// </remarks>
+  internal void ThrowIfNotOwned()
+  {
+    if (!OwnsPackage) throw new ObjectDisposedException(GetType().FullName);
+  }
+
+  /// <summary>
+  /// Gives up ownership <b>without</b> releasing the package, because somebody else owns the pointer
+  /// now and releases it. <see cref="Dispose"/> and the finalizer become no-ops.
+  /// </summary>
+  /// <remarks>
+  /// Named "disown" rather than "release" on purpose: nothing is freed here. Handing the package to
+  /// a transaction is the only caller, and it must happen after the native call succeeded - the
+  /// caller keeps ownership when it fails.
+  /// </remarks>
+  internal void Disown()
+  {
+    ThrowIfNotOwned();
+    Disposed = true;
+    GC.SuppressFinalize(this);
   }
 
   public void Dispose()
