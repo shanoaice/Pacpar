@@ -54,7 +54,7 @@ public class Alpm : IDisposable
   public AlpmOptions Options { get; }
 
   /// <summary>
-  /// Exposes properties to set libalpm callbacks.
+  /// Exposes properties to configure libalpm callbacks on demand.
   /// </summary>
   public Callback Callback { get; }
 
@@ -92,6 +92,8 @@ public class Alpm : IDisposable
     ThrowIfDisposed();
     return (IntPtr)_handle;
   }
+
+  internal unsafe _alpm_handle_t* Handle => _handle;
 
   /// <summary>
   /// The handle's current errno, as reported by libalpm.
