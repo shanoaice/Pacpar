@@ -157,9 +157,9 @@ public sealed class DepMissing
 
 public class FileConflict
 {
-  public string? Ctarget;
-  public string? File;
-  public string? Target;
+  public string? Ctarget { get; }
+  public string? File { get; }
+  public string? Target { get; }
 
   internal unsafe FileConflict(_alpm_fileconflict_t* backingStruct)
   {
@@ -173,8 +173,8 @@ public class FileConflict
 
 public class Conflict
 {
-  public string Package1Name;
-  public string Package2Name;
+  public string Package1Name { get; }
+  public string Package2Name { get; }
 
   internal unsafe Conflict(_alpm_conflict_t* backingStruct)
   {
@@ -189,5 +189,5 @@ public class Conflict
   /// The conflicting dependency. Borrowed from the conflict struct: it is released by
   /// <c>alpm_conflict_free</c>, not by this type.
   /// </summary>
-  public Depend Reason;
+  public Depend Reason { get; }
 }
