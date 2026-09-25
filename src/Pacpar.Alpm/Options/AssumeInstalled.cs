@@ -50,7 +50,7 @@ internal sealed unsafe class AssumeInstalled(_alpm_handle_t* handle) : AlpmOptio
   {
     owned = false;
 
-    for (var node = NativeList; node != null; node = NativeMethods.alpm_list_next(node))
+    for (var node = NativeList; node != null; node = node->next)
     {
       var stored = (_alpm_depend_t*)node->data;
       if (new Depend(stored).Matches(item)) return (byte*)stored;

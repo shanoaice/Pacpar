@@ -159,15 +159,16 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
 
-    var source = View(GetList(_handle)).ToArray();
-    if (array.Length - arrayIndex < source.Length)
+    var count = Count;
+    if (array.Length - arrayIndex < count)
     {
       throw new ArgumentException("The destination array is not long enough to hold all items.", nameof(array));
     }
 
-    for (var i = 0; i < source.Length; ++i)
+    var i = 0;
+    foreach (var item in View(GetList(_handle)))
     {
-      array[arrayIndex + i] = source[i];
+      array[arrayIndex + i++] = item;
     }
   }
 }

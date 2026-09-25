@@ -45,20 +45,7 @@ public class Group
     try
     {
       var result = NativeMethods.alpm_find_group_pkgs(dbs.Native, namePtr);
-      try
-      {
-        var packages = new List<Package>();
-        for (var node = result; node != null; node = NativeMethods.alpm_list_next(node))
-        {
-          packages.Add(Package.Factory(node->data));
-        }
-
-        return packages;
-      }
-      finally
-      {
-        AlpmNativeList.Free(result, null);
-      }
+      return AlpmOwnedList<Package>.Take(result, &Package.Factory, null);
     }
     finally
     {

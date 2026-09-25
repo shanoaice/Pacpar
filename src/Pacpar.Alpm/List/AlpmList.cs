@@ -22,7 +22,7 @@ namespace Pacpar.Alpm.List;
 /// <see cref="AlpmOwnedList{T}"/> for the duration of that method.
 /// </para>
 /// </remarks>
-public abstract class AlpmList<T> : IReadOnlyList<T>
+public abstract class AlpmList<T> : IEnumerable<T>
 {
   internal readonly unsafe _alpm_list_t* Native;
   internal readonly unsafe delegate*<void*, T> Factory;
@@ -81,7 +81,7 @@ public abstract class AlpmList<T> : IReadOnlyList<T>
       }
       else if (_current != null)
       {
-        _current = NativeMethods.alpm_list_next(_current);
+        _current = _current->next;
       }
 
       return _current != null;
@@ -108,32 +108,20 @@ public abstract class AlpmList<T> : IReadOnlyList<T>
 
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-  public unsafe int Count => (int)NativeMethods.alpm_list_count(Native);
-
-  public unsafe T this[int index]
-  {
-    get
-    {
-      ArgumentOutOfRangeException.ThrowIfNegative(index);
-      if (index >= Count) throw new ArgumentOutOfRangeException(nameof(index));
-
-      // alpm_list_nth returns the *node* for index n, so the item is node->data.
-      // Handing the node pointer to the factory instead was a long-standing bug.
-      return Factory(NativeMethods.alpm_list_nth(Native, (nuint)index)->data);
-    }
-  }
-
   /// <summary>
-  /// Materializes the view into a managed array. Useful when the underlying list is about to be
-  /// freed but its contents are still needed.
+  /// Materializes the view into a managed array in a single traversal pass. Useful when the
+  /// underlying list is about to be freed but its contents are still needed.
   /// </summary>
-  public T[] ToArray()
+  public unsafe T[] ToArray()
   {
-    var count = Count;
+    if (Native == null) return [];
+
+    var count = (int)NativeMethods.alpm_list_count(Native);
     var result = new T[count];
-    for (var i = 0; i < count; ++i)
+    var i = 0;
+    for (var node = Native; node != null; node = node->next)
     {
-      result[i] = this[i];
+      result[i++] = Factory(node->data);
     }
 
     return result;
@@ -208,7 +196,7 @@ internal sealed class AlpmOwnedList<T> : AlpmList<T>, IDisposable
     delegate* unmanaged[Cdecl]<void*, void> innerFree)
   {
     using var owned = new AlpmOwnedList<T>(list, factory, innerFree);
-    return [.. owned];
+    return owned.ToArray();
   }
 
   public unsafe void Dispose()

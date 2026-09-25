@@ -36,9 +36,9 @@ public sealed unsafe class ListOwnershipTests
     {
       var view = AlpmList<string>.Borrow(list, &TestStringFactory);
 
-      Assert.Equal(3, view.Count);
+      Assert.Equal(3, view.Count());
       Assert.Equal(["alpha", "beta", "gamma"], view.ToArray());
-      Assert.Equal("beta", view[1]);
+      Assert.Equal("beta", view.ElementAt(1));
     }
     finally
     {
@@ -57,11 +57,11 @@ public sealed unsafe class ListOwnershipTests
   }
 
   [Fact]
-  public void Borrow_Indexer_ThrowsOnOutOfRange()
+  public void Borrow_ElementAt_ThrowsOnOutOfRange()
     => Assert.Throws<ArgumentOutOfRangeException>(() =>
     {
       var view = AlpmList<string>.Borrow(null, &TestStringFactory);
-      _ = view[0];
+      _ = view.ElementAt(0);
     });
 
   [Fact]

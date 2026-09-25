@@ -118,7 +118,7 @@ internal class Program
     using var alpm = new Pacpar.Alpm.Alpm(RootDir, DbPath);
     var localDb = alpm.GetLocalDatabase();
     var localPkgs = localDb.GetPackageCache();
-    var localCount = localPkgs.Count;
+    var localCount = localPkgs.Count();
 
     // Register sync database if available
     Database? extraDb = null;
@@ -131,7 +131,7 @@ internal class Program
       extraDb = alpm.RegisterSyncDatabase("core", SigLevel.ALPM_SIG_PACKAGE_OPTIONAL);
     }
 
-    var syncCount = extraDb != null ? extraDb.GetPackageCache().Count : 0;
+    var syncCount = extraDb != null ? extraDb.GetPackageCache().Count() : 0;
 
     AnsiConsole.MarkupLine($"[green]Environment:[/] Local DB installed packages: [bold]{localCount:N0}[/], Sync ({extraDb?.Name ?? "none"}) packages: [bold]{syncCount:N0}[/]\n");
 
@@ -254,7 +254,7 @@ internal class Program
     // -------------------------------------------------------------------------
     AnsiConsole.MarkupLine("\n[bold cyan]Scenario 4: pacman -Qi (Single package detailed inspection)[/]");
     {
-      var samplePkgName = localPkgs.Count > 0 ? localPkgs[0].Name : "bash";
+      var samplePkgName = localPkgs.FirstOrDefault()?.Name ?? "bash";
       var targetPkg = localDb.GetPackage(samplePkgName);
 
       if (targetPkg != null)
@@ -264,7 +264,7 @@ internal class Program
           var _ = targetPkg.Name;
           var __ = targetPkg.Version.ToString();
           var ___ = targetPkg.Description;
-          var ____ = targetPkg.Depends.Count;
+          var ____ = targetPkg.Depends.Count();
           var _____ = targetPkg.Files.Count;
           return 1;
         }, iterations: 100));

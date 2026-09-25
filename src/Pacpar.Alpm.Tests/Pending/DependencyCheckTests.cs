@@ -56,6 +56,6 @@ public sealed class DependencyCheckTests
     environment.Alpm.CheckConflicts(packages);
 
     Assert.Empty(packages);
-    Assert.Equal(0, packages.Count);
+    Assert.Equal(0, packages.Count());
   }
 }
