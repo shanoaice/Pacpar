@@ -5,9 +5,16 @@ using AlpmHandle = Pacpar.Alpm.Alpm;
 namespace Pacpar.Benchmarks;
 
 /// <summary>
-/// The null-miss loop of field ??= versus the bool-flag fix (Recommendation 3). Each benchmark is
-/// one 50,000-read loop over a single property.
+/// The null-miss loop of <c>field ??=</c> versus the bool-flag fix (Recommendation 3 of the audit
+/// report). Each benchmark is one 50,000-read loop over a single property.
 /// </summary>
+/// <remarks>
+/// The library now caches with a flag on every property that can be absent, so the pair below is the
+/// fixed path on an absent property (<see cref="PackageBase.Filename"/>) against the coalescing path on
+/// one libalpm always sets (<see cref="PackageBase.Name"/>). The pre-fix comparison - the same loop over
+/// the old coalescing implementation, 91.67 us against 10.04 us - is recorded in section 4.3 of the
+/// report; this class is kept as the regression check for the fix.
+/// </remarks>
 [MemoryDiagnoser]
 [ProcessCount(1)]
 [WarmupCount(3)]
@@ -18,8 +25,6 @@ public class NullMissBenchmarks
 
   private AlpmHandle _alpm = null!;
   private Package _pkg = null!;
-  private string? _cachedFilename;
-  private bool _filenameLoaded;
 
   [GlobalSetup]
   public void Setup()
@@ -36,9 +41,9 @@ public class NullMissBenchmarks
   [GlobalCleanup]
   public void Cleanup() => _alpm.Dispose();
 
-  /// <summary>Current pattern on an absent property: field ??= re-runs the P/Invoke every read.</summary>
+  /// <summary>Absent property behind a bool flag: the miss crosses the interop boundary exactly once.</summary>
   [Benchmark(Baseline = true)]
-  public int AbsentProperty_FieldCoalesce()
+  public int AbsentProperty_BoolFlagCached()
   {
     int n = 0;
     for (int i = 0; i < Reads; i++)
@@ -48,19 +53,7 @@ public class NullMissBenchmarks
     return n;
   }
 
-  /// <summary>Recommended fix: bool-flag cache, absent value crosses the interop boundary once.</summary>
-  [Benchmark]
-  public int AbsentProperty_BoolFlagCached()
-  {
-    int n = 0;
-    for (int i = 0; i < Reads; i++)
-    {
-      if (FilenameFixed == null) n++;
-    }
-    return n;
-  }
-
-  /// <summary>field ??= cache hit on a non-null property: pure managed read.</summary>
+  /// <summary>Cache hit on a property libalpm always sets, where coalescing has no miss to repeat.</summary>
   [Benchmark]
   public int CachedProperty_Hit()
   {
@@ -70,18 +63,5 @@ public class NullMissBenchmarks
       if (_pkg.Name != null) n++;
     }
     return n;
-  }
-
-  private string? FilenameFixed
-  {
-    get
-    {
-      if (!_filenameLoaded)
-      {
-        _cachedFilename = _pkg.Filename;
-        _filenameLoaded = true;
-      }
-      return _cachedFilename;
-    }
   }
 }

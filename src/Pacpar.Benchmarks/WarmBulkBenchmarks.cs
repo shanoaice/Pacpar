@@ -38,7 +38,7 @@ public class WarmBulkBenchmarks
     // Touch everything once so every native lazy load has already happened.
     foreach (var pkg in _localPkgs)
     {
-      _ = new PackageMetadataSnapshot(pkg);
+      _ = pkg.ToSnapshot();
       _ = pkg.Files.Count;
     }
     foreach (var pkg in _syncPkgs)
@@ -69,8 +69,8 @@ public class WarmBulkBenchmarks
   [BenchmarkCategory("Bulk")]
   public int Bulk_Eager_MetadataSnapshot()
   {
-    var snapshots = new List<PackageMetadataSnapshot>();
-    foreach (var pkg in _localPkgs) snapshots.Add(new PackageMetadataSnapshot(pkg));
+    var snapshots = new List<PackageSnapshot>();
+    foreach (var pkg in _localPkgs) snapshots.Add(pkg.ToSnapshot());
     return snapshots.Count;
   }
 
@@ -78,8 +78,8 @@ public class WarmBulkBenchmarks
   [BenchmarkCategory("Bulk")]
   public int Bulk_Eager_FullSnapshot_InclFiles()
   {
-    var snapshots = new List<PackageFullSnapshot>();
-    foreach (var pkg in _localPkgs) snapshots.Add(new PackageFullSnapshot(pkg));
+    var snapshots = new List<PackageSnapshot>();
+    foreach (var pkg in _localPkgs) snapshots.Add(pkg.ToSnapshot(includeFiles: true));
     return snapshots.Count;
   }
 
@@ -103,8 +103,8 @@ public class WarmBulkBenchmarks
   [BenchmarkCategory("Search-Local")]
   public int Search_Local_Eager_SnapshotFirst()
   {
-    var snapshots = new List<PackageMetadataSnapshot>();
-    foreach (var pkg in _localPkgs) snapshots.Add(new PackageMetadataSnapshot(pkg));
+    var snapshots = new List<PackageSnapshot>();
+    foreach (var pkg in _localPkgs) snapshots.Add(pkg.ToSnapshot());
     int matches = 0;
     foreach (var s in snapshots)
     {
@@ -137,8 +137,8 @@ public class WarmBulkBenchmarks
   [BenchmarkCategory("Search-Sync")]
   public int Search_Sync_Eager_SnapshotFirst()
   {
-    var snapshots = new List<PackageMetadataSnapshot>();
-    foreach (var pkg in _syncPkgs) snapshots.Add(new PackageMetadataSnapshot(pkg));
+    var snapshots = new List<PackageSnapshot>();
+    foreach (var pkg in _syncPkgs) snapshots.Add(pkg.ToSnapshot());
     int matches = 0;
     foreach (var s in snapshots)
     {

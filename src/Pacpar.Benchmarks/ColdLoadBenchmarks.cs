@@ -59,7 +59,7 @@ public class ColdLoadBenchmarks
     int n = 0;
     foreach (var pkg in _localDb.GetPackageCache())
     {
-      _ = new PackageMetadataSnapshot(pkg);
+      _ = pkg.ToSnapshot();
       n++;
     }
     return n;

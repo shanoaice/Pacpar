@@ -75,56 +75,6 @@ public class Version : IComparable<Version>
   public override string ToString() => _value;
 }
 
-public unsafe class Signature : IDisposable
-{
-  private readonly byte* sig;
-  private readonly int len;
-
-  internal Signature(byte* sig, int len)
-  {
-    this.sig = sig;
-    this.len = len;
-  }
-
-  // ReSharper disable once RedundantDefaultMemberInitializer
-  private bool _disposed = false;
-
-  private void ThrowIfDisposed()
-  {
-    if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-  }
-
-  public Span<byte> AsSpan
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return new Span<byte>(sig, len);
-    }
-  }
-
-  public void Dispose()
-  {
-    GC.SuppressFinalize(this);
-    Dispose(disposing: true);
-  }
-
-  protected virtual void Dispose(bool disposing)
-  {
-    if (!_disposed)
-    {
-      if (disposing)
-      {
-        // dispose managed state (managed objects)
-      }
-      MemoryManagement.CFree(sig); // hope this binds to the correct malloc-free
-      _disposed = true;
-    }
-  }
-
-  ~Signature() => Dispose(disposing: false);
-}
-
 // ReSharper disable InconsistentNaming
 /// <summary>
 ///  Method used to validate a package.
@@ -172,6 +122,12 @@ public enum PackageValidation : uint
 /// cannot be reached with the wrong kind: the compiler picks the borrow overload for a database
 /// package and the ownership-transferring one for a file package, and no run-time check is needed.
 /// This base type is the common parameter type for code that only reads.
+/// <para>
+/// Scalar metadata libalpm may report as absent is cached behind an explicit boolean flag rather than
+/// <c>field ??=</c>: coalescing only re-runs the native call while the field is null, so an absent value - a
+/// local package has no <see cref="Filename"/>, a sync package no <see cref="Md5Sum"/> - would cross the
+/// interop boundary again on every read. The flag makes the miss happen exactly once.
+/// </para>
 /// </remarks>
 public abstract unsafe class PackageBase
 {
@@ -203,6 +159,10 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <remarks>
+  /// libalpm always sets a package name, so the coalescing form has no miss to repeat; every property
+  /// that can be absent uses a flag instead (see <see cref="PackageBase"/>).
+  /// </remarks>
   public string Name
   {
     get
@@ -224,21 +184,37 @@ public abstract unsafe class PackageBase
     return NativeMethods.alpm_pkg_should_ignore(LibraryHandle, BackingStruct) != 0;
   }
 
+  private string? _filename;
+  private bool _filenameLoaded;
+
   public string? Filename
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
+      if (!_filenameLoaded)
+      {
+        _filename = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
+        _filenameLoaded = true;
+      }
+      return _filename;
     }
   }
+
+  private string? _base;
+  private bool _baseLoaded;
 
   public string? Base
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
+      if (!_baseLoaded)
+      {
+        _base = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
+        _baseLoaded = true;
+      }
+      return _base;
     }
   }
 
@@ -260,21 +236,37 @@ public abstract unsafe class PackageBase
     }
   }
 
+  private string? _description;
+  private bool _descriptionLoaded;
+
   public string? Description
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
+      if (!_descriptionLoaded)
+      {
+        _description = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
+        _descriptionLoaded = true;
+      }
+      return _description;
     }
   }
+
+  private string? _url;
+  private bool _urlLoaded;
 
   public string? Url
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
+      if (!_urlLoaded)
+      {
+        _url = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
+        _urlLoaded = true;
+      }
+      return _url;
     }
   }
 
@@ -297,39 +289,71 @@ public abstract unsafe class PackageBase
     }
   }
 
+  private string? _packager;
+  private bool _packagerLoaded;
+
   public string? Packager
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
+      if (!_packagerLoaded)
+      {
+        _packager = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
+        _packagerLoaded = true;
+      }
+      return _packager;
     }
   }
+
+  private string? _md5Sum;
+  private bool _md5SumLoaded;
 
   public string? Md5Sum
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
+      if (!_md5SumLoaded)
+      {
+        _md5Sum = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
+        _md5SumLoaded = true;
+      }
+      return _md5Sum;
     }
   }
+
+  private string? _sha256Sum;
+  private bool _sha256SumLoaded;
 
   public string? Sha256Sum
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
+      if (!_sha256SumLoaded)
+      {
+        _sha256Sum = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
+        _sha256SumLoaded = true;
+      }
+      return _sha256Sum;
     }
   }
+
+  private string? _arch;
+  private bool _archLoaded;
 
   public string? Arch
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
+      if (!_archLoaded)
+      {
+        _arch = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
+        _archLoaded = true;
+      }
+      return _arch;
     }
   }
 
@@ -450,6 +474,14 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The package's file list, read on demand.
+  /// </summary>
+  /// <remarks>
+  /// Deliberately neither cached nor read at construction: eagerly loading it for every package costs
+  /// about two orders of magnitude more than reading the rest of the metadata, and it is the first
+  /// accessor the audit report singles out. <see cref="ToSnapshot(bool)"/> copies it only on request.
+  /// </remarks>
   public FileList Files
   {
     get
@@ -497,12 +529,20 @@ public abstract unsafe class PackageBase
       &MemoryManagement.CFreeExtern);
   }
 
+  private string? _base64Signature;
+  private bool _base64SignatureLoaded;
+
   public string? Base64Signature
   {
     get
     {
       ThrowIfDisposed();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
+      if (!_base64SignatureLoaded)
+      {
+        _base64Signature = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
+        _base64SignatureLoaded = true;
+      }
+      return _base64Signature;
     }
   }
 
@@ -515,20 +555,50 @@ public abstract unsafe class PackageBase
     }
   }
 
-  private Signature? _signature;
-  public Signature GetSignature()
+  private byte[]? _signature;
+  private bool _signatureLoaded;
+
+  /// <summary>
+  /// The package's embedded PGP signature, or <c>null</c> when it carries none.
+  /// </summary>
+  /// <remarks>
+  /// libalpm hands the signature out in a buffer the caller must release, so this returns a managed
+  /// copy instead: a caller cannot leak the buffer, cannot read it after a double dispose, and no
+  /// finalizer is involved. The copy happens once and every later call answers from the cached array.
+  /// <see cref="Base64Signature"/> is the same data in the other encoding libalpm stores.
+  /// </remarks>
+  public ReadOnlyMemory<byte>? GetSignature()
   {
     ThrowIfDisposed();
-    if (_signature == null)
+
+    if (!_signatureLoaded)
     {
-      var bufferPtr = (byte**)Marshal.AllocHGlobal(sizeof(byte*));
-      var lenPtr = (nuint*)Marshal.AllocHGlobal(sizeof(nuint));
-      var result = NativeMethods.alpm_pkg_get_sig(BackingStruct, bufferPtr, lenPtr);
+      byte* buffer = null;
+      nuint len;
+      var result = NativeMethods.alpm_pkg_get_sig(BackingStruct, &buffer, &len);
       if (result != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(LibraryHandle));
-      _signature = new Signature(*bufferPtr, (int)*lenPtr);
+
+      if (buffer != null)
+      {
+        _signature = new Span<byte>(buffer, (int)len).ToArray();
+        MemoryManagement.CFree(buffer);
+      }
+
+      _signatureLoaded = true;
     }
-    return _signature;
+
+    return _signature is null ? null : new ReadOnlyMemory<byte>(_signature);
   }
+
+  /// <summary>
+  /// Copies everything this package reads into a <see cref="PackageSnapshot"/> with no ties to
+  /// libalpm, so the result stays valid after the database, transaction or handle it came from is gone.
+  /// </summary>
+  /// <param name="includeFiles">
+  /// Also copies the file list. It is off by default because it is by far the most expensive part of
+  /// the copy and most callers do not need it.
+  /// </param>
+  public PackageSnapshot ToSnapshot(bool includeFiles = false) => new(this, includeFiles);
 }
 
 /// <summary>
@@ -538,6 +608,11 @@ public abstract unsafe class PackageBase
 /// Nothing here frees it, which is why this type is deliberately not <see cref="IDisposable"/>; a
 /// package this library loaded from a file is a <see cref="LoadedPackage"/> instead, and the two do
 /// not convert to one another (see <see cref="PackageBase"/>).
+/// <para>
+/// Being a view over libalpm's memory is exactly what makes bulk scans cheap, so keep it that way: read
+/// the view while scanning, and call <see cref="ToSnapshot"/> only for the packages that must outlive
+/// the scan.
+/// </para>
 /// </remarks>
 public sealed unsafe class Package : PackageBase
 {
