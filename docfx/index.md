@@ -2,10 +2,13 @@
 _layout: landing
 ---
 
-# This is the **HOMEPAGE**.
+# Pacpar.Alpm Documentation
 
-Refer to [Markdown](http://daringfireball.net/projects/markdown/) for how to write markdown files.
+High-performance, memory-safe .NET bindings for Arch Linux's `libalpm` C library.
 
-## Quick Start Notes:
+## Quick Links
 
-1. Add images to the *images* folder if the file is referencing an image.
+- [Introduction](docs/introduction.md) - Project overview, goals, and core features.
+- [Getting Started](docs/getting-started.md) - Basic usage, database querying, and snapshot semantics.
+- [Architecture & Lifetime Tokens](docs/lifetime-tokens.md) - Deep architectural reference on zero-allocation borrowed views, lifetime token trees, and memory safety invariants.
+- [API Reference](xref:Pacpar.Alpm) - Complete class and member documentation.

@@ -40,7 +40,7 @@
       "_appName": "Pacpar.Alpm",
       "_appTitle": "Pacpar.Alpm",
       "_enableSearch": true,
-      "pdf": true
+      "pdf": false
     }
   }
 }
