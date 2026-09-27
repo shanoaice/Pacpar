@@ -10,7 +10,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// <c>PackageView.Factory(void*, Lifetime?)</c>, so a consumer holding a pointer had to enter an
 /// <c>unsafe</c>
 /// context and name libalpm's binding types to wrap it. Instances are meant to come from
-/// <see cref="Alpm"/>, <see cref="Database"/>, <see cref="Transactions"/> and the types that hang
+/// <see cref="Alpm"/>, <see cref="Database"/>, <see cref="Transaction"/> and the types that hang
 /// off them. <see cref="Alpm.AsHandle"/> is the deliberate escape hatch, and it returns an
 /// <see cref="IntPtr"/> rather than a pointer.
 /// <para>

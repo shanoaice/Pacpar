@@ -28,7 +28,7 @@ public sealed class PackageOwnershipTests
 
   /// <summary>
   /// No conversion between the two kinds, in either direction: that is what makes the
-  /// <see cref="Transactions.AddPackage(PackageView)"/> / <see cref="Transactions.AddPackage(LoadedPackage)"/>
+  /// <see cref="Transaction.AddPackage(PackageView)"/> / <see cref="Transaction.AddPackage(LoadedPackage)"/>
   /// pair safe without a run-time check.
   /// </summary>
   [Fact]
@@ -56,8 +56,8 @@ public sealed class PackageOwnershipTests
   [Fact]
   public void AddPackageOverloadsDifferInOwnership()
   {
-    var borrowed = typeof(Transactions).GetMethod(nameof(Transactions.AddPackage), [typeof(PackageView)]);
-    var owning = typeof(Transactions).GetMethod(nameof(Transactions.AddPackage), [typeof(LoadedPackage)]);
+    var borrowed = typeof(Transaction).GetMethod(nameof(Transaction.AddPackage), [typeof(PackageView)]);
+    var owning = typeof(Transaction).GetMethod(nameof(Transaction.AddPackage), [typeof(LoadedPackage)]);
 
     Assert.NotNull(borrowed);
     Assert.NotNull(owning);

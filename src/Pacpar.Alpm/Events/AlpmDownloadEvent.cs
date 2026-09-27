@@ -16,9 +16,9 @@ namespace Pacpar.Alpm;
 /// views this replaces were not.
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-public abstract class DownloadEventType
+public abstract class AlpmDownloadEvent
 {
-  internal static unsafe DownloadEventType FromUnion(_alpm_download_event_type_t eventType, void* data)
+  internal static unsafe AlpmDownloadEvent FromUnion(_alpm_download_event_type_t eventType, void* data)
   {
     return eventType switch
     {
@@ -30,7 +30,7 @@ public abstract class DownloadEventType
     };
   }
 
-  public class Init : DownloadEventType
+  public class Init : AlpmDownloadEvent
   {
     internal unsafe Init(_alpm_download_event_init_t* init)
     {
@@ -40,7 +40,7 @@ public abstract class DownloadEventType
     public bool IsOptional { get; }
   }
 
-  public class Progress : DownloadEventType
+  public class Progress : AlpmDownloadEvent
   {
     internal unsafe Progress(_alpm_download_event_progress_t* progress)
     {
@@ -52,7 +52,7 @@ public abstract class DownloadEventType
     public CLong Total { get; }
   }
 
-  public class Retry : DownloadEventType
+  public class Retry : AlpmDownloadEvent
   {
     internal unsafe Retry(_alpm_download_event_retry_t* retry)
     {
@@ -62,7 +62,7 @@ public abstract class DownloadEventType
     public bool WillResume { get; }
   }
 
-  public class Completed : DownloadEventType
+  public class Completed : AlpmDownloadEvent
   {
     internal unsafe Completed(_alpm_download_event_completed_t* completed)
     {

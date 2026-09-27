@@ -24,9 +24,9 @@ namespace Pacpar.Alpm;
 /// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-public abstract class QuestionType
+public abstract class AlpmQuestion
 {
-  internal static unsafe QuestionType FromUnion(_alpm_question_t* backingStruct, Lifetime? lifetime)
+  internal static unsafe AlpmQuestion FromUnion(_alpm_question_t* backingStruct, Lifetime? lifetime)
   {
     return backingStruct->type_ switch
     {
@@ -41,7 +41,7 @@ public abstract class QuestionType
     };
   }
 
-  public class InstallIgnoredPackage : QuestionType
+  public class InstallIgnoredPackage : AlpmQuestion
   {
     internal unsafe InstallIgnoredPackage(_alpm_question_t* question)
     {
@@ -53,7 +53,7 @@ public abstract class QuestionType
     public string Package { get; }
   }
 
-  public class ReplacePackage : QuestionType
+  public class ReplacePackage : AlpmQuestion
   {
     internal unsafe ReplacePackage(_alpm_question_t* question)
     {
@@ -69,7 +69,7 @@ public abstract class QuestionType
     public string NewDatabase { get; }
   }
 
-  public class ConflictPkg : QuestionType
+  public class ConflictPkg : AlpmQuestion
   {
     /// <remarks>
     /// <c>alpm_conflict_t</c> holds <c>alpm_pkg_t</c> pointers, not names (alpm.h: "The first
@@ -96,7 +96,7 @@ public abstract class QuestionType
     public string Description { get; }
   }
 
-  public class CorruptedPkg : QuestionType
+  public class CorruptedPkg : AlpmQuestion
   {
     internal unsafe CorruptedPkg(_alpm_question_t* question)
     {
@@ -108,7 +108,7 @@ public abstract class QuestionType
     public string FilePath { get; }
   }
 
-  public class RemovePkgs : QuestionType
+  public class RemovePkgs : AlpmQuestion
   {
     internal unsafe RemovePkgs(_alpm_question_t* question, Lifetime? lifetime)
     {
@@ -122,7 +122,7 @@ public abstract class QuestionType
     public IReadOnlyList<PackageView> Packages { get; }
   }
 
-  public class SelectProvider : QuestionType
+  public class SelectProvider : AlpmQuestion
   {
     internal unsafe SelectProvider(_alpm_question_t* question, Lifetime? lifetime)
     {
@@ -141,7 +141,7 @@ public abstract class QuestionType
     public string Description { get; }
   }
 
-  public class ImportKey : QuestionType
+  public class ImportKey : AlpmQuestion
   {
     internal unsafe ImportKey(_alpm_question_t* question)
     {

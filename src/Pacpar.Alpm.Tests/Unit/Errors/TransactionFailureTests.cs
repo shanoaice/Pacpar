@@ -4,8 +4,8 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Covers the transaction failure contract: <see cref="Transactions.Prepare"/> and
-/// <see cref="Transactions.Commit"/> turn the caller-owned list libalpm dumps into their output
+/// Covers the transaction failure contract: <see cref="Transaction.Prepare"/> and
+/// <see cref="Transaction.Commit"/> turn the caller-owned list libalpm dumps into their output
 /// parameter into a typed <see cref="AlpmTransactionException"/>, with the payload shape and the
 /// element destructor that the errno actually has.
 /// </summary>
@@ -60,7 +60,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   /// The wrapper is retired by the hand-over, so nothing here has to remember to free it - which is
   /// exactly what makes the calling pattern of these tests safe.
   /// </remarks>
-  private void AddTo(Transactions transaction, string path)
+  private void AddTo(Transaction transaction, string path)
   {
     var package = _alpm.LoadPackage(path, full: true, SigLevel.ALPM_SIG_USE_DEFAULT);
     transaction.AddPackage(package);

@@ -39,9 +39,9 @@ public sealed class ManagedEnumsTests
     Assert.Equal(typeof(PackageReason), typeof(PackageView).GetProperty(nameof(PackageView.Reason))!.PropertyType);
     Assert.Equal(typeof(DepMod), typeof(Depend).GetProperty(nameof(Depend.Depmod))!.PropertyType);
     Assert.Equal(typeof(HookWhen),
-      typeof(EventType.HookStart).GetProperty(nameof(EventType.HookStart.When))!.PropertyType);
+      typeof(AlpmEvent.HookStart).GetProperty(nameof(AlpmEvent.HookStart.When))!.PropertyType);
     Assert.Equal(typeof(PackageOperation),
-      typeof(EventType.PackageOperationStart).GetProperty(nameof(EventType.PackageOperationStart.Operation))!.PropertyType);
+      typeof(AlpmEvent.PackageOperationStart).GetProperty(nameof(AlpmEvent.PackageOperationStart.Operation))!.PropertyType);
     Assert.Equal(typeof(ProgressType),
       typeof(Callback).GetProperty(nameof(Callback.ProgressHandler))!.PropertyType.GenericTypeArguments[0]);
     Assert.Equal(typeof(LogLevel),
@@ -50,12 +50,11 @@ public sealed class ManagedEnumsTests
       typeof(Callback).GetProperty(nameof(Callback.FetchHandler))!.PropertyType.GenericTypeArguments[^1]);
 
     Assert.Equal(typeof(bool),
-      typeof(QuestionType.InstallIgnoredPackage).GetProperty(nameof(QuestionType.InstallIgnoredPackage.Install))!.PropertyType);
-
+      typeof(AlpmQuestion.InstallIgnoredPackage).GetProperty(nameof(AlpmQuestion.InstallIgnoredPackage.Install))!.PropertyType);
     // A callback payload is a snapshot, so the member lists inside it are copied rather than viewed:
     // libalpm's question union and the list hanging off it are built on the calling thread's stack.
     Assert.Equal(typeof(IReadOnlyList<PackageView>),
-      typeof(QuestionType.RemovePkgs).GetProperty(nameof(QuestionType.RemovePkgs.Packages))!.PropertyType);
+      typeof(AlpmQuestion.RemovePkgs).GetProperty(nameof(AlpmQuestion.RemovePkgs.Packages))!.PropertyType);
   }
 
   /// <summary>Both enums must cover exactly the same numeric values.</summary>

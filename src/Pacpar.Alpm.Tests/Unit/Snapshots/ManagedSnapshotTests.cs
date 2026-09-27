@@ -40,7 +40,7 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      var version = new Version(buffer);
+      var version = new PackageVersion(buffer);
 
       Scramble(buffer, "1.2.3-4");
 
@@ -69,8 +69,8 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      var older = new Version(olderText);
-      var newer = new Version(newerText);
+      var older = new PackageVersion(olderText);
+      var newer = new PackageVersion(newerText);
 
       Scramble(olderText, "1.0-1");
       Marshal.FreeHGlobal((nint)olderText);
@@ -86,7 +86,7 @@ public sealed unsafe class ManagedSnapshotTests
       var sameText = NativeString.ToNative("1.0-1");
       try
       {
-        Assert.Equal(0, older.CompareTo(new Version(sameText)));
+        Assert.Equal(0, older.CompareTo(new PackageVersion(sameText)));
         Assert.Equal(1, older.CompareTo(null));
       }
       finally
@@ -142,7 +142,7 @@ public sealed unsafe class ManagedSnapshotTests
       native->mode = 0b111_101_101;
       native->size = new CLong(4096);
 
-      var file = File.Factory(native, null);
+      var file = PackageFile.Factory(native, null);
 
       Scramble(name, "usr/bin/probe");
       native->name = null;
@@ -266,14 +266,14 @@ public sealed unsafe class ManagedSnapshotTests
 
       // FromUnion takes the handle's root token, which any package views in the payload are
       // snapshotted against; this branch carries none.
-      var payload = EventType.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
+      var payload = AlpmEvent.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       // Exactly what libalpm does to the union as soon as the callback returns.
       *native = default;
       Marshal.FreeHGlobal((nint)line);
       line = null;
 
-      Assert.Equal(":: running post-transaction hooks...", Assert.IsType<EventType.ScriptletInfo>(payload).Line);
+      Assert.Equal(":: running post-transaction hooks...", Assert.IsType<AlpmEvent.ScriptletInfo>(payload).Line);
     }
     finally
     {
@@ -293,11 +293,11 @@ public sealed unsafe class ManagedSnapshotTests
       native->hook_run.position = 2;
       native->hook_run.total = 5;
 
-      var payload = EventType.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
+      var payload = AlpmEvent.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       *native = default;
 
-      var hookRun = Assert.IsType<EventType.HookRunStart>(payload);
+      var hookRun = Assert.IsType<AlpmEvent.HookRunStart>(payload);
       Assert.Equal((nuint)2, hookRun.Position);
       Assert.Equal((nuint)5, hookRun.Total);
     }
@@ -323,7 +323,7 @@ public sealed unsafe class ManagedSnapshotTests
       native->replace.newpkg = (_alpm_pkg_t*)newPackage;
       native->replace.newdb = (_alpm_db_t*)newDatabase;
 
-      var payload = QuestionType.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
+      var payload = AlpmQuestion.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       *native = default;
       Marshal.FreeHGlobal((nint)oldPackage);
@@ -333,7 +333,7 @@ public sealed unsafe class ManagedSnapshotTests
       Marshal.FreeHGlobal((nint)newDatabase);
       newDatabase = null;
 
-      var replace = Assert.IsType<QuestionType.ReplacePackage>(payload);
+      var replace = Assert.IsType<AlpmQuestion.ReplacePackage>(payload);
       Assert.True(replace.Replace);
       Assert.Equal("pacpar-old", replace.OldPackage);
       Assert.Equal("pacpar-new", replace.NewPackage);
@@ -366,13 +366,13 @@ public sealed unsafe class ManagedSnapshotTests
 
       // The REMOVE_PKGS branch borrows the member list under the passed token and copies the
       // PackageView snapshots out of it, so the token must be alive while the union is.
-      var payload = QuestionType.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
+      var payload = AlpmQuestion.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       *native = default;
       NativeMethods.alpm_list_free(members);
       members = null;
 
-      Assert.Single(Assert.IsType<QuestionType.RemovePkgs>(payload).Packages);
+      Assert.Single(Assert.IsType<AlpmQuestion.RemovePkgs>(payload).Packages);
     }
     finally
     {
@@ -391,12 +391,12 @@ public sealed unsafe class ManagedSnapshotTests
       data->total = new CLong(1024);
       data->result = 0;
 
-      var payload = DownloadEventType.FromUnion(_alpm_download_event_type_t.ALPM_DOWNLOAD_COMPLETED, data);
+      var payload = AlpmDownloadEvent.FromUnion(_alpm_download_event_type_t.ALPM_DOWNLOAD_COMPLETED, data);
 
       data->total = default;
       data->result = -1;
 
-      var completed = Assert.IsType<DownloadEventType.Completed>(payload);
+      var completed = Assert.IsType<AlpmDownloadEvent.Completed>(payload);
       Assert.Equal(1024L, completed.Total.Value);
       Assert.Equal(0, completed.Result);
       Assert.True(completed.IsSuccessful);

@@ -5,8 +5,8 @@ using System.IO;
 using System.Linq;
 using Pacpar.Alpm;
 using Spectre.Console;
-using AlpmVersion = Pacpar.Alpm.Version;
-using AlpmFile = Pacpar.Alpm.File;
+using AlpmVersion = Pacpar.Alpm.PackageVersion;
+using AlpmFile = Pacpar.Alpm.PackageFile;
 
 namespace Pacpar.CLI;
 

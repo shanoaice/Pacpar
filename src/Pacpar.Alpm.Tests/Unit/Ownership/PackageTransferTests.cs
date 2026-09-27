@@ -4,7 +4,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Covers the ownership hand-over of <see cref="Transactions.AddPackage(LoadedPackage)"/> (report item
+/// Covers the ownership hand-over of <see cref="Transaction.AddPackage(LoadedPackage)"/> (report item
 /// F2): libalpm frees a file-loaded package when the transaction is released, so the wrapper must stop
 /// owning it at that moment - otherwise the natural <c>using</c> pattern aborts the process with a
 /// double free. The two <c>AddPackage</c> overloads cannot be confused, because

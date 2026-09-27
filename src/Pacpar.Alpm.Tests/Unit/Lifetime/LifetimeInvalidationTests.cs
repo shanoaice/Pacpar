@@ -124,7 +124,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
     // The view held across the commit now reports the commit as its executioner...
     var thrown = Assert.Throws<AlpmLifetimeException>(() => held.Name);
     Assert.Equal("the local database", thrown.Target);
-    Assert.Equal("Transactions.Commit()", thrown.InvalidatedBy);
+    Assert.Equal("Transaction.Commit()", thrown.InvalidatedBy);
 
     // ...as does the Database wrapper issued before the commit (same retired token)...
     Assert.Throws<AlpmLifetimeException>(() => localDb.Name);

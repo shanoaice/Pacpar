@@ -90,7 +90,7 @@ public class Alpm : IDisposable
   /// <c>db.lck</c>.
   /// </para>
   /// </remarks>
-  public Transactions? CurrentTransaction { get; internal set; }
+  public Transaction? CurrentTransaction { get; internal set; }
 
   /// <summary>
   /// Whether the handle is fully released. Published with a volatile write at the end of teardown
@@ -224,7 +224,7 @@ public class Alpm : IDisposable
   /// whether the transaction locks the database, writes to the filesystem and runs hooks, so a
   /// request for one mode must not be answered with a transaction configured for another.
   /// </exception>
-  public Transactions BeginTransaction(TransactionFlags flags = default)
+  public Transaction BeginTransaction(TransactionFlags flags = default)
   {
     ThrowIfDisposed();
 
@@ -240,7 +240,7 @@ public class Alpm : IDisposable
       return active;
     }
 
-    var transaction = new Transactions(this, flags);
+    var transaction = new Transaction(this, flags);
     CurrentTransaction = transaction;
     return transaction;
   }

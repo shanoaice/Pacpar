@@ -4,111 +4,6 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
-/// <summary>Where a package handle comes from (libalpm's <c>_alpm_pkgfrom_t</c>).</summary>
-public enum PackageOrigin : uint
-{
-  /// <summary>Loaded from a package file.</summary>
-  File = 1,
-
-  /// <summary>From the local database.</summary>
-  LocalDatabase = 2,
-
-  /// <summary>From a sync database.</summary>
-  SyncDatabase = 3
-}
-
-/// <summary>Why a package is installed (libalpm's <c>_alpm_pkgreason_t</c>).</summary>
-public enum PackageReason : uint
-{
-  /// <summary>Explicitly installed by the user.</summary>
-  Explicit = 0,
-
-  /// <summary>Installed as a dependency.</summary>
-  Dependency = 1,
-
-  /// <summary>libalpm could not determine the reason.</summary>
-  Unknown = 2
-}
-
-/// <summary>
-/// A package version (<c>alpm_pkg_get_version</c>), ordered by libalpm's own
-/// <c>alpm_pkg_vercmp</c>.
-/// </summary>
-/// <remarks>
-/// A managed snapshot: the version text is copied on construction, so a value taken from
-/// <see cref="PackageView.Version"/> stays readable after the package that produced it is gone.
-/// libalpm can only compare native strings, so <see cref="CompareTo"/> marshals both operands for
-/// the duration of the call instead of holding a pointer to package-owned memory.
-/// </remarks>
-public class Version : IComparable<Version>
-{
-  private readonly string _value;
-
-  internal unsafe Version(byte* version)
-  {
-    _value = NativeString.FromNative((nint)version) ?? string.Empty;
-  }
-
-  public unsafe int CompareTo(Version? other)
-  {
-    if (other == null) return 1;
-
-    var left = NativeString.ToNative(_value);
-    try
-    {
-      var right = NativeString.ToNative(other._value);
-      try
-      {
-        return NativeMethods.alpm_pkg_vercmp(left, right);
-      }
-      finally
-      {
-        Marshal.FreeHGlobal((nint)right);
-      }
-    }
-    finally
-    {
-      Marshal.FreeHGlobal((nint)left);
-    }
-  }
-
-  public override string ToString() => _value;
-}
-
-// ReSharper disable InconsistentNaming
-/// <summary>
-///  Method used to validate a package.
-/// </summary>
-[Flags]
-public enum PackageValidation : uint
-{
-  /// <summary>
-  ///  The package's validation type is unknown
-  /// </summary>
-  ALPM_PKG_VALIDATION_UNKNOWN = 0,
-
-  /// <summary>
-  ///  The package does not have any validation
-  /// </summary>
-  ALPM_PKG_VALIDATION_NONE = 1,
-
-  /// <summary>
-  ///  The package is validated with md5
-  /// </summary>
-  ALPM_PKG_VALIDATION_MD5SUM = 2,
-
-  /// <summary>
-  ///  The package is validated with sha256
-  /// </summary>
-  ALPM_PKG_VALIDATION_SHA256SUM = 4,
-
-  /// <summary>
-  ///  The package is validated with a PGP signature
-  /// </summary>
-  ALPM_PKG_VALIDATION_SIGNATURE = 8,
-}
-// ReSharper restore InconsistentNaming
-
 /// <summary>
 /// The read-only surface of a package: everything libalpm exposes about one, whoever owns it.
 /// </summary>
@@ -122,7 +17,7 @@ public enum PackageValidation : uint
 /// so it is <see cref="IDisposable"/> and can hand the ownership to a transaction.</description></item>
 /// </list>
 /// Because neither type converts to the other, an overload pair such as
-/// <see cref="Transactions.AddPackage(PackageView)"/> / <see cref="Transactions.AddPackage(LoadedPackage)"/>
+/// <see cref="Transaction.AddPackage(PackageView)"/> / <see cref="Transaction.AddPackage(LoadedPackage)"/>
 /// cannot be reached with the wrong kind: the compiler picks the borrow overload for a database
 /// package and the ownership-transferring one for a file package, and no run-time check is needed.
 /// This base type is the common parameter type for code that only reads.
@@ -245,12 +140,12 @@ public abstract unsafe class PackageBase
     }
   }
 
-  public Version Version
+  public PackageVersion Version
   {
     get
     {
       ThrowIfDisposed();
-      return new Version(NativeMethods.alpm_pkg_get_version(BackingStruct));
+      return new PackageVersion(NativeMethods.alpm_pkg_get_version(BackingStruct));
     }
   }
 
@@ -633,115 +528,4 @@ public abstract unsafe class PackageBase
   /// the copy and most callers do not need it.
   /// </param>
   public PackageSnapshot ToSnapshot(bool includeFiles = false) => new(this, includeFiles);
-}
-
-/// <summary>
-/// A package libalpm owns: a database package, a transaction member, or one reached through a group.
-/// </summary>
-/// <remarks>
-/// Nothing here frees it, which is why this type is deliberately not <see cref="IDisposable"/>; a
-/// package this library loaded from a file is a <see cref="LoadedPackage"/> instead, and the two do
-/// not convert to one another (see <see cref="PackageBase"/>).
-/// <para>
-/// Being a view over libalpm's memory is exactly what makes bulk scans cheap, so keep it that way: read
-/// the view while scanning, and call <see cref="ToSnapshot"/> only for the packages that must outlive
-/// the scan. The lifetime token the issuing context passed in guards the view: once that context is
-/// released, every read throws <see cref="AlpmLifetimeException"/> instead of touching freed memory.
-/// </para>
-/// </remarks>
-public sealed unsafe class PackageView : PackageBase
-{
-  /// <param name="backingStruct">The libalpm-owned package. Not dereferenced here.</param>
-  /// <param name="lifetime">Token of the context that owns the package memory, if any.</param>
-  internal PackageView(_alpm_pkg_t* backingStruct, Lifetime? lifetime) : base(backingStruct)
-  {
-    Lifetime = lifetime;
-  }
-
-  internal static PackageView Factory(void* ptr, Lifetime? lifetime) => new((_alpm_pkg_t*)ptr, lifetime);
-}
-
-/// <summary>
-/// A package this library loaded from a file with <c>alpm_pkg_load</c>. It owns the package and
-/// releases it on <see cref="Dispose"/>, or from the finalizer when the caller forgets.
-/// </summary>
-/// <remarks>
-/// Ownership can also be handed to a transaction, which takes over the release
-/// (<see cref="Transactions.AddPackage(LoadedPackage)"/> and <c>alpm.h</c>: a package loaded by
-/// <c>alpm_pkg_load()</c> is freed upon <c>alpm_trans_release</c>). After that hand-over this
-/// instance is inert: <see cref="Dispose"/> and the finalizer do nothing, and reading the package
-/// throws, so the pointer cannot be released twice.
-/// <para>
-/// This instance is the root owner of its native package, so it anchors its own lifetime-token
-/// tree: releasing or disowning it invalidates the root token, which retires every view issued
-/// from the package - its <see cref="Files"/> list, group members, anything else - in one step.
-/// </para>
-/// </remarks>
-public sealed unsafe class LoadedPackage : PackageBase, IDisposable
-{
-  private readonly Lifetime _lifetime;
-
-  internal LoadedPackage(_alpm_pkg_t* backingStruct) : base(backingStruct)
-  {
-    _lifetime = Lifetime.CreateRoot(this, "a loaded package");
-    Lifetime = _lifetime;
-  }
-
-  /// <summary>Whether this instance still owns the package (it stops owning it on dispose or hand-over).</summary>
-  internal bool OwnsPackage => !Disposed;
-
-  /// <summary>Throws when the package was already released or handed to a transaction.</summary>
-  /// <remarks>
-  /// Checked by the caller <i>before</i> it touches libalpm: a hand-over that already happened is a
-  /// caller error, and repeating the native call would be pointless (libalpm dedupes the same
-  /// package pointer in a transaction's list anyway, probed).
-  /// </remarks>
-  internal void ThrowIfNotOwned()
-  {
-    if (!OwnsPackage) throw new ObjectDisposedException(GetType().FullName);
-  }
-
-  /// <summary>
-  /// Gives up ownership <b>without</b> releasing the package, because somebody else owns the pointer
-  /// now and releases it. <see cref="Dispose"/> and the finalizer become no-ops.
-  /// </summary>
-  /// <remarks>
-  /// Named "disown" rather than "release" on purpose: nothing is freed here. Handing the package to
-  /// a transaction is the only caller, and it must happen after the native call succeeded - the
-  /// caller keeps ownership when it fails.
-  /// </remarks>
-  internal void Disown()
-  {
-    ThrowIfNotOwned();
-    Disposed = true;
-    GC.SuppressFinalize(this);
-    // The pointer stays valid inside the transaction, but this wrapper can no longer observe its
-    // lifetime, so every view issued from it must stop reading through it.
-    _lifetime.Invalidate("the hand-over to a transaction");
-  }
-
-  public void Dispose()
-  {
-    Dispose(true);
-    GC.SuppressFinalize(this);
-  }
-
-  private void Dispose(bool disposing)
-  {
-    if (Disposed) return;
-
-    // A failing alpm_pkg_free leaves nothing useful to do: the caller either disposed explicitly
-    // or the finalizer is running, and neither can handle a thrown error.
-    _ = NativeMethods.alpm_pkg_free(BackingStruct);
-    Disposed = true;
-
-    // The native package is gone: retire the token tree rooted at this instance. On the finalizer
-    // path this must stay O(1) and allocation-free, hence fromFinalizer (no registry walking, no
-    // debug assertion).
-    _lifetime.Invalidate(
-      disposing ? "LoadedPackage.Dispose()" : "the owning LoadedPackage was garbage-collected",
-      fromFinalizer: !disposing);
-  }
-
-  ~LoadedPackage() => Dispose(false);
 }

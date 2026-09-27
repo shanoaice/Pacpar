@@ -41,9 +41,9 @@ public enum PackageOperation : uint
 /// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-public abstract class EventType
+public abstract class AlpmEvent
 {
-  internal static unsafe EventType FromUnion(_alpm_event_t* backingStruct, Lifetime? lifetime)
+  internal static unsafe AlpmEvent FromUnion(_alpm_event_t* backingStruct, Lifetime? lifetime)
   {
     return backingStruct->type_ switch
     {
@@ -88,47 +88,47 @@ public abstract class EventType
     };
   }
 
-  public class CheckDepsStart : EventType
+  public class CheckDepsStart : AlpmEvent
   {
   }
 
-  public class CheckDepsDone : EventType
+  public class CheckDepsDone : AlpmEvent
   {
   }
 
-  public class FileConflictsStart : EventType
+  public class FileConflictsStart : AlpmEvent
   {
   }
 
-  public class FileConflictsDone : EventType
+  public class FileConflictsDone : AlpmEvent
   {
   }
 
-  public class ResolveDepsStart : EventType
+  public class ResolveDepsStart : AlpmEvent
   {
   }
 
-  public class ResolveDepsDone : EventType
+  public class ResolveDepsDone : AlpmEvent
   {
   }
 
-  public class InterConflictsStart : EventType
+  public class InterConflictsStart : AlpmEvent
   {
   }
 
-  public class InterConflictsDone : EventType
+  public class InterConflictsDone : AlpmEvent
   {
   }
 
-  public class TransactionStart : EventType
+  public class TransactionStart : AlpmEvent
   {
   }
 
-  public class TransactionDone : EventType
+  public class TransactionDone : AlpmEvent
   {
   }
 
-  public class PackageOperationStart : EventType
+  public class PackageOperationStart : AlpmEvent
   {
     internal unsafe PackageOperationStart(_alpm_event_t* native, Lifetime? lifetime)
     {
@@ -144,7 +144,7 @@ public abstract class EventType
     public PackageOperation Operation { get; }
   }
 
-  public class PackageOperationDone : EventType
+  public class PackageOperationDone : AlpmEvent
   {
     internal unsafe PackageOperationDone(_alpm_event_t* native, Lifetime? lifetime)
     {
@@ -158,23 +158,23 @@ public abstract class EventType
     public PackageOperation Operation { get; }
   }
 
-  public class IntegrityStart : EventType
+  public class IntegrityStart : AlpmEvent
   {
   }
 
-  public class IntegrityDone : EventType
+  public class IntegrityDone : AlpmEvent
   {
   }
 
-  public class LoadStart : EventType
+  public class LoadStart : AlpmEvent
   {
   }
 
-  public class LoadDone : EventType
+  public class LoadDone : AlpmEvent
   {
   }
 
-  public class ScriptletInfo : EventType
+  public class ScriptletInfo : AlpmEvent
   {
     internal unsafe ScriptletInfo(_alpm_event_t* native)
     {
@@ -184,27 +184,27 @@ public abstract class EventType
     public string Line { get; }
   }
 
-  public class RetrieveStart : EventType
+  public class RetrieveStart : AlpmEvent
   {
   }
 
-  public class RetrieveDone : EventType
+  public class RetrieveDone : AlpmEvent
   {
   }
 
-  public class RetrieveFailed : EventType
+  public class RetrieveFailed : AlpmEvent
   {
   }
 
-  public class DiskSpaceStart : EventType
+  public class DiskSpaceStart : AlpmEvent
   {
   }
 
-  public class DiskSpaceDone : EventType
+  public class DiskSpaceDone : AlpmEvent
   {
   }
 
-  public class OptionalDependencyRemoval : EventType
+  public class OptionalDependencyRemoval : AlpmEvent
   {
     internal unsafe OptionalDependencyRemoval(_alpm_event_t* native, Lifetime? lifetime)
     {
@@ -216,7 +216,7 @@ public abstract class EventType
     public PackageView Package { get; }
   }
 
-  public class DatabaseMissing : EventType
+  public class DatabaseMissing : AlpmEvent
   {
     internal unsafe DatabaseMissing(_alpm_event_t* native)
     {
@@ -226,23 +226,23 @@ public abstract class EventType
     public string DatabaseName { get; }
   }
 
-  public class KeyringStart : EventType
+  public class KeyringStart : AlpmEvent
   {
   }
 
-  public class KeyringDone : EventType
+  public class KeyringDone : AlpmEvent
   {
   }
 
-  public class KeyDownloadStart : EventType
+  public class KeyDownloadStart : AlpmEvent
   {
   }
 
-  public class KeyDownloadDone : EventType
+  public class KeyDownloadDone : AlpmEvent
   {
   }
 
-  public class PacnewCreated : EventType
+  public class PacnewCreated : AlpmEvent
   {
     internal unsafe PacnewCreated(_alpm_event_t* native, Lifetime? lifetime)
     {
@@ -258,7 +258,7 @@ public abstract class EventType
     public string File { get; }
   }
 
-  public class PacsaveCreated : EventType
+  public class PacsaveCreated : AlpmEvent
   {
     internal unsafe PacsaveCreated(_alpm_event_t* native, Lifetime? lifetime)
     {
@@ -270,7 +270,7 @@ public abstract class EventType
     public string File { get; }
   }
 
-  public class HookStart : EventType
+  public class HookStart : AlpmEvent
   {
     internal unsafe HookStart(_alpm_event_t* native)
     {
@@ -280,7 +280,7 @@ public abstract class EventType
     public HookWhen When { get; }
   }
 
-  public class HookDone : EventType
+  public class HookDone : AlpmEvent
   {
     internal unsafe HookDone(_alpm_event_t* native)
     {
@@ -290,7 +290,7 @@ public abstract class EventType
     public HookWhen When { get; }
   }
 
-  public class HookRunStart : EventType
+  public class HookRunStart : AlpmEvent
   {
     internal unsafe HookRunStart(_alpm_event_t* native)
     {
@@ -306,7 +306,7 @@ public abstract class EventType
     public nuint Total { get; }
   }
 
-  public class HookRunDone : EventType
+  public class HookRunDone : AlpmEvent
   {
     internal unsafe HookRunDone(_alpm_event_t* native)
     {
@@ -322,7 +322,7 @@ public abstract class EventType
     public nuint Total { get; }
   }
 
-  public class PackageRetrieveStart : EventType
+  public class PackageRetrieveStart : AlpmEvent
   {
     internal unsafe PackageRetrieveStart(_alpm_event_t* native)
     {
@@ -334,7 +334,7 @@ public abstract class EventType
     public CLong TotalSize { get; }
   }
 
-  public class PackageRetrieveDone : EventType
+  public class PackageRetrieveDone : AlpmEvent
   {
     internal unsafe PackageRetrieveDone(_alpm_event_t* native)
     {
@@ -346,7 +346,7 @@ public abstract class EventType
     public CLong TotalSize { get; }
   }
 
-  public class PackageRetrieveFailed : EventType
+  public class PackageRetrieveFailed : AlpmEvent
   {
     internal unsafe PackageRetrieveFailed(_alpm_event_t* native)
     {

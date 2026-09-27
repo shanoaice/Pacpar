@@ -84,7 +84,7 @@ public enum TransactionFlags : uint
   ALPM_TRANS_FLAG_NOLOCK = 131072,
 }
 
-public class Transactions : IDisposable
+public class Transaction : IDisposable
 {
   private bool _released;
 
@@ -99,7 +99,7 @@ public class Transactions : IDisposable
   /// </summary>
   internal readonly Lifetime Lifetime;
 
-  internal unsafe Transactions(Alpm alpmLibrary, TransactionFlags flags)
+  internal unsafe Transaction(Alpm alpmLibrary, TransactionFlags flags)
   {
     _library = alpmLibrary;
     Lifetime = alpmLibrary.RootLifetime.CreateChild("the transaction");
@@ -253,7 +253,7 @@ public class Transactions : IDisposable
     // database's token conservatively - libalpm does not tell us which caches it dropped - and let
     // the next GetLocalDatabase() issue a fresh one. Callers that keep package data across a commit
     // call ToSnapshot() first.
-    _library.InvalidateLocalDatabase("Transactions.Commit()");
+    _library.InvalidateLocalDatabase("Transaction.Commit()");
   }
 
   /// <summary>
@@ -307,7 +307,7 @@ public class Transactions : IDisposable
   /// <b>not</b> release an active transaction: it answers <c>ALPM_ERR_TRANS_NOT_NULL</c> and frees
   /// nothing, which leaks the handle and <c>db.lck</c>. A finalizer here would run after that
   /// release, with the handle already gone, and an exception escaping it terminates the process
-  /// (that is what <c>~Transactions()</c> used to do through <see cref="Alpm.AsHandle"/>'s disposed
+  /// (that is what <c>~Transaction()</c> used to do through <see cref="Alpm.AsHandle"/>'s disposed
   /// check).
   /// </para>
   /// <para>
@@ -337,6 +337,6 @@ public class Transactions : IDisposable
     // alive, and retiring the token then would misreport a live context as dead. When the library
     // was already disposed the early return above skipped the release; the root token is dead in
     // that case and the parent chain retires this token's views all the same.
-    if (err == 0) Lifetime.Invalidate("Transactions.Dispose()");
+    if (err == 0) Lifetime.Invalidate("Transaction.Dispose()");
   }
 }

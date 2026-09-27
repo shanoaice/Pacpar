@@ -1,8 +1,8 @@
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Pure managed coverage of the lifetime token tree (lifetime-token-preview.md, sections 6.1 and
-/// 6.2): root anchoring, parent-chain cascading, first-reason-wins invalidation, the handle
+/// Pure managed coverage of the lifetime token tree (docfx/docs/lifetime-tokens.md):
+/// root anchoring, parent-chain cascading, first-reason-wins invalidation, the handle
 /// registry's pointer deduplication, and the exception text callers see.
 /// </summary>
 /// <remarks>
@@ -90,15 +90,15 @@ public sealed unsafe class LifetimeTests
   {
     var token = Root();
 
-    token.Invalidate("Transactions.Commit()");
+    token.Invalidate("Transaction.Commit()");
     token.Invalidate("a later, conflicting reason");
 
     Assert.False(token.IsAlive);
-    Assert.Equal("Transactions.Commit()", token.InvalidatedBy);
+    Assert.Equal("Transaction.Commit()", token.InvalidatedBy);
 
     // And the first reason is what callers see through ThrowIfStale as well.
     var thrown = Assert.Throws<AlpmLifetimeException>(() => token.ThrowIfStale());
-    Assert.Equal("Transactions.Commit()", thrown.InvalidatedBy);
+    Assert.Equal("Transaction.Commit()", thrown.InvalidatedBy);
   }
 
   [Fact]
@@ -187,10 +187,10 @@ public sealed unsafe class LifetimeTests
   [Fact]
   public void Exception_WithAReason_NamesTheReleasingOperation()
   {
-    var thrown = new AlpmLifetimeException("the local database", "Transactions.Commit()");
+    var thrown = new AlpmLifetimeException("the local database", "Transaction.Commit()");
 
-    Assert.Equal("Transactions.Commit()", thrown.InvalidatedBy);
-    Assert.StartsWith("the local database was released by Transactions.Commit(), so this object points into unmanaged memory",
+    Assert.Equal("Transaction.Commit()", thrown.InvalidatedBy);
+    Assert.StartsWith("the local database was released by Transaction.Commit(), so this object points into unmanaged memory",
       thrown.Message);
   }
 }

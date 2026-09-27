@@ -12,7 +12,7 @@ public sealed class FetchFallbackTests
     using var env = new IsolatedAlpmEnvironment();
     var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
 
-    var events = new List<EventType>();
+    var events = new List<AlpmEvent>();
     env.Alpm.Callback.EventHandler = events.Add;
 
     var urlPtr = NativeString.ToNative("http://127.0.0.1:1/x-1.0-1-x86_64.pkg.tar.zst");
@@ -27,8 +27,8 @@ public sealed class FetchFallbackTests
 
       // With libalpm's internal downloader, a network failure emits PackageRetrieveFailed.
       // With phantom registration (shim claiming Success), libalpm emits PackageRetrieveDone!
-      Assert.Contains(events, e => e is EventType.PackageRetrieveFailed);
-      Assert.DoesNotContain(events, e => e is EventType.PackageRetrieveDone);
+      Assert.Contains(events, e => e is AlpmEvent.PackageRetrieveFailed);
+      Assert.DoesNotContain(events, e => e is AlpmEvent.PackageRetrieveDone);
     }
     finally
     {

@@ -25,7 +25,7 @@ public sealed class AlpmLifetimeException : InvalidOperationException
   /// <summary>The target resource that was invalidated (e.g. 'the local database', 'the sync database core').</summary>
   public string Target { get; }
 
-  /// <summary>The operation that caused the invalidation (e.g. 'Database.Unregister()', 'Transactions.Commit()').</summary>
+  /// <summary>The operation that caused the invalidation (e.g. 'Database.Unregister()', 'Transaction.Commit()').</summary>
   public string? InvalidatedBy { get; }
 
   private static string BuildMessage(string target, string? invalidatedBy)

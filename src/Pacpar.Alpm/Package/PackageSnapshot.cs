@@ -67,7 +67,7 @@ public sealed class PackageSnapshot
   /// <summary>The package name; libalpm always sets one.</summary>
   public string Name { get; }
 
-  public Version Version { get; }
+  public PackageVersion Version { get; }
 
   public string? Filename { get; }
 
@@ -123,5 +123,5 @@ public sealed class PackageSnapshot
   /// <summary>
   /// The copied file list, or <c>null</c> when the snapshot was taken without it.
   /// </summary>
-  public IReadOnlyList<File>? Files { get; }
+  public IReadOnlyList<PackageFile>? Files { get; }
 }

@@ -105,7 +105,7 @@ public sealed class Callback
   // run and the native handle would leak. An event or question callback only fires while a thread is
   // inside a libalpm call that already keeps the owner alive, so the reference resolves in
   // practice; if it ever does not, the snapshots degrade to unguarded views instead of crashing the
-  // thunk. The thunks still hand the token to EventType/QuestionType.FromUnion so the package views
+  // thunk. The thunks still hand the token to AlpmEvent/AlpmQuestion.FromUnion so the package views
   // they snapshot out of the union are born with it: those views stay readable exactly as long as
   // the handle lives, and retire with it.
   private readonly WeakReference<Lifetime> _lifetimeRef;
@@ -117,10 +117,10 @@ public sealed class Callback
   // otherwise it will screw up the callbacks
   private GCHandle<Callback> _ctxHandle;
 
-  private Action<EventType>? _eventHandler;
+  private Action<AlpmEvent>? _eventHandler;
   private Func<string, string, bool, FetchResult>? _fetchHandler;
-  private Action<QuestionType>? _questionHandler;
-  private Action<string, DownloadEventType>? _downloadHandler;
+  private Action<AlpmQuestion>? _questionHandler;
+  private Action<string, AlpmDownloadEvent>? _downloadHandler;
   private Action<ProgressType, string, int, nuint, nuint>? _progressHandler;
   private Action<LogLevel, string>? _logHandler;
 
@@ -131,7 +131,7 @@ public sealed class Callback
     callback._invokeDepth++;
     try
     {
-      SafeInvoke(() => callback.EventHandler?.Invoke(EventType.FromUnion(eventT, callback.LifetimeOrNull())), callback.HandlerException);
+      SafeInvoke(() => callback.EventHandler?.Invoke(AlpmEvent.FromUnion(eventT, callback.LifetimeOrNull())), callback.HandlerException);
     }
     finally
     {
@@ -167,7 +167,7 @@ public sealed class Callback
     callback._invokeDepth++;
     try
     {
-      SafeInvoke(() => callback.QuestionHandler?.Invoke(QuestionType.FromUnion(questionT, callback.LifetimeOrNull())), callback.HandlerException);
+      SafeInvoke(() => callback.QuestionHandler?.Invoke(AlpmQuestion.FromUnion(questionT, callback.LifetimeOrNull())), callback.HandlerException);
     }
     finally
     {
@@ -202,7 +202,7 @@ public sealed class Callback
     {
       SafeInvoke(
         () => callback.DownloadHandler?.Invoke(NativeString.FromNative((nint)filename) ?? "",
-          DownloadEventType.FromUnion(eventType, data)), callback.HandlerException);
+          AlpmDownloadEvent.FromUnion(eventType, data)), callback.HandlerException);
     }
     finally
     {
@@ -276,7 +276,7 @@ public sealed class Callback
   /// Receives libalpm event notifications. Setting a non-null delegate registers the native event
   /// callback; setting <see langword="null"/> unregisters it.
   /// </summary>
-  public unsafe Action<EventType>? EventHandler
+  public unsafe Action<AlpmEvent>? EventHandler
   {
     get => _eventHandler;
     set
@@ -310,7 +310,7 @@ public sealed class Callback
   /// Receives interactive prompts from libalpm. Setting a non-null delegate registers the native
   /// question callback; setting <see langword="null"/> leaves libalpm to use its pre-seeded default answers.
   /// </summary>
-  public unsafe Action<QuestionType>? QuestionHandler
+  public unsafe Action<AlpmQuestion>? QuestionHandler
   {
     get => _questionHandler;
     set
@@ -329,7 +329,7 @@ public sealed class Callback
   /// unregisters it. Note: this callback only fires when libalpm downloads files itself, and is inactive
   /// while <see cref="FetchHandler"/> is configured.
   /// </summary>
-  public unsafe Action<string, DownloadEventType>? DownloadHandler
+  public unsafe Action<string, AlpmDownloadEvent>? DownloadHandler
   {
     get => _downloadHandler;
     set
