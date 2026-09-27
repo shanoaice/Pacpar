@@ -1,0 +1,61 @@
+# gc-anchor-allowlist.txt - reviewed exceptions for the GC anchor audit.
+#
+# Each line records one site where a mechanism IS claimed but its contract cannot be proven from
+# the method's own IL. The validator proves the mechanism itself (GC.KeepAlive post-dominance,
+# receiver liveness, a token-carrying construction, a delegated parameter); what it cannot see is
+# the OWNERSHIP hop, because that is a property of the type graph and of the callers rather than of
+# this method body. Every entry below is a human decision, and the reason states the invariant the
+# decision rests on.
+#
+# Format:  <Type>[.<Member>] | <mechanism> | <why the site is safe>
+#
+# A TYPE-LEVEL entry (no member) records a TYPE-WIDE invariant and excuses NeedsReview verdicts for
+# that whole type. It never excuses an Unsafe verdict: "nothing was claimed at all" is a different
+# statement and must be named member by member, so a newly added unanchored member still fails the
+# build instead of hiding behind its type.
+#
+# A stale entry - one that no longer matches any hazard site - also fails the build. Delete it.
+
+
+AlpmDownloadEvent | delegated to caller | FromUnion receives the download-event union by parameter and copies it out eagerly. Its only caller is Callback.DownloadAgent, which runs inside the libalpm download callback whose frame already keeps the handle owner alive.
+
+AlpmEvent | delegated to caller | FromUnion receives the event union by parameter and copies it out eagerly. Its only caller is Callback.EventAgent, which runs inside the libalpm call that owns the union. The PackageView values it builds are handed the callback's token so they stay readable exactly as long as the handle lives.
+
+AlpmList`1 | receiver anchoring not modelled | ToArray reads the list through the Native accessor after Lifetime?.ThrowIfStale(), and Enumerator.Current anchors the owning view with GC.KeepAlive(_list). The validator only recognises GC.KeepAlive(this), so an anchor on a field of this is invisible to it. The view owns no handle itself; the memory belongs to the list the caller borrowed it from.
+
+AlpmQuestion | delegated to caller | FromUnion receives the question union by parameter and copies it out eagerly. Its only caller is Callback.QuestionAgent, which runs inside the libalpm call that owns the union.
+
+AlpmQuestion.ConflictPkg..ctor | sync callback frame, not modelled | Unlike its siblings this constructor reads alpm_pkg_get_name on the packages inside the conflict, and those packages belong to the handle or sync database rather than to the question union, so the union's parameter provenance does not cover them. They stay alive because a question callback only fires inside alpm_trans_prepare, alpm_trans_commit, alpm_add_pkg, alpm_remove_pkg or alpm_sync_sysupgrade, and each of those managed callers (Transaction.Prepare, Transaction.Commit, Transaction.AddCore, Transaction.RemovePackage, Transaction.SystemUpgrade) holds _library - the Alpm that owns the handle - for the whole call. This is the one site whose anchor is the caller's frame instead of this method's, and it is why M5 exists. Reviewed by hand. Handing the constructor the lifetime token the way RemovePkgs and SelectProvider receive it would move this onto the proven R2 path and retire the entry.
+
+AlpmStringList | delegated to caller | TakeOwned receives a libalpm list the caller has already disowned, wraps it in AlpmOwnedList for the duration of the copy, and frees it before returning. The anchoring obligation belongs to the call site that produced the list.
+
+Backup | delegated to caller | Factory(void*, Lifetime?) receives the entry pointer as a parameter and copies the entry out. Every call site passes a pointer into a list owned by a view that is rooted on the caller's stack for the duration of the call.
+
+
+Conflict | delegated to caller | Factory(void*, Lifetime?) receives the conflict entry as a parameter and snapshots its names eagerly. The payload belongs to the caller's failure list and nothing is retained.
+
+Database | token-carrying construction and delegated Factory | Factory(void*, Lifetime?) delegates its pointer parameter to the call site. Its accessors either call GC.KeepAlive(this) or leave this live across the call, and Database.Lifetime is a non-nullable child of the handle's root token, so a live Database always roots the handle that owns backingStruct. The values it builds are handed that token, which is why the constructed-view sites read as Token ownership rather than Strong.
+
+DepMissing | delegated to caller | Factory(void*, Lifetime?) receives the entry as a parameter and copies the target and causing package names out eagerly. Nothing is retained beyond the strings.
+
+Depend | delegated to caller | Factory(void*, Lifetime?) receives the dependency as a parameter and copies it out eagerly. Nothing native is retained.
+
+FileConflict | delegated to caller | Factory(void*, Lifetime?) receives the file-conflict entry as a parameter and copies its three strings out eagerly. Nothing is retained.
+
+FileList | KeepAlive proven but the token is nullable | get_Item calls GC.KeepAlive(this) before returning the materialised PackageFile. The file array is owned by the package and FileList.Lifetime is that package's token; the field is declared Lifetime? because a detached list disables the guard, not because a live list can lack an owner.
+
+Group | delegated Factory plus a parameter-owned call | Factory(void*, Lifetime?) receives the group pointer as a parameter and copies the name and package list out. FindGroupPackages anchors the dbs parameter - its Lifetime is read after the native call, which keeps dbs may-live across it - and only incidentally calls GC.KeepAlive(this) on a Group that owns no native memory.
+
+LoadedPackage | owns the handle it is handed | The constructor takes the native pointer and its child lifetime token from Alpm.LoadPackage, which registers the pointer in the session registry for cleanup. The base constructor receives the pointer, and LoadedPackage.Dispose / Disown manage its lifecycle without a finalizer.
+
+PackageBase | KeepAlive and receiver liveness proven but the token is nullable | Every accessor either calls GC.KeepAlive(this) or keeps this live across the native call, and Lifetime is a child token of the database, transaction or handle that owns BackingStruct, so a live package view always roots the memory it reads. The field is declared Lifetime? because the base constructor cannot set it (LoadedPackage creates its root token in its own constructor body) and because a snapshot taken when a callback's weak lifetime reference has already been collected is deliberately left unguarded rather than made to throw. The package views issued by Database, Transaction and Alpm always carry a non-null token.
+
+PackageFile | delegated to caller | Factory(void*, Lifetime?) receives the file entry as a parameter. PackageFile is an eager snapshot struct that copies mode, size and name out and retains no pointer.
+
+PackageVersion | owns no native memory | The type holds only a managed string. CompareTo marshals both operands into Utf8Buffer instances for the duration of alpm_pkg_vercmp, so no finalizer of this type could free what the call reads.
+
+PackageView | delegated to caller | Factory(void*, Lifetime?) receives the package pointer as a parameter. The constructor only stores the pointer and the token; it dereferences nothing, so the caller's view keeps both alive.
+
+Transaction | token-carrying construction | AddPackage builds PackageView from the transaction's own non-nullable Lifetime, which is a child of the handle's root token. The view therefore roots the handle that owns the package memory for as long as the caller holds the view.
+
+Alpm.UnregisterLoadedPackage | delegated to caller | the native pointer is a method parameter: the anchoring obligation belongs to the call site
