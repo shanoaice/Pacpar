@@ -24,8 +24,8 @@ public class WarmBulkBenchmarks
   private const string SyncQuery = "python";
 
   private AlpmHandle _alpm = null!;
-  private AlpmList<Package> _localPkgs = null!;
-  private AlpmList<Package> _syncPkgs = null!;
+  private AlpmList<PackageView> _localPkgs = null!;
+  private AlpmList<PackageView> _syncPkgs = null!;
 
   [GlobalSetup]
   public void Setup()

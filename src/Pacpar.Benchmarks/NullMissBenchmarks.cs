@@ -24,7 +24,7 @@ public class NullMissBenchmarks
   private const int Reads = 50_000;
 
   private AlpmHandle _alpm = null!;
-  private Package _pkg = null!;
+  private PackageView _pkg = null!;
 
   [GlobalSetup]
   public void Setup()

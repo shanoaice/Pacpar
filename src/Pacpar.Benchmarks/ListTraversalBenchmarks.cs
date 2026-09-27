@@ -18,7 +18,7 @@ namespace Pacpar.Benchmarks;
 public class ListTraversalBenchmarks
 {
   private AlpmHandle _alpm = null!;
-  private Package _pkg = null!;
+  private PackageView _pkg = null!;
   private AlpmList<Depend> _depends = null!;
 
   [GlobalSetup]
@@ -26,7 +26,7 @@ public class ListTraversalBenchmarks
   {
     _alpm = BenchEnvironment.Open();
     int best = -1;
-    Package? bestPkg = null;
+    PackageView? bestPkg = null;
     foreach (var pkg in _alpm.GetLocalDatabase().GetPackageCache())
     {
       int c = 0;
