@@ -209,7 +209,7 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
 /// An error concerning a package (<c>ALPM_ERR_PKG_*</c>).
 /// </summary>
 /// <remarks>
-/// <see cref="Package"/> is set when the failing call already knew the package it was operating on;
+/// <see cref="AlpmPackageException.Package"/> is set when the failing call already knew the package it was operating on;
 /// the errno-driven factory cannot fill it in. It is typed as the shared read-only surface, because a
 /// failing call may have been operating on either kind of package.
 /// </remarks>

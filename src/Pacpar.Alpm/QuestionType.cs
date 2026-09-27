@@ -15,14 +15,18 @@ namespace Pacpar.Alpm;
 /// therefore safe, which the borrowed views this replaces were not.
 /// <para>
 /// The packages in <see cref="RemovePkgs.Packages"/> and <see cref="SelectProvider.Providers"/>
-/// remain <see cref="Package"/> views: the <i>list</i> is callback-scoped and is copied, the
-/// packages themselves belong to libalpm.
+/// remain <see cref="PackageView"/> views: the <i>list</i> is callback-scoped and is copied, the
+/// packages themselves belong to libalpm. Those views carry the ALPM handle's root lifetime token,
+/// a deliberately conservative choice - libalpm does not say which context (sync database,
+/// transaction) owns each package, so they stay readable exactly as long as the handle is alive.
+/// The callback context reaches that token weakly, so its context handle can never pin the ALPM
+/// handle itself.
 /// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class QuestionType
 {
-  internal static unsafe QuestionType FromUnion(_alpm_question_t* backingStruct)
+  internal static unsafe QuestionType FromUnion(_alpm_question_t* backingStruct, Lifetime? lifetime)
   {
     return backingStruct->type_ switch
     {
@@ -30,8 +34,8 @@ public abstract class QuestionType
       _alpm_question_type_t.ALPM_QUESTION_REPLACE_PKG => new ReplacePackage(backingStruct),
       _alpm_question_type_t.ALPM_QUESTION_CONFLICT_PKG => new ConflictPkg(backingStruct),
       _alpm_question_type_t.ALPM_QUESTION_CORRUPTED_PKG => new CorruptedPkg(backingStruct),
-      _alpm_question_type_t.ALPM_QUESTION_REMOVE_PKGS => new RemovePkgs(backingStruct),
-      _alpm_question_type_t.ALPM_QUESTION_SELECT_PROVIDER => new SelectProvider(backingStruct),
+      _alpm_question_type_t.ALPM_QUESTION_REMOVE_PKGS => new RemovePkgs(backingStruct, lifetime),
+      _alpm_question_type_t.ALPM_QUESTION_SELECT_PROVIDER => new SelectProvider(backingStruct, lifetime),
       _alpm_question_type_t.ALPM_QUESTION_IMPORT_KEY => new ImportKey(backingStruct),
       _ => throw new ArgumentException($"Unknown question type: {backingStruct->type_}"),
     };
@@ -106,29 +110,32 @@ public abstract class QuestionType
 
   public class RemovePkgs : QuestionType
   {
-    internal unsafe RemovePkgs(_alpm_question_t* question)
+    internal unsafe RemovePkgs(_alpm_question_t* question, Lifetime? lifetime)
     {
       Skip = question->remove_pkgs.skip != 0;
-      Packages = [.. AlpmList<Package>.Borrow(question->remove_pkgs.packages, &Package.Factory)];
+      // The list is copied out of the union immediately; the package views keep the handle's root
+      // token (see class remarks), so they survive the callback but not the handle.
+      Packages = [.. AlpmList<PackageView>.Borrow(question->remove_pkgs.packages, &PackageView.Factory, lifetime)];
     }
 
     public bool Skip { get; }
-    public IReadOnlyList<Package> Packages { get; }
+    public IReadOnlyList<PackageView> Packages { get; }
   }
 
   public class SelectProvider : QuestionType
   {
-    internal unsafe SelectProvider(_alpm_question_t* question)
+    internal unsafe SelectProvider(_alpm_question_t* question, Lifetime? lifetime)
     {
       UseIndex = question->select_provider.use_index != 0;
-      Providers = [.. AlpmList<Package>.Borrow(question->select_provider.providers, &Package.Factory)];
+      // Same ownership story as RemovePkgs: copied list, views carry the root token.
+      Providers = [.. AlpmList<PackageView>.Borrow(question->select_provider.providers, &PackageView.Factory, lifetime)];
       Name = NativeString.FromNative((nint)question->select_provider.depend->name) ?? "";
       Version = NativeString.FromNative((nint)question->select_provider.depend->version) ?? "";
       Description = NativeString.FromNative((nint)question->select_provider.depend->desc) ?? "";
     }
 
     public bool UseIndex { get; }
-    public IReadOnlyList<Package> Providers { get; }
+    public IReadOnlyList<PackageView> Providers { get; }
     public string Name { get; }
     public string Version { get; }
     public string Description { get; }

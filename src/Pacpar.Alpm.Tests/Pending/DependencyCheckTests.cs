@@ -45,7 +45,7 @@ public sealed class DependencyCheckTests
 
   /// <summary>
   /// The input list is borrowed by libalpm and only freed by us if we built it; the caller's
-  /// <c>AlpmList&lt;Package&gt;</c> must still be usable afterwards.
+  /// <c>AlpmList&lt;PackageView&gt;</c> must still be usable afterwards.
   /// </summary>
   [Fact]
   public void CheckConflicts_DoesNotConsumeTheCallersList()

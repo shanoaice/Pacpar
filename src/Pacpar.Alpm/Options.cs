@@ -13,9 +13,15 @@ public class AlpmOptions
 {
   private readonly unsafe _alpm_handle_t* _handle;
 
-  internal unsafe AlpmOptions(_alpm_handle_t* handle)
+  // The ALPM handle's root lifetime token. The option collections are thin, per-access views over
+  // libalpm's handle state: they carry the root token so every native call they make is guarded,
+  // and the lists they hand out retire together with the handle.
+  private readonly Lifetime _lifetime;
+
+  internal unsafe AlpmOptions(_alpm_handle_t* handle, Lifetime lifetime)
   {
     _handle = handle;
+    _lifetime = lifetime;
   }
 
   /// <summary>
@@ -47,23 +53,23 @@ public class AlpmOptions
     }
   }
 
-  public unsafe ICollection<string> Architectures => new Options.Architecture(_handle);
+  public unsafe ICollection<string> Architectures => new Options.Architecture(_handle, _lifetime);
 
-  public unsafe ICollection<Depend> AssumeInstalled => new AssumeInstalled(_handle);
+  public unsafe ICollection<Depend> AssumeInstalled => new AssumeInstalled(_handle, _lifetime);
 
-  public unsafe ICollection<string> CacheDirectories => new CacheDirectories(_handle);
+  public unsafe ICollection<string> CacheDirectories => new CacheDirectories(_handle, _lifetime);
 
-  public unsafe ICollection<string> OverwritableFiles => new OverwritableFiles(_handle);
+  public unsafe ICollection<string> OverwritableFiles => new OverwritableFiles(_handle, _lifetime);
 
-  public unsafe ICollection<string> HookDirectories => new HookDirectories(_handle);
+  public unsafe ICollection<string> HookDirectories => new HookDirectories(_handle, _lifetime);
 
-  public unsafe ICollection<string> IgnoreGroups => new IgnoreGroups(_handle);
+  public unsafe ICollection<string> IgnoreGroups => new IgnoreGroups(_handle, _lifetime);
 
-  public unsafe ICollection<string> IgnorePackages => new IgnorePackages(_handle);
+  public unsafe ICollection<string> IgnorePackages => new IgnorePackages(_handle, _lifetime);
 
-  public unsafe ICollection<string> NoExtract => new NoExtractOptionCollection(_handle);
+  public unsafe ICollection<string> NoExtract => new NoExtractOptionCollection(_handle, _lifetime);
 
-  public unsafe ICollection<string> NoUpgrade => new NoUpgrade(_handle);
+  public unsafe ICollection<string> NoUpgrade => new NoUpgrade(_handle, _lifetime);
 
   public unsafe bool CheckSpace
   {

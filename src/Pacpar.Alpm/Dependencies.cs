@@ -64,14 +64,18 @@ public unsafe class Depend
     Depmod = depmod;
   }
 
-  internal static Depend Factory(void* ptr) => new((_alpm_depend_t*)ptr);
+  // The token parameter matches the element-factory delegate signature; a Depend is an eager
+  // snapshot, so an issued element retains no native pointer and needs no element token.
+  internal static Depend Factory(void* ptr, Lifetime? lifetime) => new((_alpm_depend_t*)ptr);
 
   /// <summary>
   /// Borrowed view over a dependency list owned by libalpm (for example
   /// <c>alpm_pkg_get_depends</c>, <c>alpm_option_get_assumeinstalled</c>).
   /// </summary>
-  internal static AlpmList<Depend> ListFactory(_alpm_list_t* alpmList)
-    => AlpmList<Depend>.Borrow(alpmList, &Factory);
+  /// <param name="alpmList">The borrowed list. May be <c>null</c>.</param>
+  /// <param name="lifetime">Token of the context that owns the list; guards traversal.</param>
+  internal static AlpmList<Depend> ListFactory(_alpm_list_t* alpmList, Lifetime? lifetime)
+    => AlpmList<Depend>.Borrow(alpmList, &Factory, lifetime);
 
   public string? Description { get; }
 
@@ -143,7 +147,8 @@ public sealed class DepMissing
     Depend = depend;
   }
 
-  internal static unsafe DepMissing Factory(void* native)
+  // Token parameter unused: a DepMissing is an eager snapshot of caller-owned failure data.
+  internal static unsafe DepMissing Factory(void* native, Lifetime? lifetime)
     => new(NativeString.FromNative((nint)((_alpm_depmissing_t*)native)->target),
       NativeString.FromNative((nint)((_alpm_depmissing_t*)native)->causingpkg),
       ((_alpm_depmissing_t*)native)->depend != null ? new Depend(((_alpm_depmissing_t*)native)->depend) : null);
@@ -168,7 +173,8 @@ public class FileConflict
     Target = NativeString.FromNative((nint)backingStruct->target);
   }
 
-  internal static unsafe FileConflict Factory(void* ptr) => new((_alpm_fileconflict_t*)ptr);
+  // Token parameter unused: a FileConflict is an eager snapshot of caller-owned failure data.
+  internal static unsafe FileConflict Factory(void* ptr, Lifetime? lifetime) => new((_alpm_fileconflict_t*)ptr);
 }
 
 public class Conflict
@@ -179,11 +185,14 @@ public class Conflict
   internal unsafe Conflict(_alpm_conflict_t* backingStruct)
   {
     Reason = new Depend(backingStruct->reason);
-    Package1Name = new Package(backingStruct->package1).Name;
-    Package2Name = new Package(backingStruct->package2).Name;
+    // Names are read eagerly instead of building PackageView wrappers: the conflict payload is a
+    // self-contained snapshot, and a view would need a lifetime token this context does not have.
+    Package1Name = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_name(backingStruct->package1))!;
+    Package2Name = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_name(backingStruct->package2))!;
   }
 
-  internal static unsafe Conflict Factory(void* ptr) => new((_alpm_conflict_t*)ptr);
+  // Token parameter unused: a Conflict is an eager snapshot of caller-owned failure data.
+  internal static unsafe Conflict Factory(void* ptr, Lifetime? lifetime) => new((_alpm_conflict_t*)ptr);
 
   /// <summary>
   /// The conflicting dependency. Borrowed from the conflict struct: it is released by

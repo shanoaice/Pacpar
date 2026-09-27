@@ -24,7 +24,8 @@ namespace Pacpar.Alpm.Options;
 /// </description></item>
 /// </list>
 /// </remarks>
-internal sealed unsafe class AssumeInstalled(_alpm_handle_t* handle) : AlpmOptionList<Depend>(handle)
+internal sealed unsafe class AssumeInstalled(_alpm_handle_t* handle, Lifetime lifetime)
+  : AlpmOptionList<Depend>(handle, lifetime)
 {
   private protected override _alpm_list_t* GetList(_alpm_handle_t* h) => NativeMethods.alpm_option_get_assumeinstalled(h);
 
@@ -74,7 +75,7 @@ internal sealed unsafe class AssumeInstalled(_alpm_handle_t* handle) : AlpmOptio
     if (owned) Depend.FreeNative((_alpm_depend_t*)item);
   }
 
-  private protected override AlpmList<Depend> View(_alpm_list_t* list) => Depend.ListFactory(list);
+  private protected override AlpmList<Depend> View(_alpm_list_t* list) => Depend.ListFactory(list, Lifetime);
 
   /// <summary>
   /// Identity search: <see cref="Acquire"/> already resolved the snapshot to the stored element, and

@@ -31,15 +31,19 @@ public enum PackageOperation : uint
 /// returned zeros - report item F9). Keeping a case and reading it after the callback is therefore
 /// safe, which the borrowed views this replaces were not.
 /// <para>
-/// The packages a case exposes remain <see cref="Package"/> views, because that is what a package
-/// always is: libalpm owns it and this library reads through its accessors. They outlive the
-/// callback (they belong to the transaction or a database), unlike the event union itself.
+/// The packages a case exposes remain <see cref="PackageView"/> views, because that is what a
+/// package always is: libalpm owns it and this library reads through its accessors. They outlive
+/// the callback (they belong to the transaction or a database), unlike the event union itself.
+/// Those views carry the ALPM handle's root lifetime token, a deliberately conservative choice:
+/// libalpm does not say which context owns each package, so they stay readable exactly as long as
+/// the handle is alive. The callback context reaches that token weakly, so its context handle can
+/// never pin the ALPM handle itself.
 /// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class EventType
 {
-  internal static unsafe EventType FromUnion(_alpm_event_t* backingStruct)
+  internal static unsafe EventType FromUnion(_alpm_event_t* backingStruct, Lifetime? lifetime)
   {
     return backingStruct->type_ switch
     {
@@ -53,8 +57,8 @@ public abstract class EventType
       _alpm_event_type_t.ALPM_EVENT_INTERCONFLICTS_DONE => new InterConflictsDone(),
       _alpm_event_type_t.ALPM_EVENT_TRANSACTION_START => new TransactionStart(),
       _alpm_event_type_t.ALPM_EVENT_TRANSACTION_DONE => new TransactionDone(),
-      _alpm_event_type_t.ALPM_EVENT_PACKAGE_OPERATION_START => new PackageOperationStart(backingStruct),
-      _alpm_event_type_t.ALPM_EVENT_PACKAGE_OPERATION_DONE => new PackageOperationDone(backingStruct),
+      _alpm_event_type_t.ALPM_EVENT_PACKAGE_OPERATION_START => new PackageOperationStart(backingStruct, lifetime),
+      _alpm_event_type_t.ALPM_EVENT_PACKAGE_OPERATION_DONE => new PackageOperationDone(backingStruct, lifetime),
       _alpm_event_type_t.ALPM_EVENT_INTEGRITY_START => new IntegrityStart(),
       _alpm_event_type_t.ALPM_EVENT_INTEGRITY_DONE => new IntegrityDone(),
       _alpm_event_type_t.ALPM_EVENT_LOAD_START => new LoadStart(),
@@ -65,14 +69,14 @@ public abstract class EventType
       _alpm_event_type_t.ALPM_EVENT_DB_RETRIEVE_FAILED => new RetrieveFailed(),
       _alpm_event_type_t.ALPM_EVENT_DISKSPACE_START => new DiskSpaceStart(),
       _alpm_event_type_t.ALPM_EVENT_DISKSPACE_DONE => new DiskSpaceDone(),
-      _alpm_event_type_t.ALPM_EVENT_OPTDEP_REMOVAL => new OptionalDependencyRemoval(backingStruct),
+      _alpm_event_type_t.ALPM_EVENT_OPTDEP_REMOVAL => new OptionalDependencyRemoval(backingStruct, lifetime),
       _alpm_event_type_t.ALPM_EVENT_DATABASE_MISSING => new DatabaseMissing(backingStruct),
       _alpm_event_type_t.ALPM_EVENT_KEYRING_START => new KeyringStart(),
       _alpm_event_type_t.ALPM_EVENT_KEYRING_DONE => new KeyringDone(),
       _alpm_event_type_t.ALPM_EVENT_KEY_DOWNLOAD_START => new KeyDownloadStart(),
       _alpm_event_type_t.ALPM_EVENT_KEY_DOWNLOAD_DONE => new KeyDownloadDone(),
-      _alpm_event_type_t.ALPM_EVENT_PACNEW_CREATED => new PacnewCreated(backingStruct),
-      _alpm_event_type_t.ALPM_EVENT_PACSAVE_CREATED => new PacsaveCreated(backingStruct),
+      _alpm_event_type_t.ALPM_EVENT_PACNEW_CREATED => new PacnewCreated(backingStruct, lifetime),
+      _alpm_event_type_t.ALPM_EVENT_PACSAVE_CREATED => new PacsaveCreated(backingStruct, lifetime),
       _alpm_event_type_t.ALPM_EVENT_HOOK_START => new HookStart(backingStruct),
       _alpm_event_type_t.ALPM_EVENT_HOOK_DONE => new HookDone(backingStruct),
       _alpm_event_type_t.ALPM_EVENT_HOOK_RUN_START => new HookRunStart(backingStruct),
@@ -126,29 +130,31 @@ public abstract class EventType
 
   public class PackageOperationStart : EventType
   {
-    internal unsafe PackageOperationStart(_alpm_event_t* native)
+    internal unsafe PackageOperationStart(_alpm_event_t* native, Lifetime? lifetime)
     {
-      NewPackage = new Package(native->package_operation.newpkg);
-      OldPackage = new Package(native->package_operation.oldpkg);
+      // For an install the old pointer is null, for a remove the new one is; the view constructor
+      // does not dereference, so both survive the copy and readers see what libalpm gave us.
+      NewPackage = new PackageView(native->package_operation.newpkg, lifetime);
+      OldPackage = new PackageView(native->package_operation.oldpkg, lifetime);
       Operation = (PackageOperation)(uint)native->package_operation.operation;
     }
 
-    public Package NewPackage { get; }
-    public Package OldPackage { get; }
+    public PackageView NewPackage { get; }
+    public PackageView OldPackage { get; }
     public PackageOperation Operation { get; }
   }
 
   public class PackageOperationDone : EventType
   {
-    internal unsafe PackageOperationDone(_alpm_event_t* native)
+    internal unsafe PackageOperationDone(_alpm_event_t* native, Lifetime? lifetime)
     {
-      NewPackage = new Package(native->package_operation.newpkg);
-      OldPackage = new Package(native->package_operation.oldpkg);
+      NewPackage = new PackageView(native->package_operation.newpkg, lifetime);
+      OldPackage = new PackageView(native->package_operation.oldpkg, lifetime);
       Operation = (PackageOperation)(uint)native->package_operation.operation;
     }
 
-    public Package NewPackage { get; }
-    public Package OldPackage { get; }
+    public PackageView NewPackage { get; }
+    public PackageView OldPackage { get; }
     public PackageOperation Operation { get; }
   }
 
@@ -200,14 +206,14 @@ public abstract class EventType
 
   public class OptionalDependencyRemoval : EventType
   {
-    internal unsafe OptionalDependencyRemoval(_alpm_event_t* native)
+    internal unsafe OptionalDependencyRemoval(_alpm_event_t* native, Lifetime? lifetime)
     {
       OptionalDependency = new Depend(native->optdep_removal.optdep);
-      Package = new Package(native->optdep_removal.pkg);
+      Package = new PackageView(native->optdep_removal.pkg, lifetime);
     }
 
     public Depend OptionalDependency { get; }
-    public Package Package { get; }
+    public PackageView Package { get; }
   }
 
   public class DatabaseMissing : EventType
@@ -238,29 +244,29 @@ public abstract class EventType
 
   public class PacnewCreated : EventType
   {
-    internal unsafe PacnewCreated(_alpm_event_t* native)
+    internal unsafe PacnewCreated(_alpm_event_t* native, Lifetime? lifetime)
     {
       FromNoUpgrade = native->pacnew_created.from_noupgrade != 0;
-      OldPackage = new Package(native->pacnew_created.oldpkg);
-      NewPackage = new Package(native->pacnew_created.newpkg);
+      OldPackage = new PackageView(native->pacnew_created.oldpkg, lifetime);
+      NewPackage = new PackageView(native->pacnew_created.newpkg, lifetime);
       File = NativeString.FromNative((nint)native->pacnew_created.file) ?? "";
     }
 
     public bool FromNoUpgrade { get; }
-    public Package OldPackage { get; }
-    public Package NewPackage { get; }
+    public PackageView OldPackage { get; }
+    public PackageView NewPackage { get; }
     public string File { get; }
   }
 
   public class PacsaveCreated : EventType
   {
-    internal unsafe PacsaveCreated(_alpm_event_t* native)
+    internal unsafe PacsaveCreated(_alpm_event_t* native, Lifetime? lifetime)
     {
-      OldPackage = new Package(native->pacsave_created.oldpkg);
+      OldPackage = new PackageView(native->pacsave_created.oldpkg, lifetime);
       File = NativeString.FromNative((nint)native->pacsave_created.file) ?? "";
     }
 
-    public Package OldPackage { get; }
+    public PackageView OldPackage { get; }
     public string File { get; }
   }
 

@@ -2,7 +2,8 @@ using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm.Options;
 
-internal sealed unsafe class HookDirectories(_alpm_handle_t* handle) : AlpmStringOptionList(handle)
+internal sealed unsafe class HookDirectories(_alpm_handle_t* handle, Lifetime lifetime)
+  : AlpmStringOptionList(handle, lifetime)
 {
   private protected override _alpm_list_t* GetList(_alpm_handle_t* h) => NativeMethods.alpm_option_get_hookdirs(h);
 

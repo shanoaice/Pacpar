@@ -90,9 +90,19 @@ public class Transactions : IDisposable
 
   private readonly Alpm _library;
 
+  /// <summary>
+  /// The transaction's lifetime token, a child of the handle's root token: it is retired both by
+  /// this transaction's own successful release and - through the parent chain - by the handle's
+  /// disposal. Every view this transaction issues (the <see cref="AddPackage(LoadedPackage)"/>
+  /// return value and the elements of <see cref="GetAddedPackages"/>/<see cref="GetRemovedPackages"/>)
+  /// carries it.
+  /// </summary>
+  internal readonly Lifetime Lifetime;
+
   internal unsafe Transactions(Alpm alpmLibrary, TransactionFlags flags)
   {
     _library = alpmLibrary;
+    Lifetime = alpmLibrary.RootLifetime.CreateChild("the transaction");
     var err = NativeMethods.alpm_trans_init((_alpm_handle_t*)_library.AsHandle(), (int)flags);
     if (err != 0)
     {
@@ -136,9 +146,9 @@ public class Transactions : IDisposable
   /// The transaction only borrows it: releasing the transaction does not free it. A package this
   /// library loaded from a file must go through <see cref="AddPackage(LoadedPackage)"/> instead, which
   /// is the only overload that can take over the release - the two overloads cannot be confused,
-  /// because <see cref="Package"/> and <see cref="LoadedPackage"/> do not convert to one another.
+  /// because <see cref="PackageView"/> and <see cref="LoadedPackage"/> do not convert to one another.
   /// </remarks>
-  public unsafe void AddPackage(Package pkg)
+  public unsafe void AddPackage(PackageView pkg)
   {
     ThrowIfDisposed();
     AddCore(pkg);
@@ -150,14 +160,16 @@ public class Transactions : IDisposable
   /// <c>alpm_pkg_load()</c>, it will be freed upon <c>alpm_trans_release</c> invocation").
   /// </summary>
   /// <returns>
-  /// A borrowed view of the package, valid while the transaction owns it. It replaces the wrapper
-  /// whose ownership was given up, which stops answering reads after this call; the view does not own
-  /// anything, so giving it to <see cref="AddPackage(Package)"/> never transfers ownership.
+  /// A borrowed view of the package, valid while the transaction owns it: it carries this
+  /// transaction's lifetime token, so releasing the transaction - or disposing the handle - retires
+  /// it. The view replaces the wrapper whose ownership was given up, which stops answering reads
+  /// after this call; the view itself owns nothing, so giving it to
+  /// <see cref="AddPackage(PackageView)"/> never transfers ownership.
   /// </returns>
   /// <exception cref="ObjectDisposedException">
   /// The package was already released or handed to a transaction.
   /// </exception>
-  public unsafe Package AddPackage(LoadedPackage pkg)
+  public unsafe PackageView AddPackage(LoadedPackage pkg)
   {
     ThrowIfDisposed();
 
@@ -168,8 +180,9 @@ public class Transactions : IDisposable
     AddCore(pkg);
 
     // The pointer is now the transaction's to free; the wrapper must never release it again. Read the
-    // views off it first, because the hand-over retires the wrapper for reads too.
-    var view = new Package(pkg.BackingStruct);
+    // views off it first, because the hand-over retires the wrapper for reads too. The view carries
+    // the transaction's token: the package lives exactly as long as the transaction owns it.
+    var view = new PackageView(pkg.BackingStruct, Lifetime);
     pkg.Disown();
     return view;
   }
@@ -184,7 +197,7 @@ public class Transactions : IDisposable
     }
   }
 
-  public unsafe void RemovePackage(Package pkg)
+  public unsafe void RemovePackage(PackageView pkg)
   {
     ThrowIfDisposed();
     var err = NativeMethods.alpm_remove_pkg((_alpm_handle_t*)_library.AsHandle(), pkg.BackingStruct);
@@ -234,13 +247,28 @@ public class Transactions : IDisposable
     {
       throw AlpmTransactionException.TakeFailure(_library.Errno, messages,  "Failed to commit transaction");
     }
+
+    // A successful commit rewrites the local database and frees libalpm's in-memory package caches:
+    // every view borrowed from the local database now points into freed memory. Retire the local
+    // database's token conservatively - libalpm does not tell us which caches it dropped - and let
+    // the next GetLocalDatabase() issue a fresh one. Callers that keep package data across a commit
+    // call ToSnapshot() first.
+    _library.InvalidateLocalDatabase("Transactions.Commit()");
   }
 
-  public unsafe AlpmList<Package> GetAddedPackages()
+  /// <summary>
+  /// The packages this transaction is going to install, as a borrowed view.
+  /// </summary>
+  /// <remarks>
+  /// The list and its elements carry the transaction's lifetime token: releasing the transaction
+  /// frees the file-loaded packages it owns, after which this view answers
+  /// <see cref="AlpmLifetimeException"/> instead of reading freed memory.
+  /// </remarks>
+  public unsafe AlpmList<PackageView> GetAddedPackages()
   {
     ThrowIfDisposed();
-    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_add((_alpm_handle_t*)_library.AsHandle()),
-      &Package.Factory);
+    return AlpmList<PackageView>.Borrow(NativeMethods.alpm_trans_get_add((_alpm_handle_t*)_library.AsHandle()),
+      &PackageView.Factory, Lifetime);
   }
 
   public unsafe TransactionFlags GetFlags()
@@ -249,11 +277,18 @@ public class Transactions : IDisposable
     return (TransactionFlags)NativeMethods.alpm_trans_get_flags((_alpm_handle_t*)_library.AsHandle());
   }
 
-  public unsafe AlpmList<Package> GetRemovedPackages()
+  /// <summary>
+  /// The packages this transaction is going to remove, as a borrowed view.
+  /// </summary>
+  /// <remarks>
+  /// Like <see cref="GetAddedPackages"/>, the view carries the transaction's lifetime token and is
+  /// retired when the transaction is released.
+  /// </remarks>
+  public unsafe AlpmList<PackageView> GetRemovedPackages()
   {
     ThrowIfDisposed();
-    return AlpmList<Package>.Borrow(NativeMethods.alpm_trans_get_remove((_alpm_handle_t*)_library.AsHandle()),
-      &Package.Factory);
+    return AlpmList<PackageView>.Borrow(NativeMethods.alpm_trans_get_remove((_alpm_handle_t*)_library.AsHandle()),
+      &PackageView.Factory, Lifetime);
   }
 
   /// <summary>
@@ -262,8 +297,10 @@ public class Transactions : IDisposable
   /// <remarks>
   /// Releasing also <b>frees every file-loaded package that was handed over</b> (see
   /// <see cref="AddPackage(LoadedPackage)"/>), so after this call no wrapper - and no borrowed view
-  /// handed out earlier by <see cref="GetAddedPackages"/> - still points at a live package. Packages
-  /// added through <see cref="AddPackage(Package)"/> are not affected: libalpm owns those.
+  /// handed out earlier by <see cref="GetAddedPackages"/> - still points at a live package: the
+  /// release invalidates this transaction's lifetime token, so those views throw
+  /// <see cref="AlpmLifetimeException"/> instead. Packages added through
+  /// <see cref="AddPackage(PackageView)"/> are not affected: libalpm owns those.
   /// <para>
   /// There is deliberately no finalizer. An initialized transaction is released by
   /// <see cref="Alpm.Dispose()"/> before it releases the handle, because <c>alpm_release</c> does
@@ -291,7 +328,15 @@ public class Transactions : IDisposable
 
     // The library is still alive, so release the native transaction - which drops the database lock
     // - and clear the handle's reference to it, so Alpm.Dispose finds nothing left to release.
-    _ = NativeMethods.alpm_trans_release((_alpm_handle_t*)_library.AsHandle());
+    var err = NativeMethods.alpm_trans_release((_alpm_handle_t*)_library.AsHandle());
     _library.CurrentTransaction = null;
+
+    // The release freed the native transaction together with every file-loaded package handed to it:
+    // views issued from this transaction now point into freed memory. Invalidate strictly after the
+    // native release succeeded (§4.1) - a failed release leaves the transaction (and its packages)
+    // alive, and retiring the token then would misreport a live context as dead. When the library
+    // was already disposed the early return above skipped the release; the root token is dead in
+    // that case and the parent chain retires this token's views all the same.
+    if (err == 0) Lifetime.Invalidate("Transactions.Dispose()");
   }
 }

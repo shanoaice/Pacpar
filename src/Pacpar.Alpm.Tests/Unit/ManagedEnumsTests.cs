@@ -35,8 +35,8 @@ public sealed class ManagedEnumsTests
   [Fact]
   public void PublicMembersUseTheManagedTypes()
   {
-    Assert.Equal(typeof(PackageOrigin), typeof(Package).GetProperty(nameof(Package.Origin))!.PropertyType);
-    Assert.Equal(typeof(PackageReason), typeof(Package).GetProperty(nameof(Package.Reason))!.PropertyType);
+    Assert.Equal(typeof(PackageOrigin), typeof(PackageView).GetProperty(nameof(PackageView.Origin))!.PropertyType);
+    Assert.Equal(typeof(PackageReason), typeof(PackageView).GetProperty(nameof(PackageView.Reason))!.PropertyType);
     Assert.Equal(typeof(DepMod), typeof(Depend).GetProperty(nameof(Depend.Depmod))!.PropertyType);
     Assert.Equal(typeof(HookWhen),
       typeof(EventType.HookStart).GetProperty(nameof(EventType.HookStart.When))!.PropertyType);
@@ -54,7 +54,7 @@ public sealed class ManagedEnumsTests
 
     // A callback payload is a snapshot, so the member lists inside it are copied rather than viewed:
     // libalpm's question union and the list hanging off it are built on the calling thread's stack.
-    Assert.Equal(typeof(IReadOnlyList<Package>),
+    Assert.Equal(typeof(IReadOnlyList<PackageView>),
       typeof(QuestionType.RemovePkgs).GetProperty(nameof(QuestionType.RemovePkgs.Packages))!.PropertyType);
   }
 

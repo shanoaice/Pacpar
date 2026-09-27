@@ -8,7 +8,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// F2): libalpm frees a file-loaded package when the transaction is released, so the wrapper must stop
 /// owning it at that moment - otherwise the natural <c>using</c> pattern aborts the process with a
 /// double free. The two <c>AddPackage</c> overloads cannot be confused, because
-/// <see cref="Package"/> and <see cref="LoadedPackage"/> do not convert to one another.
+/// <see cref="PackageView"/> and <see cref="LoadedPackage"/> do not convert to one another.
 /// </summary>
 /// <remarks>
 /// Reaching the end of <see cref="AddPackage_TransfersOwnership_SoBothDisposalsAreSafe"/> is half of the
@@ -72,9 +72,10 @@ public sealed class PackageTransferTests : IDisposable
 
     var view = transaction.AddPackage(package);
 
-    Assert.IsType<Package>(view);
+    Assert.IsType<PackageView>(view);
     Assert.Equal("audit-view", view.Name);
-    Assert.False(view is LoadedPackage, "the view must not be an owning type");
+    Assert.False(typeof(LoadedPackage).IsAssignableFrom(typeof(PackageView)),
+      "the view must not be an owning type");
   }
 
   /// <summary>

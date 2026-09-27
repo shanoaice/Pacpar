@@ -10,7 +10,7 @@ namespace Pacpar.Alpm;
 /// </summary>
 /// <remarks>
 /// A managed snapshot: the name is copied on construction, so the entry stays readable after the
-/// package it came from is gone. <see cref="Package.Backup"/> still hands out a borrowed
+/// package it came from is gone. <see cref="PackageView.Backup"/> still hands out a borrowed
 /// <see cref="AlpmList{T}"/> - the list itself belongs to the package - but every element it yields
 /// is one of these copies.
 /// </remarks>
@@ -21,13 +21,18 @@ public class Backup
     Name = NativeString.FromNative((nint)backingStruct->name);
   }
 
-  internal static unsafe Backup Factory(void* ptr) => new((_alpm_backup_t*)ptr);
+  // The token parameter matches the element-factory delegate signature; a Backup is an eager
+  // snapshot, so an issued element retains no native pointer and needs no element token.
+  internal static unsafe Backup Factory(void* ptr, Lifetime? lifetime) => new((_alpm_backup_t*)ptr);
 
   /// <summary>
   /// Borrowed view over a backup-entry list owned by libalpm (for example
   /// <c>alpm_pkg_get_backup</c>).
   /// </summary>
-  internal static unsafe AlpmList<Backup> ListFactory(_alpm_list_t* ptr) => AlpmList<Backup>.Borrow(ptr, &Factory);
+  /// <param name="ptr">The borrowed list. May be <c>null</c>.</param>
+  /// <param name="lifetime">Token of the package that owns the list; guards traversal.</param>
+  internal static unsafe AlpmList<Backup> ListFactory(_alpm_list_t* ptr, Lifetime? lifetime)
+    => AlpmList<Backup>.Borrow(ptr, &Factory, lifetime);
 
   public string? Name { get; }
 }
@@ -37,7 +42,7 @@ public class Backup
 /// </summary>
 /// <remarks>
 /// A managed snapshot: mode, size and name are copied out of the borrowed array when the entry is
-/// read, so a <see cref="File"/> taken from <see cref="Package.Files"/> stays valid.
+/// read, so a <see cref="File"/> taken from <see cref="PackageView.Files"/> stays valid.
 /// </remarks>
 public readonly struct File
 {
@@ -48,7 +53,9 @@ public readonly struct File
     Name = NativeString.FromNative((nint)backingStruct->name);
   }
 
-  internal static unsafe File Factory(void* ptr) => new((_alpm_file_t*)ptr);
+  // The token parameter matches the element-factory delegate signature; a File is an eager
+  // snapshot and needs no element token.
+  internal static unsafe File Factory(void* ptr, Lifetime? lifetime) => new((_alpm_file_t*)ptr);
 
   public uint Mode { get; }
 
@@ -64,17 +71,33 @@ public readonly struct File
 /// A borrowed view: the array belongs to the package and this type never frees it. It is kept as a
 /// view rather than copied because a package's file list routinely holds tens of thousands of
 /// entries, and every entry it yields is already a <see cref="File"/> snapshot.
+/// <para>
+/// The package's lifetime token guards every dereference: <see cref="Count"/>, the indexer and
+/// <see cref="GetEnumerator"/> throw <see cref="AlpmLifetimeException"/> once the package has been
+/// released, instead of reading the freed array.
+/// </para>
 /// </remarks>
 public unsafe class FileList : IReadOnlyList<File>
 {
   private readonly _alpm_filelist_t* backingStruct;
+  private readonly Lifetime? Lifetime;
 
-  internal FileList(_alpm_filelist_t* backingStruct)
+  /// <param name="backingStruct">The package-owned file list.</param>
+  /// <param name="lifetime">Token of the package that owns the array; <c>null</c> disables the guard.</param>
+  internal FileList(_alpm_filelist_t* backingStruct, Lifetime? lifetime)
   {
     this.backingStruct = backingStruct;
+    Lifetime = lifetime;
   }
 
-  public int Count => (int)backingStruct->count;
+  public int Count
+  {
+    get
+    {
+      Lifetime?.ThrowIfStale();
+      return (int)backingStruct->count;
+    }
+  }
 
   /// <remarks>
   /// The indexer used to read through <c>new Span&lt;nint&gt;(files, count)[index]</c>, which strides
@@ -86,6 +109,7 @@ public unsafe class FileList : IReadOnlyList<File>
   {
     get
     {
+      Lifetime?.ThrowIfStale();
       if ((nuint)index >= backingStruct->count) throw new ArgumentOutOfRangeException(nameof(index));
 
       return new File(&backingStruct->files[index]);
@@ -118,7 +142,11 @@ public unsafe class FileList : IReadOnlyList<File>
     }
   }
 
-  public Enumerator GetEnumerator() => new(this);
+  public Enumerator GetEnumerator()
+  {
+    Lifetime?.ThrowIfStale();
+    return new Enumerator(this);
+  }
 
   IEnumerator<File> IEnumerable<File>.GetEnumerator() => GetEnumerator();
   IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

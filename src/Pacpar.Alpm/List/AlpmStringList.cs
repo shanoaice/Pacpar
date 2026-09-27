@@ -19,15 +19,23 @@ namespace Pacpar.Alpm.List;
 /// </remarks>
 public sealed class AlpmStringList : AlpmList<string>
 {
-  internal unsafe AlpmStringList(_alpm_list_t* alpmList) : base(alpmList, &StringFactory)
+  /// <param name="alpmList">The borrowed list of C strings. May be <c>null</c>.</param>
+  /// <param name="lifetime">
+  /// Token of the native context that owns the strings; guards traversal. <c>null</c> only for the
+  /// empty list.
+  /// </param>
+  internal unsafe AlpmStringList(_alpm_list_t* alpmList, Lifetime? lifetime) : base(alpmList, &StringFactory, lifetime)
   {
   }
 
-  public unsafe AlpmStringList() : base(null, &StringFactory)
+  public unsafe AlpmStringList() : base(null, &StringFactory, null)
   {
   }
 
-  private static unsafe string StringFactory(void* data) => NativeString.FromNative((nint)data) ?? string.Empty;
+  // The token parameter exists to match the factory delegate signature; string elements are copied
+  // eagerly, so an issued string never points into native memory and needs no element token.
+  private static unsafe string StringFactory(void* data, Lifetime? lifetime)
+    => NativeString.FromNative((nint)data) ?? string.Empty;
 
   /// <summary>
   /// Takes ownership of a list libalpm allocated for the caller, copies its strings into a managed
@@ -41,7 +49,7 @@ public sealed class AlpmStringList : AlpmList<string>
   /// </param>
   internal static unsafe IReadOnlyList<string> TakeOwned(_alpm_list_t* list, delegate* unmanaged[Cdecl]<void*, void> innerFree)
   {
-    using var owned = new AlpmOwnedList<string>(list, &StringFactory, innerFree);
+    using var owned = new AlpmOwnedList<string>(list, &StringFactory, innerFree, null);
     return owned.ToArray();
   }
 }

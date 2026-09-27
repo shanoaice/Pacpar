@@ -113,7 +113,9 @@ public sealed unsafe class ManagedSnapshotTests
       native->name = name;
       native->hash = hash;
 
-      var backup = Backup.Factory(native);
+      // Backup is an eager snapshot: the factory takes the list's token for shape compatibility,
+      // but this test's memory is test-owned, so no context guards it.
+      var backup = Backup.Factory(native, null);
 
       Scramble(name, "etc/pacman.conf");
       native->name = null;
@@ -140,7 +142,7 @@ public sealed unsafe class ManagedSnapshotTests
       native->mode = 0b111_101_101;
       native->size = new CLong(4096);
 
-      var file = File.Factory(native);
+      var file = File.Factory(native, null);
 
       Scramble(name, "usr/bin/probe");
       native->name = null;
@@ -186,7 +188,9 @@ public sealed unsafe class ManagedSnapshotTests
       fileList.count = (nuint)names.Length;
       fileList.files = entries;
 
-      var list = new FileList(&fileList);
+      // The FileList token guards Count / indexer / enumeration; this list is test-owned, so a
+      // null token means "no owning context to outlive".
+      var list = new FileList(&fileList, null);
 
       Assert.Equal(names.Length, list.Count);
       Assert.Equal(names, list.Select(file => file.Name));
@@ -223,7 +227,11 @@ public sealed unsafe class ManagedSnapshotTests
       native.name = name;
       native.packages = members;
 
-      var group = Group.Factory(&native);
+      // Group's ctor dereferences the native struct and enumerates the member list under the
+      // staleness guard, so it needs a live token - unlike the pure snapshot types above.
+      var lifetime = Lifetime.CreateRoot(new object(), "a test handle");
+
+      var group = Group.Factory(&native, lifetime);
 
       Scramble(name, "base-devel");
       native.name = null;
@@ -256,7 +264,9 @@ public sealed unsafe class ManagedSnapshotTests
       native->type_ = _alpm_event_type_t.ALPM_EVENT_SCRIPTLET_INFO;
       native->scriptlet_info.line = line;
 
-      var payload = EventType.FromUnion(native);
+      // FromUnion takes the handle's root token, which any package views in the payload are
+      // snapshotted against; this branch carries none.
+      var payload = EventType.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       // Exactly what libalpm does to the union as soon as the callback returns.
       *native = default;
@@ -283,7 +293,7 @@ public sealed unsafe class ManagedSnapshotTests
       native->hook_run.position = 2;
       native->hook_run.total = 5;
 
-      var payload = EventType.FromUnion(native);
+      var payload = EventType.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       *native = default;
 
@@ -313,7 +323,7 @@ public sealed unsafe class ManagedSnapshotTests
       native->replace.newpkg = (_alpm_pkg_t*)newPackage;
       native->replace.newdb = (_alpm_db_t*)newDatabase;
 
-      var payload = QuestionType.FromUnion(native);
+      var payload = QuestionType.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       *native = default;
       Marshal.FreeHGlobal((nint)oldPackage);
@@ -354,7 +364,9 @@ public sealed unsafe class ManagedSnapshotTests
       native->remove_pkgs.skip = 0;
       native->remove_pkgs.packages = members;
 
-      var payload = QuestionType.FromUnion(native);
+      // The REMOVE_PKGS branch borrows the member list under the passed token and copies the
+      // PackageView snapshots out of it, so the token must be alive while the union is.
+      var payload = QuestionType.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       *native = default;
       NativeMethods.alpm_list_free(members);

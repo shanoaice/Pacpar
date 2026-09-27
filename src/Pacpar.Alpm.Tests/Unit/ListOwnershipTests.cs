@@ -15,7 +15,7 @@ public sealed unsafe class ListOwnershipTests
   {
     Assert.False(typeof(IDisposable).IsAssignableFrom(typeof(AlpmStringList)));
     Assert.False(typeof(IDisposable).IsAssignableFrom(typeof(AlpmList<Database>)));
-    Assert.False(typeof(IDisposable).IsAssignableFrom(typeof(AlpmList<Package>)));
+    Assert.False(typeof(IDisposable).IsAssignableFrom(typeof(AlpmList<PackageView>)));
     Assert.False(typeof(IDisposable).IsAssignableFrom(typeof(AlpmList<Group>)));
   }
 
@@ -34,7 +34,7 @@ public sealed unsafe class ListOwnershipTests
     var list = BuildStringList("alpha", "beta", "gamma");
     try
     {
-      var view = AlpmList<string>.Borrow(list, &TestStringFactory);
+      var view = AlpmList<string>.Borrow(list, &TestStringFactory, null);
 
       Assert.Equal(3, view.Count());
       Assert.Equal(["alpha", "beta", "gamma"], view.ToArray());
@@ -50,7 +50,7 @@ public sealed unsafe class ListOwnershipTests
   [Fact]
   public void Borrow_NullList_IsAnEmptyView()
   {
-    var view = AlpmList<string>.Borrow(null, &TestStringFactory);
+    var view = AlpmList<string>.Borrow(null, &TestStringFactory, null);
 
     Assert.Empty(view);
     Assert.Empty(view.ToArray());
@@ -60,7 +60,7 @@ public sealed unsafe class ListOwnershipTests
   public void Borrow_ElementAt_ThrowsOnOutOfRange()
     => Assert.Throws<ArgumentOutOfRangeException>(() =>
     {
-      var view = AlpmList<string>.Borrow(null, &TestStringFactory);
+      var view = AlpmList<string>.Borrow(null, &TestStringFactory, null);
       _ = view.ElementAt(0);
     });
 
@@ -137,5 +137,8 @@ public sealed unsafe class ListOwnershipTests
   private static void FreeNativeStringList(_alpm_list_t* list)
     => AlpmNativeList.Free(list, &MemoryManagement.CFreeExtern);
 
-  private static string TestStringFactory(void* data) => Marshal.PtrToStringUTF8((nint)data) ?? string.Empty;
+  // The lifetime parameter matches the factory delegate shape; this test's strings are owned by the
+  // test itself, so the views are borrowed with a null token and the factory never looks at it.
+  private static string TestStringFactory(void* data, Lifetime? lifetime)
+    => Marshal.PtrToStringUTF8((nint)data) ?? string.Empty;
 }

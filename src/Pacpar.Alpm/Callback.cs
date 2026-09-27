@@ -99,6 +99,20 @@ public sealed class Callback
   private int _invokeDepth;
   private bool _detached;
 
+  // The ALPM handle's root lifetime token, reached WEAKLY on purpose. This instance stays rooted
+  // by its own ctx GCHandle until Alpm releases it, so a strong reference here would form
+  // GCHandle -> Callback -> token -> Alpm and pin the handle in memory forever: ~Alpm() could never
+  // run and the native handle would leak. An event or question callback only fires while a thread is
+  // inside a libalpm call that already keeps the owner alive, so the reference resolves in
+  // practice; if it ever does not, the snapshots degrade to unguarded views instead of crashing the
+  // thunk. The thunks still hand the token to EventType/QuestionType.FromUnion so the package views
+  // they snapshot out of the union are born with it: those views stay readable exactly as long as
+  // the handle lives, and retire with it.
+  private readonly WeakReference<Lifetime> _lifetimeRef;
+
+  private Lifetime? LifetimeOrNull() =>
+    _lifetimeRef.TryGetTarget(out var lifetime) ? lifetime : null;
+
   // do not Dispose this before the callback class has been disposed
   // otherwise it will screw up the callbacks
   private GCHandle<Callback> _ctxHandle;
@@ -117,7 +131,7 @@ public sealed class Callback
     callback._invokeDepth++;
     try
     {
-      SafeInvoke(() => callback.EventHandler?.Invoke(EventType.FromUnion(eventT)), callback.HandlerException);
+      SafeInvoke(() => callback.EventHandler?.Invoke(EventType.FromUnion(eventT, callback.LifetimeOrNull())), callback.HandlerException);
     }
     finally
     {
@@ -153,7 +167,7 @@ public sealed class Callback
     callback._invokeDepth++;
     try
     {
-      SafeInvoke(() => callback.QuestionHandler?.Invoke(QuestionType.FromUnion(questionT)), callback.HandlerException);
+      SafeInvoke(() => callback.QuestionHandler?.Invoke(QuestionType.FromUnion(questionT, callback.LifetimeOrNull())), callback.HandlerException);
     }
     finally
     {
@@ -218,9 +232,10 @@ public sealed class Callback
     }
   }
 
-  internal unsafe Callback(_alpm_handle_t* alpmHandle)
+  internal unsafe Callback(_alpm_handle_t* alpmHandle, Lifetime lifetime)
   {
     _handle = alpmHandle;
+    _lifetimeRef = new WeakReference<Lifetime>(lifetime);
     _ctxHandle = new GCHandle<Callback>(this);
   }
 

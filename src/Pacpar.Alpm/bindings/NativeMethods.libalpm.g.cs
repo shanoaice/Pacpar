@@ -1140,14 +1140,6 @@ namespace Pacpar.Alpm.Bindings
         public static extern int alpm_option_remove_assumeinstalled(_alpm_handle_t* handle, _alpm_depend_t* dep);
 
         /// <summary>
-        ///  Returns the allowed physical architectures.
-        ///  @param handle the context handle
-        ///  @return the list of physical architectures (caller is responsible for alpm_list_free)
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "alpm_option_get_physical_architectures", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern _alpm_list_t* alpm_option_get_physical_architectures(_alpm_handle_t* handle);
-
-        /// <summary>
         ///  Returns the allowed package architecture.
         ///  @param handle the context handle
         ///  @return the configured package architectures
@@ -1349,26 +1341,6 @@ namespace Pacpar.Alpm.Bindings
         public static extern int alpm_option_set_disable_sandbox_syscalls(_alpm_handle_t* handle, ushort disable_sandbox_syscalls);
 
         /// <summary>
-        ///  Get the state of the network part of the sandbox
-        ///  @param handle the context handle
-        ///  @return 0 for enabled, 1 for disabled
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "alpm_option_get_disable_sandbox_network", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int alpm_option_get_disable_sandbox_network(_alpm_handle_t* handle);
-
-        /// <summary>
-        ///  Enables/disables the network part of the sandbox.
-        ///  When enabled, scriptlets and hooks are run inside a fresh network
-        ///  namespace with only a loopback interface, and are aborted if the
-        ///  namespace cannot be created.
-        ///  @param handle the context handle
-        ///  @param disable_sandbox_network 0 for enabled, 1 for disabled
-        ///  @return 0 on success, -1 on error (pm_errno is set accordingly)
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox_network", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern int alpm_option_set_disable_sandbox_network(_alpm_handle_t* handle, ushort disable_sandbox_network);
-
-        /// <summary>
         ///  Create a package from a file.
         ///  If full is false, the archive is read only until all necessary
         ///  metadata is found. If it is true, the entire archive is read, which
@@ -1523,13 +1495,6 @@ namespace Pacpar.Alpm.Bindings
         /// </summary>
         [DllImport(__DllName, EntryPoint = "alpm_pkg_get_origin", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern _alpm_pkgfrom_t alpm_pkg_get_origin(_alpm_pkg_t* pkg);
-
-        /// <summary>
-        ///  Returns the installed db of the package.
-        ///  @return an alpm_pkgfrom_t constant, -1 on error
-        /// </summary>
-        [DllImport(__DllName, EntryPoint = "alpm_pkg_get_installed_db", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        public static extern byte* alpm_pkg_get_installed_db(_alpm_pkg_t* pkg);
 
         /// <summary>
         ///  Returns the package description.

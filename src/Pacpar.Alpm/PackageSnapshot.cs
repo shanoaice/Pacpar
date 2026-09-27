@@ -5,8 +5,9 @@ namespace Pacpar.Alpm;
 /// <see cref="PackageBase.ToSnapshot"/>.
 /// </summary>
 /// <remarks>
-/// A <see cref="Package"/> is a view over memory libalpm owns, so it stops being safe to read as soon
-/// as the database, transaction or handle behind it goes away. A snapshot copies every value out when
+/// A <see cref="PackageView"/> is a view over memory libalpm owns, so it stops being safe to read as
+/// soon as the database, transaction or handle behind it goes away - from that point on it throws
+/// <see cref="AlpmLifetimeException"/> instead of returning data. A snapshot copies every value out when
 /// it is constructed and keeps no native pointer at all: it stays readable after the owning database is
 /// unregistered, after the handle is released, and while a transaction commits.
 /// <para>

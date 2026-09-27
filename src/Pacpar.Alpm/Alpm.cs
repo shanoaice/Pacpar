@@ -15,7 +15,22 @@ public class Alpm : IDisposable
   // handle's *current* error is a different thing and is read with alpm_errno(handle) - see Errno.
   private readonly unsafe _alpm_errno_t* _initializeErrno;
 
-  // ReSharper disable once RedundantDefaultMemberInitializer
+  // Root of the lifetime token tree for this handle: the local-database token, the sync-database
+  // registry tokens and every transaction token are children of it, so one successful alpm_release
+  // retires every wrapper and view ever issued from this handle. The root also anchors this Alpm
+  // instance for GC purposes: any live token keeps the owner reachable in one hop.
+  private readonly Lifetime _lifetime;
+
+  // Token of the local database, deliberately kept out of the handle registry:
+  // alpm_unregister_all_syncdbs never releases the local database, so its token must not ride the
+  // registry sweep that retires sync databases. Reset to null by InvalidateLocalDatabase so the
+  // next GetLocalDatabase issues a fresh token after a commit.
+  private Lifetime? _localDatabase;
+
+  // Dispose bookkeeping: _disposeStarted admits exactly one teardown winner (Dispose and the
+  // finalizer can race); _disposedFlag is the published state read through Disposed.
+  private int _disposeStarted;
+  private int _disposedFlag;
 
   public unsafe Alpm(string root, string dbpath)
   {
@@ -39,8 +54,11 @@ public class Alpm : IDisposable
       throw ErrorHandler.GetException(*_initializeErrno) ?? new Exception("Failed to initialize libalpm.");
     }
 
-    Options = new AlpmOptions(_handle);
-    Callback = new Callback(_handle);
+    // Created before its consumers: Options and Callback both carry the root token, and every
+    // later token (databases, transactions) is a child of it.
+    _lifetime = Lifetime.CreateRoot(this, "the ALPM handle");
+    Options = new AlpmOptions(_handle, _lifetime);
+    Callback = new Callback(_handle, _lifetime);
   }
 
   private void ThrowIfDisposed()
@@ -74,7 +92,19 @@ public class Alpm : IDisposable
   /// </remarks>
   public Transactions? CurrentTransaction { get; internal set; }
 
-  internal bool Disposed { get; private set; } = false;
+  /// <summary>
+  /// Whether the handle is fully released. Published with a volatile write at the end of teardown
+  /// and read with <c>Volatile.Read</c>, so a concurrent caller never sees a half-disposed handle
+  /// as usable.
+  /// </summary>
+  internal bool Disposed => Volatile.Read(ref _disposedFlag) != 0;
+
+  /// <summary>
+  /// The root of this handle's lifetime token tree. Transactions, the local-database token and the
+  /// sync-database handle registry all hang off it, and a successful <see cref="Dispose()"/>
+  /// retires every wrapper and view issued from this handle in one step.
+  /// </summary>
+  internal Lifetime RootLifetime => _lifetime;
 
   /// <summary>
   /// The raw handle to libalpm, as an <see cref="IntPtr"/> so it can be passed around without
@@ -165,7 +195,7 @@ public class Alpm : IDisposable
         throw GetRequiredCurrentError();
       }
 
-      // The Package class now takes ownership of the native handle *pkgOutPtr
+      // The LoadedPackage wrapper now takes ownership of the native handle *pkgOutPtr
       return new LoadedPackage(*pkgOutPtr);
     }
     finally
@@ -215,12 +245,22 @@ public class Alpm : IDisposable
     return transaction;
   }
 
+  /// <summary>
+  /// The local database of this handle.
+  /// </summary>
+  /// <remarks>
+  /// Repeated calls share one lifetime token, so all wrappers for the local database are retired
+  /// together. A successful transaction commit invalidates the current token - committing frees
+  /// libalpm's in-memory package caches - and the next call issues a fresh one for the re-opened
+  /// database.
+  /// </remarks>
   public unsafe Database GetLocalDatabase()
   {
     ThrowIfDisposed();
     var databasePtr = NativeMethods.alpm_get_localdb(_handle);
     ThrowIfCurrentError();
-    return new Database(databasePtr);
+    _localDatabase ??= _lifetime.CreateChild("the local database");
+    return new Database(databasePtr, _localDatabase);
   }
 
   public unsafe AlpmList<Database> GetSyncDatabases()
@@ -228,7 +268,9 @@ public class Alpm : IDisposable
     ThrowIfDisposed();
     var syncDatabases = NativeMethods.alpm_get_syncdbs(_handle);
     ThrowIfCurrentError();
-    return AlpmList<Database>.Borrow(syncDatabases, &Database.Factory);
+    // The list itself belongs to the handle, so it is guarded by the root token; each element
+    // resolves its own per-database child token through the handle registry in Database.Factory.
+    return AlpmList<Database>.Borrow(syncDatabases, &Database.Factory, _lifetime);
   }
 
   public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
@@ -239,7 +281,11 @@ public class Alpm : IDisposable
     {
       var database = NativeMethods.alpm_register_syncdb(_handle, treeNameCString, (int)level);
       ThrowIfCurrentError();
-      return new Database(database);
+      // Registry lookup by native pointer: GetSyncDatabases' element factory resolves to this same
+      // token, and a tree re-registered at a recycled address receives a fresh one (Unregister
+      // dropped the dead entry).
+      var token = _lifetime.GetLifetimeTokenForHandle(database, $"the sync database {treename}");
+      return new Database(database, token);
     }
     finally
     {
@@ -247,11 +293,42 @@ public class Alpm : IDisposable
     }
   }
 
+  /// <summary>
+  /// Unregisters every sync database from this handle.
+  /// </summary>
+  /// <remarks>
+  /// On success the lifetime tokens of all registered sync databases are invalidated and the handle
+  /// registry is emptied: wrappers and views issued from those databases throw
+  /// <see cref="AlpmLifetimeException"/>, and a future registration at a recycled address receives
+  /// a fresh token. The local database is not affected - its token is deliberately not in the
+  /// registry.
+  /// </remarks>
   public unsafe void UnregisterAllSyncDatabases()
   {
     ThrowIfDisposed();
     var err = NativeMethods.alpm_unregister_all_syncdbs(_handle);
     if (err != 0) throw GetRequiredCurrentError();
+
+    // Strictly after the native release succeeded (§4.1 order): one sweep retires every registered
+    // token and clears the registry.
+    _lifetime.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
+  }
+
+  /// <summary>
+  /// Retires the current local-database token and forgets it, so the next
+  /// <see cref="GetLocalDatabase"/> issues a fresh one.
+  /// </summary>
+  /// <remarks>
+  /// Called after a successful <c>alpm_trans_commit</c>: committing rewrites the local database and
+  /// frees the in-memory package caches every borrowed view points into. The native database itself
+  /// stays registered - which is why the token is replaced rather than the database unregistered -
+  /// but every view issued before the commit is stale. Callers that must keep package data across a
+  /// commit take a <c>ToSnapshot()</c> first.
+  /// </remarks>
+  internal void InvalidateLocalDatabase(string reason)
+  {
+    _localDatabase?.Invalidate(reason);
+    _localDatabase = null;
   }
 
   public void Dispose()
@@ -262,7 +339,10 @@ public class Alpm : IDisposable
 
   protected virtual unsafe void Dispose(bool disposing)
   {
-    if (Disposed) return;
+    // Exactly one teardown ever runs: Dispose() and the finalizer can race on the same instance,
+    // and a second entrant would double-release the handle and double-free the errno buffer. The
+    // loser returns immediately; the winner's teardown is self-contained.
+    if (Interlocked.CompareExchange(ref _disposeStarted, 1, 0) != 0) return;
 
     // An initialized transaction holds the database lock, and libalpm refuses to release a handle
     // while one exists: alpm_release answers ALPM_ERR_TRANS_NOT_NULL and frees nothing, which leaks
@@ -289,6 +369,13 @@ public class Alpm : IDisposable
     // object its handler delegates keep alive would leak for the life of the process).
     if (releaseErr == 0)
     {
+      // The handle is gone: retire the whole token tree in one step. Every database, transaction and
+      // view token chains up to this root, so from here on they all answer AlpmLifetimeException
+      // instead of reading freed memory. On the finalizer path this stays a single volatile write -
+      // the token registry is never enumerated from the GC thread (§4.4 invariant).
+      _lifetime.Invalidate(
+        disposing ? "Alpm.Dispose()" : "the owning Alpm was garbage-collected",
+        fromFinalizer: !disposing);
 
       // Deliberately not guarded, although Dispose should not throw: this call cannot, so a guard
       // would only hide a future defect in this wrapper's own bookkeeping. Callback.Dispose is an
@@ -300,7 +387,7 @@ public class Alpm : IDisposable
     }
 
     Marshal.FreeHGlobal((nint)_initializeErrno);
-    Disposed = true;
+    Volatile.Write(ref _disposedFlag, 1);
 
     // Thrown last, after the wrapper is fully disposed, and never from the finalizer path: a failed
     // alpm_release is the only sign that the handle and its lock leaked.

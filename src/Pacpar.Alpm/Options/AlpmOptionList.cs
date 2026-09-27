@@ -24,9 +24,18 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 {
   private readonly _alpm_handle_t* _handle;
 
-  private protected AlpmOptionList(_alpm_handle_t* handle)
+  /// <summary>
+  /// The ALPM handle's root lifetime token. Every member here dereferences the native handle, so
+  /// each entry point verifies the token first: after the handle is released the collection throws
+  /// <see cref="AlpmLifetimeException"/> instead of calling into freed memory, and the views handed
+  /// out by <see cref="View"/> carry the same token.
+  /// </summary>
+  private protected readonly Lifetime Lifetime;
+
+  private protected AlpmOptionList(_alpm_handle_t* handle, Lifetime lifetime)
   {
     _handle = handle;
+    Lifetime = lifetime;
   }
 
   /// <summary>The native list getter, for example <c>alpm_option_get_ignorepkgs</c>.</summary>
@@ -80,9 +89,20 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public bool IsReadOnly => false;
 
-  public int Count => (int)NativeMethods.alpm_list_count(GetList(_handle));
+  public int Count
+  {
+    get
+    {
+      Lifetime.ThrowIfStale();
+      return (int)NativeMethods.alpm_list_count(GetList(_handle));
+    }
+  }
 
-  public AlpmList<T>.Enumerator GetEnumerator() => View(GetList(_handle)).GetEnumerator();
+  public AlpmList<T>.Enumerator GetEnumerator()
+  {
+    Lifetime.ThrowIfStale();
+    return View(GetList(_handle)).GetEnumerator();
+  }
 
   IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
 
@@ -90,6 +110,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public void Add(T item)
   {
+    Lifetime.ThrowIfStale();
     var itemPtr = AcquireForAdd(item, out var owned);
     try
     {
@@ -104,6 +125,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public bool Contains(T item)
   {
+    Lifetime.ThrowIfStale();
     var itemPtr = Acquire(item, out var owned);
     try
     {
@@ -123,6 +145,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public bool Remove(T item)
   {
+    Lifetime.ThrowIfStale();
     var itemPtr = Acquire(item, out var owned);
     try
     {
@@ -146,6 +169,8 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public void Clear()
   {
+    Lifetime.ThrowIfStale();
+
     // Snapshot first: the enumerator caches the current native node, so removing while
     // enumerating leaves it pointing at a freed node on the next MoveNext().
     foreach (var item in View(GetList(_handle)).ToArray())
@@ -158,6 +183,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   {
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
+    Lifetime.ThrowIfStale();
 
     var count = Count;
     if (array.Length - arrayIndex < count)
@@ -176,7 +202,8 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 /// <summary>
 /// <see cref="AlpmOptionList{T}"/> for the option lists whose elements are C strings.
 /// </summary>
-internal abstract unsafe class AlpmStringOptionList(_alpm_handle_t* handle) : AlpmOptionList<string>(handle)
+internal abstract unsafe class AlpmStringOptionList(_alpm_handle_t* handle, Lifetime lifetime)
+  : AlpmOptionList<string>(handle, lifetime)
 {
   private protected override byte* Acquire(string item, out bool owned)
   {
@@ -189,5 +216,5 @@ internal abstract unsafe class AlpmStringOptionList(_alpm_handle_t* handle) : Al
     if (owned) Marshal.FreeHGlobal((nint)item);
   }
 
-  private protected override AlpmList<string> View(_alpm_list_t* list) => new AlpmStringList(list);
+  private protected override AlpmList<string> View(_alpm_list_t* list) => new AlpmStringList(list, Lifetime);
 }

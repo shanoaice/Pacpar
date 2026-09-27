@@ -36,7 +36,7 @@ public enum PackageReason : uint
 /// </summary>
 /// <remarks>
 /// A managed snapshot: the version text is copied on construction, so a value taken from
-/// <see cref="Package.Version"/> stays readable after the package that produced it is gone.
+/// <see cref="PackageView.Version"/> stays readable after the package that produced it is gone.
 /// libalpm can only compare native strings, so <see cref="CompareTo"/> marshals both operands for
 /// the duration of the call instead of holding a pointer to package-owned memory.
 /// </remarks>
@@ -86,18 +86,22 @@ public enum PackageValidation : uint
   ///  The package's validation type is unknown
   /// </summary>
   ALPM_PKG_VALIDATION_UNKNOWN = 0,
+
   /// <summary>
   ///  The package does not have any validation
   /// </summary>
   ALPM_PKG_VALIDATION_NONE = 1,
+
   /// <summary>
   ///  The package is validated with md5
   /// </summary>
   ALPM_PKG_VALIDATION_MD5SUM = 2,
+
   /// <summary>
   ///  The package is validated with sha256
   /// </summary>
   ALPM_PKG_VALIDATION_SHA256SUM = 4,
+
   /// <summary>
   ///  The package is validated with a PGP signature
   /// </summary>
@@ -112,13 +116,13 @@ public enum PackageValidation : uint
 /// There are exactly two concrete kinds, and they are deliberately <b>siblings</b> rather than one
 /// deriving from the other:
 /// <list type="bullet">
-/// <item><description><see cref="Package"/> - libalpm owns it (a database package, a transaction
+/// <item><description><see cref="PackageView"/> - libalpm owns it (a database package, a transaction
 /// member, one reached through a group). It is not <see cref="IDisposable"/>.</description></item>
 /// <item><description><see cref="LoadedPackage"/> - this library loaded it from a file and owns it,
 /// so it is <see cref="IDisposable"/> and can hand the ownership to a transaction.</description></item>
 /// </list>
 /// Because neither type converts to the other, an overload pair such as
-/// <see cref="Transactions.AddPackage(Package)"/> / <see cref="Transactions.AddPackage(LoadedPackage)"/>
+/// <see cref="Transactions.AddPackage(PackageView)"/> / <see cref="Transactions.AddPackage(LoadedPackage)"/>
 /// cannot be reached with the wrong kind: the compiler picks the borrow overload for a database
 /// package and the ownership-transferring one for a file package, and no run-time check is needed.
 /// This base type is the common parameter type for code that only reads.
@@ -127,6 +131,12 @@ public enum PackageValidation : uint
 /// <c>field ??=</c>: coalescing only re-runs the native call while the field is null, so an absent value - a
 /// local package has no <see cref="Filename"/>, a sync package no <see cref="Md5Sum"/> - would cross the
 /// interop boundary again on every read. The flag makes the miss happen exactly once.
+/// </para>
+/// <para>
+/// Every read goes through <see cref="ThrowIfDisposed"/>, which also verifies the <see cref="Lifetime"/>
+/// token of the native context that owns <see cref="BackingStruct"/>: reading a package whose database,
+/// transaction or handle was released throws <see cref="AlpmLifetimeException"/> instead of touching
+/// freed memory.
 /// </para>
 /// </remarks>
 public abstract unsafe class PackageBase
@@ -139,6 +149,17 @@ public abstract unsafe class PackageBase
   }
 
   /// <summary>
+  /// The lifetime token of the native context that owns <see cref="BackingStruct"/> - the database,
+  /// transaction or handle this package was borrowed from, or this instance itself for a
+  /// <see cref="LoadedPackage"/>. <c>null</c> means the wrapper carries no owning context to check.
+  /// </summary>
+  /// <remarks>
+  /// Not <c>readonly</c> on purpose: a <see cref="LoadedPackage"/> creates its root token in its
+  /// constructor body, because <c>this</c> is not available to a base constructor initializer.
+  /// </remarks>
+  private protected Lifetime? Lifetime;
+
+  /// <summary>
   /// Set by <see cref="LoadedPackage"/> once it has released the package or handed it to a
   /// transaction. It retires the wrapper as a whole, reads included: after a hand-over the pointer
   /// stays valid only until the transaction is released, which this wrapper cannot observe.
@@ -147,7 +168,11 @@ public abstract unsafe class PackageBase
 
   private protected void ThrowIfDisposed()
   {
+    // The retirement flag wins: a disposed or handed-over wrapper reports ObjectDisposedException
+    // even when its owning context is gone too; the token check covers contexts released while
+    // this wrapper was still nominally usable.
     if (Disposed) throw new ObjectDisposedException(GetType().FullName);
+    Lifetime?.ThrowIfStale();
   }
 
   internal _alpm_handle_t* LibraryHandle
@@ -197,6 +222,7 @@ public abstract unsafe class PackageBase
         _filename = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
         _filenameLoaded = true;
       }
+
       return _filename;
     }
   }
@@ -214,6 +240,7 @@ public abstract unsafe class PackageBase
         _base = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
         _baseLoaded = true;
       }
+
       return _base;
     }
   }
@@ -249,6 +276,7 @@ public abstract unsafe class PackageBase
         _description = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
         _descriptionLoaded = true;
       }
+
       return _description;
     }
   }
@@ -266,6 +294,7 @@ public abstract unsafe class PackageBase
         _url = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
         _urlLoaded = true;
       }
+
       return _url;
     }
   }
@@ -302,6 +331,7 @@ public abstract unsafe class PackageBase
         _packager = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
         _packagerLoaded = true;
       }
+
       return _packager;
     }
   }
@@ -319,6 +349,7 @@ public abstract unsafe class PackageBase
         _md5Sum = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
         _md5SumLoaded = true;
       }
+
       return _md5Sum;
     }
   }
@@ -336,6 +367,7 @@ public abstract unsafe class PackageBase
         _sha256Sum = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
         _sha256SumLoaded = true;
       }
+
       return _sha256Sum;
     }
   }
@@ -353,6 +385,7 @@ public abstract unsafe class PackageBase
         _arch = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
         _archLoaded = true;
       }
+
       return _arch;
     }
   }
@@ -398,7 +431,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return new AlpmStringList(NativeMethods.alpm_pkg_get_licenses(BackingStruct));
+      return new AlpmStringList(NativeMethods.alpm_pkg_get_licenses(BackingStruct), Lifetime);
     }
   }
 
@@ -407,7 +440,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return new AlpmStringList(NativeMethods.alpm_pkg_get_groups(BackingStruct));
+      return new AlpmStringList(NativeMethods.alpm_pkg_get_groups(BackingStruct), Lifetime);
     }
   }
 
@@ -416,7 +449,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_depends(BackingStruct));
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_depends(BackingStruct), Lifetime);
     }
   }
 
@@ -425,7 +458,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_optdepends(BackingStruct));
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_optdepends(BackingStruct), Lifetime);
     }
   }
 
@@ -434,7 +467,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_checkdepends(BackingStruct));
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_checkdepends(BackingStruct), Lifetime);
     }
   }
 
@@ -443,7 +476,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_makedepends(BackingStruct));
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_makedepends(BackingStruct), Lifetime);
     }
   }
 
@@ -452,7 +485,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_conflicts(BackingStruct));
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_conflicts(BackingStruct), Lifetime);
     }
   }
 
@@ -461,7 +494,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_provides(BackingStruct));
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_provides(BackingStruct), Lifetime);
     }
   }
 
@@ -470,7 +503,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_replaces(BackingStruct));
+      return Depend.ListFactory(NativeMethods.alpm_pkg_get_replaces(BackingStruct), Lifetime);
     }
   }
 
@@ -479,15 +512,15 @@ public abstract unsafe class PackageBase
   /// </summary>
   /// <remarks>
   /// Deliberately neither cached nor read at construction: eagerly loading it for every package costs
-  /// about two orders of magnitude more than reading the rest of the metadata, and it is the first
-  /// accessor the audit report singles out. <see cref="ToSnapshot(bool)"/> copies it only on request.
+  /// about two orders of magnitude more than reading the rest of the metadata.
+  /// <see cref="ToSnapshot(bool)"/> copies it only on request.
   /// </remarks>
   public FileList Files
   {
     get
     {
       ThrowIfDisposed();
-      return new FileList(NativeMethods.alpm_pkg_get_files(BackingStruct));
+      return new FileList(NativeMethods.alpm_pkg_get_files(BackingStruct), Lifetime);
     }
   }
 
@@ -496,7 +529,7 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return Pacpar.Alpm.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(BackingStruct));
+      return Pacpar.Alpm.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(BackingStruct), Lifetime);
     }
   }
 
@@ -542,6 +575,7 @@ public abstract unsafe class PackageBase
         _base64Signature = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
         _base64SignatureLoaded = true;
       }
+
       return _base64Signature;
     }
   }
@@ -611,16 +645,20 @@ public abstract unsafe class PackageBase
 /// <para>
 /// Being a view over libalpm's memory is exactly what makes bulk scans cheap, so keep it that way: read
 /// the view while scanning, and call <see cref="ToSnapshot"/> only for the packages that must outlive
-/// the scan.
+/// the scan. The lifetime token the issuing context passed in guards the view: once that context is
+/// released, every read throws <see cref="AlpmLifetimeException"/> instead of touching freed memory.
 /// </para>
 /// </remarks>
-public sealed unsafe class Package : PackageBase
+public sealed unsafe class PackageView : PackageBase
 {
-  internal Package(_alpm_pkg_t* backingStruct) : base(backingStruct)
+  /// <param name="backingStruct">The libalpm-owned package. Not dereferenced here.</param>
+  /// <param name="lifetime">Token of the context that owns the package memory, if any.</param>
+  internal PackageView(_alpm_pkg_t* backingStruct, Lifetime? lifetime) : base(backingStruct)
   {
+    Lifetime = lifetime;
   }
 
-  internal static Package Factory(void* ptr) => new((_alpm_pkg_t*)ptr);
+  internal static PackageView Factory(void* ptr, Lifetime? lifetime) => new((_alpm_pkg_t*)ptr, lifetime);
 }
 
 /// <summary>
@@ -633,12 +671,22 @@ public sealed unsafe class Package : PackageBase
 /// <c>alpm_pkg_load()</c> is freed upon <c>alpm_trans_release</c>). After that hand-over this
 /// instance is inert: <see cref="Dispose"/> and the finalizer do nothing, and reading the package
 /// throws, so the pointer cannot be released twice.
+/// <para>
+/// This instance is the root owner of its native package, so it anchors its own lifetime-token
+/// tree: releasing or disowning it invalidates the root token, which retires every view issued
+/// from the package - its <see cref="Files"/> list, group members, anything else - in one step.
+/// </para>
 /// </remarks>
 public sealed unsafe class LoadedPackage : PackageBase, IDisposable
 {
+  private readonly Lifetime _lifetime;
+
   internal LoadedPackage(_alpm_pkg_t* backingStruct) : base(backingStruct)
   {
+    _lifetime = Lifetime.CreateRoot(this, "a loaded package");
+    Lifetime = _lifetime;
   }
+
   /// <summary>Whether this instance still owns the package (it stops owning it on dispose or hand-over).</summary>
   internal bool OwnsPackage => !Disposed;
 
@@ -667,6 +715,9 @@ public sealed unsafe class LoadedPackage : PackageBase, IDisposable
     ThrowIfNotOwned();
     Disposed = true;
     GC.SuppressFinalize(this);
+    // The pointer stays valid inside the transaction, but this wrapper can no longer observe its
+    // lifetime, so every view issued from it must stop reading through it.
+    _lifetime.Invalidate("the hand-over to a transaction");
   }
 
   public void Dispose()
@@ -683,6 +734,13 @@ public sealed unsafe class LoadedPackage : PackageBase, IDisposable
     // or the finalizer is running, and neither can handle a thrown error.
     _ = NativeMethods.alpm_pkg_free(BackingStruct);
     Disposed = true;
+
+    // The native package is gone: retire the token tree rooted at this instance. On the finalizer
+    // path this must stay O(1) and allocation-free, hence fromFinalizer (no registry walking, no
+    // debug assertion).
+    _lifetime.Invalidate(
+      disposing ? "LoadedPackage.Dispose()" : "the owning LoadedPackage was garbage-collected",
+      fromFinalizer: !disposing);
   }
 
   ~LoadedPackage() => Dispose(false);
