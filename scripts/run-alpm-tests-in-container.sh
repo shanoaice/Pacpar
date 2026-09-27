@@ -20,4 +20,4 @@ if [[ -z "$runtime" ]]; then
 fi
 
 "$runtime" build -f "$repo_root/containers/alpm-tests/Containerfile" -t "$image" "$repo_root"
-"$runtime" run --rm -t -v "$repo_root:/workspace:Z" -w /workspace "$image" dotnet test Pacpar.slnx --filter Category=Integration
+"$runtime" run --rm -v "$repo_root:/workspace:Z" -w /workspace "$image" dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj

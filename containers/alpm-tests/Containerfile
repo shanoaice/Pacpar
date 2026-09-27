@@ -2,8 +2,9 @@ FROM archlinux:base-devel
 
 RUN pacman -Syu --noconfirm \
     && pacman -S --noconfirm --needed \
+      clang \
       dotnet-sdk \
-      libalpm \
+      pacman \
       pkgconf \
       rust \
       cargo \
