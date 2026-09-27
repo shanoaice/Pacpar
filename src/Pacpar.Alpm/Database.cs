@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
@@ -66,9 +65,9 @@ public unsafe class Database
   public PackageView? GetPackage(string name)
   {
     ThrowIfInvalidated();
-    var nameCstr = NativeString.ToNative(name);
-    var pkg = NativeMethods.alpm_db_get_pkg(backingStruct, nameCstr);
-    Marshal.FreeHGlobal((nint)nameCstr);
+    Span<byte> scratch = stackalloc byte[64];
+    using var nameBuf = new Utf8Buffer(name, scratch);
+    var pkg = NativeMethods.alpm_db_get_pkg(backingStruct, nameBuf.Ptr);
     if ((nint)pkg == IntPtr.Zero) return null;
     return new PackageView(pkg, Lifetime);
   }
@@ -116,9 +115,9 @@ public unsafe class Database
   public Group? GetGroup(string name)
   {
     ThrowIfInvalidated();
-    var nameCstr = NativeString.ToNative(name);
-    var group = NativeMethods.alpm_db_get_group(backingStruct, nameCstr);
-    Marshal.FreeHGlobal((nint)nameCstr);
+    Span<byte> scratch = stackalloc byte[64];
+    using var nameBuf = new Utf8Buffer(name, scratch);
+    var group = NativeMethods.alpm_db_get_group(backingStruct, nameBuf.Ptr);
     if ((nint)group == IntPtr.Zero) return null;
     return new Group(group, Lifetime);
   }

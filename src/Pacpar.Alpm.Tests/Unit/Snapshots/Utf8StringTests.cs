@@ -56,7 +56,7 @@ public sealed unsafe class Utf8StringTests : IDisposable
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)ptr);
+      NativeMemory.Free(ptr);
     }
   }
 

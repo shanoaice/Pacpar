@@ -109,7 +109,7 @@ public unsafe class Depend
   /// </remarks>
   internal _alpm_depend_t* ToNative()
   {
-    var native = (_alpm_depend_t*)Marshal.AllocHGlobal(sizeof(_alpm_depend_t));
+    var native = (_alpm_depend_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_depend_t));
     native->name = NativeString.ToNative(Name);
     native->version = NativeString.ToNative(Version);
     native->desc = NativeString.ToNative(Description);
@@ -123,10 +123,10 @@ public unsafe class Depend
   {
     if (native == null) return;
 
-    if (native->name != null) Marshal.FreeHGlobal((nint)native->name);
-    if (native->version != null) Marshal.FreeHGlobal((nint)native->version);
-    if (native->desc != null) Marshal.FreeHGlobal((nint)native->desc);
-    Marshal.FreeHGlobal((nint)native);
+    if (native->name != null) NativeMemory.Free(native->name);
+    if (native->version != null) NativeMemory.Free(native->version);
+    if (native->desc != null) NativeMemory.Free(native->desc);
+    NativeMemory.Free(native);
   }
 }
 

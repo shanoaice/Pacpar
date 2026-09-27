@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm;
@@ -26,23 +25,13 @@ public class PackageVersion : IComparable<PackageVersion>
   {
     if (other == null) return 1;
 
-    var left = NativeString.ToNative(_value);
-    try
-    {
-      var right = NativeString.ToNative(other._value);
-      try
-      {
-        return NativeMethods.alpm_pkg_vercmp(left, right);
-      }
-      finally
-      {
-        Marshal.FreeHGlobal((nint)right);
-      }
-    }
-    finally
-    {
-      Marshal.FreeHGlobal((nint)left);
-    }
+    // Versions are short (64 bytes covers realistic epoch/pkgver/pkgrel strings), so both
+    // operands marshal onto stack scratch and the comparison never touches the native heap.
+    Span<byte> leftScratch = stackalloc byte[64];
+    Span<byte> rightScratch = stackalloc byte[64];
+    using var left = new Utf8Buffer(_value, leftScratch);
+    using var right = new Utf8Buffer(other._value, rightScratch);
+    return NativeMethods.alpm_pkg_vercmp(left.Ptr, right.Ptr);
   }
 
   public override string ToString() => _value;

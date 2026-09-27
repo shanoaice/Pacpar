@@ -34,20 +34,16 @@ public class Alpm : IDisposable
 
   public unsafe Alpm(string root, string dbpath)
   {
-    _initializeErrno = (_alpm_errno_t*)Marshal.AllocHGlobal(sizeof(_alpm_errno_t));
+    _initializeErrno = (_alpm_errno_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_errno_t));
     *_initializeErrno = _alpm_errno_t.ALPM_ERR_OK;
 
-    var rootPtr = NativeString.ToNative(root);
-    var dbpathPtr = NativeString.ToNative(dbpath);
-    try
-    {
-      _handle = NativeMethods.alpm_initialize(rootPtr, dbpathPtr, _initializeErrno);
-    }
-    finally
-    {
-      Marshal.FreeHGlobal((nint)rootPtr);
-      Marshal.FreeHGlobal((nint)dbpathPtr);
-    }
+    // alpm_initialize copies root and dbpath during the call (the buffer lifetime ends with this
+    // frame), and both are paths - hence the 256-byte scratch.
+    Span<byte> rootScratch = stackalloc byte[256];
+    Span<byte> dbpathScratch = stackalloc byte[256];
+    using var rootBuf = new Utf8Buffer(root, rootScratch);
+    using var dbpathBuf = new Utf8Buffer(dbpath, dbpathScratch);
+    _handle = NativeMethods.alpm_initialize(rootBuf.Ptr, dbpathBuf.Ptr, _initializeErrno);
 
     if (_handle == null)
     {
@@ -183,12 +179,14 @@ public class Alpm : IDisposable
   public unsafe LoadedPackage LoadPackage(string filename, bool full, SigLevel level)
   {
     ThrowIfDisposed();
-    var filenamePtr = NativeString.ToNative(filename);
+    // Paths are long, hence the 256-byte scratch; alpm_pkg_load only reads the string.
+    Span<byte> scratch = stackalloc byte[256];
+    using var filenameBuf = new Utf8Buffer(filename, scratch);
     // This is a pointer to a pointer, where libalpm will write the package handle.
-    var pkgOutPtr = (_alpm_pkg_t**)Marshal.AllocHGlobal(sizeof(nint));
+    var pkgOutPtr = (_alpm_pkg_t**)NativeMemory.Alloc((nuint)sizeof(nint));
     try
     {
-      var err = NativeMethods.alpm_pkg_load(_handle, filenamePtr, full ? 1 : 0, (int)level, pkgOutPtr);
+      var err = NativeMethods.alpm_pkg_load(_handle, filenameBuf.Ptr, full ? 1 : 0, (int)level, pkgOutPtr);
       if (err != 0)
       {
         // Note: alpm_pkg_load sets the handle errno on failure.
@@ -200,9 +198,8 @@ public class Alpm : IDisposable
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)filenamePtr);
       // We must free the memory we allocated for the output pointer.
-      Marshal.FreeHGlobal((IntPtr)pkgOutPtr);
+      NativeMemory.Free(pkgOutPtr);
     }
   }
 
@@ -276,21 +273,16 @@ public class Alpm : IDisposable
   public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
   {
     ThrowIfDisposed();
-    var treeNameCString = NativeString.ToNative(treename);
-    try
-    {
-      var database = NativeMethods.alpm_register_syncdb(_handle, treeNameCString, (int)level);
-      ThrowIfCurrentError();
-      // Registry lookup by native pointer: GetSyncDatabases' element factory resolves to this same
-      // token, and a tree re-registered at a recycled address receives a fresh one (Unregister
-      // dropped the dead entry).
-      var token = _lifetime.GetLifetimeTokenForHandle(database, $"the sync database {treename}");
-      return new Database(database, token);
-    }
-    finally
-    {
-      Marshal.FreeHGlobal((nint)treeNameCString);
-    }
+    // Database names are short, hence the 64-byte scratch; alpm_register_syncdb copies the name.
+    Span<byte> scratch = stackalloc byte[64];
+    using var treeNameBuf = new Utf8Buffer(treename, scratch);
+    var database = NativeMethods.alpm_register_syncdb(_handle, treeNameBuf.Ptr, (int)level);
+    ThrowIfCurrentError();
+    // Registry lookup by native pointer: GetSyncDatabases' element factory resolves to this same
+    // token, and a tree re-registered at a recycled address receives a fresh one (Unregister
+    // dropped the dead entry).
+    var token = _lifetime.GetLifetimeTokenForHandle(database, $"the sync database {treename}");
+    return new Database(database, token);
   }
 
   /// <summary>
@@ -386,7 +378,7 @@ public class Alpm : IDisposable
       Callback.Dispose();
     }
 
-    Marshal.FreeHGlobal((nint)_initializeErrno);
+    NativeMemory.Free(_initializeErrno);
     Volatile.Write(ref _disposedFlag, 1);
 
     // Thrown last, after the wrapper is fully disposed, and never from the finalizer path: a failed

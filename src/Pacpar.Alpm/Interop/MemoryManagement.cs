@@ -23,10 +23,14 @@ internal static class MemoryManagement
     CFree(ptr);
   }
 
+  /// <summary>
+  /// Element destructor for buffers marshalled by <see cref="NativeString.ToNative"/> and passed
+  /// to libalpm for the lifetime of a list (paired via <c>alpm_list_free_inner</c>).
+  /// </summary>
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   internal unsafe static void UnmanagedFreeExtern(void* ptr)
   {
-    Marshal.FreeHGlobal((nint)ptr);
+    NativeMemory.Free(ptr);
   }
 
   /// <summary>

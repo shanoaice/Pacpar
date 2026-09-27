@@ -48,7 +48,7 @@ public sealed unsafe class ManagedSnapshotTests
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)buffer);
+      NativeMemory.Free((void*)(nint)buffer);
     }
   }
 
@@ -73,11 +73,11 @@ public sealed unsafe class ManagedSnapshotTests
       var newer = new PackageVersion(newerText);
 
       Scramble(olderText, "1.0-1");
-      Marshal.FreeHGlobal((nint)olderText);
+      NativeMemory.Free((void*)(nint)olderText);
       olderText = null;
 
       Scramble(newerText, "1.0-2");
-      Marshal.FreeHGlobal((nint)newerText);
+      NativeMemory.Free((void*)(nint)newerText);
       newerText = null;
 
       Assert.True(older.CompareTo(newer) < 0, "1.0-1 must sort before 1.0-2");
@@ -91,13 +91,13 @@ public sealed unsafe class ManagedSnapshotTests
       }
       finally
       {
-        Marshal.FreeHGlobal((nint)sameText);
+        NativeMemory.Free((void*)(nint)sameText);
       }
     }
     finally
     {
-      if (olderText != null) Marshal.FreeHGlobal((nint)olderText);
-      if (newerText != null) Marshal.FreeHGlobal((nint)newerText);
+      if (olderText != null) NativeMemory.Free((void*)(nint)olderText);
+      if (newerText != null) NativeMemory.Free((void*)(nint)newerText);
     }
   }
 
@@ -106,7 +106,7 @@ public sealed unsafe class ManagedSnapshotTests
   {
     var name = NativeString.ToNative("etc/pacman.conf");
     var hash = NativeString.ToNative("deadbeef");
-    var native = (_alpm_backup_t*)Marshal.AllocHGlobal(sizeof(_alpm_backup_t));
+    var native = (_alpm_backup_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_backup_t));
 
     try
     {
@@ -124,9 +124,9 @@ public sealed unsafe class ManagedSnapshotTests
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)name);
-      Marshal.FreeHGlobal((nint)hash);
-      Marshal.FreeHGlobal((nint)native);
+      NativeMemory.Free((void*)(nint)name);
+      NativeMemory.Free((void*)(nint)hash);
+      NativeMemory.Free((void*)(nint)native);
     }
   }
 
@@ -134,7 +134,7 @@ public sealed unsafe class ManagedSnapshotTests
   public void File_CopiesNameModeAndSize()
   {
     var name = NativeString.ToNative("usr/bin/probe");
-    var native = (_alpm_file_t*)Marshal.AllocHGlobal(sizeof(_alpm_file_t));
+    var native = (_alpm_file_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_file_t));
 
     try
     {
@@ -155,8 +155,8 @@ public sealed unsafe class ManagedSnapshotTests
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)name);
-      Marshal.FreeHGlobal((nint)native);
+      NativeMemory.Free((void*)(nint)name);
+      NativeMemory.Free((void*)(nint)native);
     }
   }
 
@@ -169,7 +169,7 @@ public sealed unsafe class ManagedSnapshotTests
   {
     string[] names = ["a", "bb", "ccc"];
     var buffers = new byte*[names.Length];
-    var entries = (_alpm_file_t*)Marshal.AllocHGlobal(sizeof(_alpm_file_t) * names.Length);
+    var entries = (_alpm_file_t*)NativeMemory.Alloc((nuint)(sizeof(_alpm_file_t) * names.Length));
     var fileList = new _alpm_filelist_t();
 
     try
@@ -204,10 +204,10 @@ public sealed unsafe class ManagedSnapshotTests
     {
       foreach (var buffer in buffers)
       {
-        if (buffer != null) Marshal.FreeHGlobal((nint)buffer);
+        if (buffer != null) NativeMemory.Free((void*)(nint)buffer);
       }
 
-      Marshal.FreeHGlobal((nint)entries);
+      NativeMemory.Free((void*)(nint)entries);
     }
   }
 
@@ -244,7 +244,7 @@ public sealed unsafe class ManagedSnapshotTests
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)name);
+      NativeMemory.Free((void*)(nint)name);
       if (members != null) NativeMethods.alpm_list_free(members);
     }
   }
@@ -257,7 +257,7 @@ public sealed unsafe class ManagedSnapshotTests
   public void EventPayload_CopiesItsFieldsOutOfTheCallbackUnion()
   {
     var line = NativeString.ToNative(":: running post-transaction hooks...");
-    var native = (_alpm_event_t*)Marshal.AllocHGlobal(sizeof(_alpm_event_t));
+    var native = (_alpm_event_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_event_t));
 
     try
     {
@@ -270,22 +270,22 @@ public sealed unsafe class ManagedSnapshotTests
 
       // Exactly what libalpm does to the union as soon as the callback returns.
       *native = default;
-      Marshal.FreeHGlobal((nint)line);
+      NativeMemory.Free((void*)(nint)line);
       line = null;
 
       Assert.Equal(":: running post-transaction hooks...", Assert.IsType<AlpmEvent.ScriptletInfo>(payload).Line);
     }
     finally
     {
-      if (line != null) Marshal.FreeHGlobal((nint)line);
-      Marshal.FreeHGlobal((nint)native);
+      if (line != null) NativeMemory.Free((void*)(nint)line);
+      NativeMemory.Free((void*)(nint)native);
     }
   }
 
   [Fact]
   public void EventPayload_CopiesScalarFieldsOutOfTheCallbackUnion()
   {
-    var native = (_alpm_event_t*)Marshal.AllocHGlobal(sizeof(_alpm_event_t));
+    var native = (_alpm_event_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_event_t));
 
     try
     {
@@ -303,7 +303,7 @@ public sealed unsafe class ManagedSnapshotTests
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)native);
+      NativeMemory.Free((void*)(nint)native);
     }
   }
 
@@ -313,7 +313,7 @@ public sealed unsafe class ManagedSnapshotTests
     var oldPackage = NativeString.ToNative("pacpar-old");
     var newPackage = NativeString.ToNative("pacpar-new");
     var newDatabase = NativeString.ToNative("core");
-    var native = (_alpm_question_t*)Marshal.AllocHGlobal(sizeof(_alpm_question_t));
+    var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
 
     try
     {
@@ -326,11 +326,11 @@ public sealed unsafe class ManagedSnapshotTests
       var payload = AlpmQuestion.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
 
       *native = default;
-      Marshal.FreeHGlobal((nint)oldPackage);
+      NativeMemory.Free((void*)(nint)oldPackage);
       oldPackage = null;
-      Marshal.FreeHGlobal((nint)newPackage);
+      NativeMemory.Free((void*)(nint)newPackage);
       newPackage = null;
-      Marshal.FreeHGlobal((nint)newDatabase);
+      NativeMemory.Free((void*)(nint)newDatabase);
       newDatabase = null;
 
       var replace = Assert.IsType<AlpmQuestion.ReplacePackage>(payload);
@@ -341,10 +341,10 @@ public sealed unsafe class ManagedSnapshotTests
     }
     finally
     {
-      if (oldPackage != null) Marshal.FreeHGlobal((nint)oldPackage);
-      if (newPackage != null) Marshal.FreeHGlobal((nint)newPackage);
-      if (newDatabase != null) Marshal.FreeHGlobal((nint)newDatabase);
-      Marshal.FreeHGlobal((nint)native);
+      if (oldPackage != null) NativeMemory.Free((void*)(nint)oldPackage);
+      if (newPackage != null) NativeMemory.Free((void*)(nint)newPackage);
+      if (newDatabase != null) NativeMemory.Free((void*)(nint)newDatabase);
+      NativeMemory.Free((void*)(nint)native);
     }
   }
 
@@ -355,7 +355,7 @@ public sealed unsafe class ManagedSnapshotTests
   [Fact]
   public void QuestionPayload_CopiesTheMemberList()
   {
-    var native = (_alpm_question_t*)Marshal.AllocHGlobal(sizeof(_alpm_question_t));
+    var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
     var members = NativeMethods.alpm_list_add(null, null);
 
     try
@@ -377,14 +377,14 @@ public sealed unsafe class ManagedSnapshotTests
     finally
     {
       if (members != null) NativeMethods.alpm_list_free(members);
-      Marshal.FreeHGlobal((nint)native);
+      NativeMemory.Free((void*)(nint)native);
     }
   }
 
   [Fact]
   public void DownloadPayload_CopiesItsFieldsOutOfTheCallbackData()
   {
-    var data = (_alpm_download_event_completed_t*)Marshal.AllocHGlobal(sizeof(_alpm_download_event_completed_t));
+    var data = (_alpm_download_event_completed_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_download_event_completed_t));
 
     try
     {
@@ -404,7 +404,7 @@ public sealed unsafe class ManagedSnapshotTests
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)data);
+      NativeMemory.Free((void*)(nint)data);
     }
   }
 }

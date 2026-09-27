@@ -33,7 +33,7 @@ public sealed class FetchFallbackTests
     finally
     {
       NativeMethods.alpm_list_free(urls);
-      Marshal.FreeHGlobal((nint)urlPtr);
+      NativeMemory.Free(urlPtr);
       if (fetched != null)
       {
         NativeMethods.alpm_list_free_inner(fetched, &FreeData);
@@ -45,6 +45,6 @@ public sealed class FetchFallbackTests
   [UnmanagedCallersOnly(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
   private static unsafe void FreeData(void* data)
   {
-    Marshal.FreeHGlobal((nint)data);
+    NativeMemory.Free(data);
   }
 }

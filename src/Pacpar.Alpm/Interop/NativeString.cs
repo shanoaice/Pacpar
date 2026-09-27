@@ -19,15 +19,20 @@ internal static unsafe class NativeString
 
   /// <summary>
   /// Copies <paramref name="value"/> into a NUL-terminated UTF-8 buffer allocated with
-  /// <see cref="Marshal.AllocHGlobal"/>; a null input yields a null pointer.
+  /// <see cref="NativeMemory.Alloc"/>; a null input yields a null pointer.
   /// </summary>
-  /// <remarks>The caller owns the result and frees it with <see cref="Marshal.FreeHGlobal"/>.</remarks>
+  /// <remarks>
+  /// The caller owns the result and frees it with <see cref="NativeMemory.Free"/>. Use this only
+  /// when the buffer escapes the current frame; for the allocate-call-free pattern prefer
+  /// <see cref="Utf8Buffer"/>, which marshals short strings onto stack scratch instead of the
+  /// native heap.
+  /// </remarks>
   internal static byte* ToNative(string? value)
   {
     if (value is null) return null;
 
     var byteCount = Encoding.UTF8.GetByteCount(value);
-    var buffer = (byte*)Marshal.AllocHGlobal(byteCount + 1);
+    var buffer = (byte*)NativeMemory.Alloc((nuint)byteCount + 1);
     Encoding.UTF8.GetBytes(value, new Span<byte>(buffer, byteCount));
     buffer[byteCount] = 0;
     return buffer;

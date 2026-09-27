@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Options;
 
@@ -33,24 +32,21 @@ public class AlpmOptions
   }
 
   /// <summary>
-  /// Marshals <paramref name="value"/> for a string option setter, releases the buffer afterwards
-  /// and throws on failure.
+  /// Marshals <paramref name="value"/> for a string option setter and throws on failure.
   /// </summary>
   /// <remarks>
+  /// Option values can be paths or URLs (logfile, gpgdir, dbext), hence the 256-byte scratch; the
+  /// buffer is released by the same frame that allocated it.
+  /// <para>
   /// The setter arrives as a <c>delegate* managed</c> because <c>delegate* unmanaged[Cdecl]</c>
   /// cannot point at a <c>[DllImport]</c> method (CS8786).
+  /// </para>
   /// </remarks>
   private unsafe void SetStringOption(string? value, delegate* managed<_alpm_handle_t*, byte*, int> setter)
   {
-    var ptr = NativeString.ToNative(value);
-    try
-    {
-      ThrowIfError(setter(_handle, ptr));
-    }
-    finally
-    {
-      Marshal.FreeHGlobal((nint)ptr);
-    }
+    Span<byte> scratch = stackalloc byte[256];
+    using var buffer = new Utf8Buffer(value, scratch);
+    ThrowIfError(setter(_handle, buffer.Ptr));
   }
 
   public unsafe ICollection<string> Architectures => new Options.Architecture(_handle, _lifetime);

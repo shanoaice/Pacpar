@@ -213,7 +213,7 @@ internal abstract unsafe class AlpmStringOptionList(_alpm_handle_t* handle, Life
 
   private protected override void Release(byte* item, bool owned)
   {
-    if (owned) Marshal.FreeHGlobal((nint)item);
+    if (owned) NativeMemory.Free(item);
   }
 
   private protected override AlpmList<string> View(_alpm_list_t* list) => new AlpmStringList(list, Lifetime);

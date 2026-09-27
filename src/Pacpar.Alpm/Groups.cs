@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
@@ -48,15 +47,9 @@ public class Group
   /// </remarks>
   public unsafe IReadOnlyList<PackageView> FindGroupPackages(AlpmList<Database> dbs)
   {
-    var namePtr = NativeString.ToNative(Name);
-    try
-    {
-      var result = NativeMethods.alpm_find_group_pkgs(dbs.Native, namePtr);
-      return AlpmOwnedList<PackageView>.Take(result, &PackageView.Factory, null, dbs.Lifetime);
-    }
-    finally
-    {
-      Marshal.FreeHGlobal((nint)namePtr);
-    }
+    Span<byte> scratch = stackalloc byte[64];
+    using var nameBuf = new Utf8Buffer(Name, scratch);
+    var result = NativeMethods.alpm_find_group_pkgs(dbs.Native, nameBuf.Ptr);
+    return AlpmOwnedList<PackageView>.Take(result, &PackageView.Factory, null, dbs.Lifetime);
   }
 }

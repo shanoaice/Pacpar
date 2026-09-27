@@ -65,7 +65,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
     }
     finally
     {
-      Marshal.FreeHGlobal((nint)specPtr);
+      NativeMemory.Free(specPtr);
     }
   }
 
@@ -75,7 +75,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   /// </summary>
   private static Depend HandBuilt(string name, string? version, string? description, DepMod mod)
   {
-    var native = (_alpm_depend_t*)Marshal.AllocHGlobal(sizeof(_alpm_depend_t));
+    var native = (_alpm_depend_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_depend_t));
     native->name = NativeString.ToNative(name);
     native->version = NativeString.ToNative(version);
     native->desc = NativeString.ToNative(description);
