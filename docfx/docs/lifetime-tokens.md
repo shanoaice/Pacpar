@@ -216,7 +216,7 @@ public void Unregister()
     ThrowIfInvalidated();
 
     var err = NativeMethods.alpm_db_unregister(backingStruct);
-    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno((_alpm_handle_t*)AsHandle()));
+    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
 
     // Invalidate strictly after native release succeeds:
     Lifetime.Invalidate("Database.Unregister()");
@@ -270,23 +270,35 @@ protected virtual unsafe void Dispose(bool disposing)
 
     CurrentTransaction?.Dispose();
 
-    var releaseErr = NativeMethods.alpm_release(_handle);
-    var releaseFailure = disposing && releaseErr != 0 ? ErrorHandler.ToException(Errno) : null;
-    _handle = (_alpm_handle_t*)IntPtr.Zero;
+    // The handle is gone: retire the whole token tree in one step.
+    _lifetime.Invalidate("Alpm.Dispose()");
 
-    if (releaseErr == 0)
+    // _handle.Dispose() executes SafeAlpmHandle.ReleaseHandle(), which calls
+    // alpm_release, disposes Callback, and frees _initializeErrno.
+    _handle.Dispose();
+    Volatile.Write(ref _disposedFlag, 1);
+}
+```
+
+The native release itself lives in the handle, so that it runs on the `Dispose` path *and* on the finalizer thread when the `Alpm` is collected without ever being disposed:
+
+```csharp
+protected override bool ReleaseHandle()
+{
+    var err = NativeMethods.alpm_release((_alpm_handle_t*)handle);
+    if (err == 0)
     {
-        _lifetime.Invalidate(
-            disposing ? "Alpm.Dispose()" : "the owning Alpm was garbage-collected",
-            fromFinalizer: !disposing);
-
-        Callback.Dispose();
+        _lifetime?.Invalidate("the owning Alpm was garbage-collected", fromFinalizer: true);
+        _callback?.Dispose();
     }
 
-    Marshal.FreeHGlobal((nint)_initializeErrno);
-    Volatile.Write(ref _disposedFlag, 1);
+    if (_initializeErrno != null)
+    {
+        NativeMemory.Free(_initializeErrno);
+        _initializeErrno = null;
+    }
 
-    if (releaseFailure != null) throw releaseFailure;
+    return err == 0;
 }
 ```
 
@@ -326,7 +338,7 @@ public unsafe void Commit()
 {
     ThrowIfDisposed();
     _alpm_list_t* messages = null;
-    var err = NativeMethods.alpm_trans_commit((_alpm_handle_t*)_library.AsHandle(), &messages);
+    var err = NativeMethods.alpm_trans_commit(_library.Handle, &messages);
     if (err != 0)
         throw AlpmTransactionException.TakeFailure(_library.Errno, messages, "Failed to commit transaction");
 
@@ -351,7 +363,7 @@ internal void InvalidateLocalDatabase(string reason)
 ### 5.7 `Transactions.Dispose()`
 
 ```csharp
-public unsafe void Dispose()
+public void Dispose()
 {
     if (_released) return;
     _released = true;
@@ -359,7 +371,7 @@ public unsafe void Dispose()
 
     if (_library.Disposed) return;
 
-    var err = NativeMethods.alpm_trans_release((_alpm_handle_t*)_library.AsHandle());
+    var err = NativeMethods.alpm_trans_release(_library.Handle);
     _library.CurrentTransaction = null;
 
     if (err == 0) Lifetime.Invalidate("Transactions.Dispose()");

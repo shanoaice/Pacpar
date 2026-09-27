@@ -4,3 +4,5 @@
   href: getting-started.md
 - name: Architecture & Lifetime Tokens
   href: lifetime-tokens.md
+- name: JIT Liveness & GC.KeepAlive Static Analysis
+  href: gc-keepalive-analysis.md
