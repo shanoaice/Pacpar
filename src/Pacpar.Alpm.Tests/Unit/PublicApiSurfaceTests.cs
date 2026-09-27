@@ -11,8 +11,9 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// <c>unsafe</c>
 /// context and name libalpm's binding types to wrap it. Instances are meant to come from
 /// <see cref="Alpm"/>, <see cref="Database"/>, <see cref="Transaction"/> and the types that hang
-/// off them. <see cref="Alpm.AsHandle"/> is the deliberate escape hatch, and it returns an
-/// <see cref="IntPtr"/> rather than a pointer.
+/// off them. That surface no longer exposes a raw handle at all: the wrapper reaches libalpm
+/// through <see cref="SafeAlpmHandle"/>, a type-parameterised <c>SafeHandle</c> that owns the
+/// native handle and is what the <c>[LibraryImport]</c> entry points accept.
 /// <para>
 /// The generated <c>Pacpar.Alpm.Bindings</c> namespace is excluded: it is bindgen output whose
 /// whole purpose is to mirror the C signatures, pointers included.

@@ -8,6 +8,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// Locks in the list ownership contract: borrowed views can never free (and therefore are not
 /// disposable), and the only owning type frees both the list and its elements.
 /// </summary>
+[Collection("ProcessWideNativeHeap")]
 public sealed unsafe class ListOwnershipTests
 {
   [Fact]

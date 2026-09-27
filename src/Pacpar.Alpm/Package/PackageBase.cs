@@ -75,7 +75,9 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return NativeMethods.alpm_pkg_get_handle(BackingStruct);
+      var handle = NativeMethods.alpm_pkg_get_handle(BackingStruct);
+      GC.KeepAlive(this);
+      return handle;
     }
   }
 
@@ -95,13 +97,17 @@ public abstract unsafe class PackageBase
   public bool CheckMd5Sum()
   {
     ThrowIfDisposed();
-    return NativeMethods.alpm_pkg_checkmd5sum(BackingStruct) == 0;
+    var ok = NativeMethods.alpm_pkg_checkmd5sum(BackingStruct) == 0;
+    GC.KeepAlive(this);
+    return ok;
   }
 
   public bool ShouldIgnore()
   {
     ThrowIfDisposed();
-    return NativeMethods.alpm_pkg_should_ignore(LibraryHandle, BackingStruct) != 0;
+    var ignore = NativeMethods.alpm_pkg_should_ignore(LibraryHandle, BackingStruct) != 0;
+    GC.KeepAlive(this);
+    return ignore;
   }
 
   private string? _filename;
@@ -145,7 +151,9 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return new PackageVersion(NativeMethods.alpm_pkg_get_version(BackingStruct));
+      var version = new PackageVersion(NativeMethods.alpm_pkg_get_version(BackingStruct));
+      GC.KeepAlive(this);
+      return version;
     }
   }
 
@@ -154,10 +162,11 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return (PackageOrigin)(uint)NativeMethods.alpm_pkg_get_origin(BackingStruct);
+      var origin = (PackageOrigin)(uint)NativeMethods.alpm_pkg_get_origin(BackingStruct);
+      GC.KeepAlive(this);
+      return origin;
     }
   }
-
   private string? _description;
   private bool _descriptionLoaded;
 
@@ -199,7 +208,9 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return DateTimeOffset.FromUnixTimeSeconds(NativeMethods.alpm_pkg_get_builddate(BackingStruct));
+      var date = DateTimeOffset.FromUnixTimeSeconds(NativeMethods.alpm_pkg_get_builddate(BackingStruct));
+      GC.KeepAlive(this);
+      return date;
     }
   }
 
@@ -209,10 +220,10 @@ public abstract unsafe class PackageBase
     {
       ThrowIfDisposed();
       var date = NativeMethods.alpm_pkg_get_installdate(BackingStruct);
+      GC.KeepAlive(this);
       return date == 0 ? null : DateTimeOffset.FromUnixTimeSeconds(date);
     }
   }
-
   private string? _packager;
   private bool _packagerLoaded;
 
@@ -290,7 +301,9 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return NativeMethods.alpm_pkg_get_size(BackingStruct);
+      var size = NativeMethods.alpm_pkg_get_size(BackingStruct);
+      GC.KeepAlive(this);
+      return size;
     }
   }
 
@@ -299,7 +312,9 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return NativeMethods.alpm_pkg_get_isize(BackingStruct);
+      var isize = NativeMethods.alpm_pkg_get_isize(BackingStruct);
+      GC.KeepAlive(this);
+      return isize;
     }
   }
 
@@ -308,7 +323,9 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return (PackageReason)(uint)NativeMethods.alpm_pkg_get_reason(BackingStruct);
+      var reason = (PackageReason)(uint)NativeMethods.alpm_pkg_get_reason(BackingStruct);
+      GC.KeepAlive(this);
+      return reason;
     }
   }
 
@@ -317,10 +334,11 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return (PackageValidation)NativeMethods.alpm_pkg_get_validation(BackingStruct);
+      var val = (PackageValidation)NativeMethods.alpm_pkg_get_validation(BackingStruct);
+      GC.KeepAlive(this);
+      return val;
     }
   }
-
   public AlpmStringList Licenses
   {
     get
@@ -443,8 +461,10 @@ public abstract unsafe class PackageBase
   public IReadOnlyList<string> GetRequiredBy()
   {
     ThrowIfDisposed();
-    return AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct),
+    var list = AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct),
       &MemoryManagement.CFreeExtern);
+    GC.KeepAlive(this);
+    return list;
   }
 
   /// <summary>
@@ -453,10 +473,11 @@ public abstract unsafe class PackageBase
   public IReadOnlyList<string> GetOptionalFor()
   {
     ThrowIfDisposed();
-    return AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct),
+    var list = AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct),
       &MemoryManagement.CFreeExtern);
+    GC.KeepAlive(this);
+    return list;
   }
-
   private string? _base64Signature;
   private bool _base64SignatureLoaded;
 
@@ -480,10 +501,11 @@ public abstract unsafe class PackageBase
     get
     {
       ThrowIfDisposed();
-      return NativeMethods.alpm_pkg_has_scriptlet(BackingStruct) != 0;
+      var has = NativeMethods.alpm_pkg_has_scriptlet(BackingStruct) != 0;
+      GC.KeepAlive(this);
+      return has;
     }
   }
-
   private byte[]? _signature;
   private bool _signatureLoaded;
 
@@ -505,8 +527,12 @@ public abstract unsafe class PackageBase
       byte* buffer = null;
       nuint len;
       var result = NativeMethods.alpm_pkg_get_sig(BackingStruct, &buffer, &len);
-      if (result != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(LibraryHandle));
-
+      if (result != 0)
+      {
+        var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(LibraryHandle));
+        GC.KeepAlive(this);
+        throw ex;
+      }
       if (buffer != null)
       {
         _signature = new Span<byte>(buffer, (int)len).ToArray();

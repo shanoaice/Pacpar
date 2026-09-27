@@ -89,7 +89,9 @@ public abstract class AlpmList<T> : IEnumerable<T>
         if (_disposed) throw new ObjectDisposedException(GetType().FullName);
         if (!_started || _current == null) throw new InvalidOperationException();
         _list.Lifetime?.ThrowIfStale();
-        return _list.Factory(_current->data, _list.Lifetime);
+        var item = _list.Factory(_current->data, _list.Lifetime);
+        GC.KeepAlive(_list);
+        return item;
       }
     }
 

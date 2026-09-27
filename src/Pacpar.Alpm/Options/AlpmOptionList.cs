@@ -22,7 +22,7 @@ namespace Pacpar.Alpm.Options;
 /// </remarks>
 internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 {
-  private readonly _alpm_handle_t* _handle;
+  private readonly SafeAlpmHandle _handle;
 
   /// <summary>
   /// The ALPM handle's root lifetime token. Every member here dereferences the native handle, so
@@ -32,14 +32,14 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   /// </summary>
   private protected readonly Lifetime Lifetime;
 
-  private protected AlpmOptionList(_alpm_handle_t* handle, Lifetime lifetime)
+  private protected AlpmOptionList(SafeAlpmHandle handle, Lifetime lifetime)
   {
     _handle = handle;
     Lifetime = lifetime;
   }
 
   /// <summary>The native list getter, for example <c>alpm_option_get_ignorepkgs</c>.</summary>
-  private protected abstract _alpm_list_t* GetList(_alpm_handle_t* handle);
+  private protected abstract _alpm_list_t* GetList(SafeAlpmHandle handle);
 
   /// <summary>
   /// The list libalpm currently exposes, for a subclass whose <see cref="Acquire"/> has to search it
@@ -48,13 +48,13 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   private protected _alpm_list_t* NativeList => GetList(_handle);
 
   /// <summary>The native adder. Returns 0 on success, anything else on failure.</summary>
-  private protected abstract int AddNative(_alpm_handle_t* handle, byte* item);
+  private protected abstract int AddNative(SafeAlpmHandle handle, byte* item);
 
   /// <summary>
   /// The native remover, returning libalpm's raw result: <c>1</c> when it removed the entry,
   /// <c>0</c> when it found nothing and <c>-1</c> on error.
   /// </summary>
-  private protected abstract int RemoveNative(_alpm_handle_t* handle, byte* item);
+  private protected abstract int RemoveNative(SafeAlpmHandle handle, byte* item);
 
   /// <summary>
   /// Produces the native item that a lookup or removal must hand to libalpm: usually a marshalled
@@ -94,7 +94,9 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
     get
     {
       Lifetime.ThrowIfStale();
-      return (int)NativeMethods.alpm_list_count(GetList(_handle));
+      var count = (int)NativeMethods.alpm_list_count(GetList(_handle));
+      GC.KeepAlive(this);
+      return count;
     }
   }
 
@@ -115,7 +117,12 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
     try
     {
       var err = AddNative(_handle, itemPtr);
-      if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
+      if (err != 0)
+      {
+        var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
+        GC.KeepAlive(this);
+        throw ex;
+      }
     }
     finally
     {
@@ -158,7 +165,12 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
       // against 0, as this wrapper used to, therefore made Remove answer with the inverse of the
       // ICollection<T> contract. Only a positive result means the item was removed.
       var err = RemoveNative(_handle, itemPtr);
-      if (err < 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
+      if (err < 0)
+      {
+        var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
+        GC.KeepAlive(this);
+        throw ex;
+      }
       return err > 0;
     }
     finally
@@ -202,7 +214,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 /// <summary>
 /// <see cref="AlpmOptionList{T}"/> for the option lists whose elements are C strings.
 /// </summary>
-internal abstract unsafe class AlpmStringOptionList(_alpm_handle_t* handle, Lifetime lifetime)
+internal abstract unsafe class AlpmStringOptionList(SafeAlpmHandle handle, Lifetime lifetime)
   : AlpmOptionList<string>(handle, lifetime)
 {
   private protected override byte* Acquire(string item, out bool owned)

@@ -2,13 +2,13 @@ using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm.Options;
 
-internal sealed unsafe class Architecture(_alpm_handle_t* handle, Lifetime lifetime)
+internal sealed unsafe class Architecture(SafeAlpmHandle handle, Lifetime lifetime)
   : AlpmStringOptionList(handle, lifetime)
 {
-  private protected override _alpm_list_t* GetList(_alpm_handle_t* h) => NativeMethods.alpm_option_get_architectures(h);
+  private protected override _alpm_list_t* GetList(SafeAlpmHandle h) => NativeMethods.alpm_option_get_architectures(h);
 
-  private protected override int AddNative(_alpm_handle_t* h, byte* item) => NativeMethods.alpm_option_add_architecture(h, item);
+  private protected override int AddNative(SafeAlpmHandle h, byte* item) => NativeMethods.alpm_option_add_architecture(h, item);
 
-  private protected override int RemoveNative(_alpm_handle_t* h, byte* item)
+  private protected override int RemoveNative(SafeAlpmHandle h, byte* item)
     => NativeMethods.alpm_option_remove_architecture(h, item);
 }

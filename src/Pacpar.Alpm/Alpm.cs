@@ -8,8 +8,11 @@ namespace Pacpar.Alpm;
 // ReSharper disable once ClassNeverInstantiated.Global
 public class Alpm : IDisposable
 {
-  // opaque handle to libalpm, details not exposed
-  private unsafe _alpm_handle_t* _handle;
+  // opaque handle to libalpm wrapped in a SafeHandle
+  private readonly SafeAlpmHandle _handle;
+  // Low-cardinality registry tracking file-loaded packages for Option 4 lifetime management
+  private readonly List<nint> _loadedPackages = [];
+  private readonly Lock _loadedPackagesLock = new();
 
   // The out-parameter of alpm_initialize: libalpm writes it only when initialization fails. The
   // handle's *current* error is a different thing and is read with alpm_errno(handle) - see Errno.
@@ -27,8 +30,8 @@ public class Alpm : IDisposable
   // next GetLocalDatabase issues a fresh token after a commit.
   private Lifetime? _localDatabase;
 
-  // Dispose bookkeeping: _disposeStarted admits exactly one teardown winner (Dispose and the
-  // finalizer can race); _disposedFlag is the published state read through Disposed.
+  // Dispose bookkeeping: _disposeStarted admits exactly one teardown winner;
+  // _disposedFlag is the published state read through Disposed.
   private int _disposeStarted;
   private int _disposedFlag;
 
@@ -43,18 +46,18 @@ public class Alpm : IDisposable
     Span<byte> dbpathScratch = stackalloc byte[256];
     using var rootBuf = new Utf8Buffer(root, rootScratch);
     using var dbpathBuf = new Utf8Buffer(dbpath, dbpathScratch);
-    _handle = NativeMethods.alpm_initialize(rootBuf.Ptr, dbpathBuf.Ptr, _initializeErrno);
+    var rawHandle = NativeMethods.alpm_initialize(rootBuf.Ptr, dbpathBuf.Ptr, _initializeErrno);
 
-    if (_handle == null)
+    if (rawHandle == null)
     {
       throw ErrorHandler.GetException(*_initializeErrno) ?? new Exception("Failed to initialize libalpm.");
     }
 
-    // Created before its consumers: Options and Callback both carry the root token, and every
-    // later token (databases, transactions) is a child of it.
+    _handle = new SafeAlpmHandle(rawHandle);
     _lifetime = Lifetime.CreateRoot(this, "the ALPM handle");
     Options = new AlpmOptions(_handle, _lifetime);
     Callback = new Callback(_handle, _lifetime);
+    _handle.SetContext(Callback, _initializeErrno);
   }
 
   private void ThrowIfDisposed()
@@ -103,23 +106,24 @@ public class Alpm : IDisposable
   internal Lifetime RootLifetime => _lifetime;
 
   /// <summary>
-  /// The raw handle to libalpm, as an <see cref="IntPtr"/> so it can be passed around without
-  /// <c>unsafe</c>.
+  /// The safe handle that owns this instance's libalpm context.
   /// </summary>
   /// <remarks>
-  /// An escape hatch for interop this wrapper does not cover, not part of the normal API: the
-  /// handle is owned by this instance, and modifying it, releasing it or handing it to another
-  /// <see cref="Alpm"/> is undefined behaviour. The wrapper's own types are the supported way to
-  /// reach libalpm.
+  /// Handing this to the <c>[LibraryImport]</c> overloads in <see cref="NativeMethods"/> routes the
+  /// call through the runtime's SafeHandle marshaller, which takes a refcount on the handle for the
+  /// whole duration of the native call and releases it afterwards. That is what keeps
+  /// <c>alpm_release</c> from running underneath an in-flight call, so it replaces both the
+  /// per-call-site <c>GC.KeepAlive</c> sprinkling and the former public raw-handle escape hatch:
+  /// nothing outside this assembly can reach a bare <c>_alpm_handle_t*</c> any more.
   /// </remarks>
-  [EditorBrowsable(EditorBrowsableState.Never)]
-  public unsafe IntPtr AsHandle()
+  internal SafeAlpmHandle Handle
   {
-    ThrowIfDisposed();
-    return (IntPtr)_handle;
+    get
+    {
+      ThrowIfDisposed();
+      return _handle;
+    }
   }
-
-  internal unsafe _alpm_handle_t* Handle => _handle;
 
   /// <summary>
   /// The handle's current errno, as reported by libalpm.
@@ -134,7 +138,9 @@ public class Alpm : IDisposable
     get
     {
       ThrowIfDisposed();
-      return NativeMethods.alpm_errno(_handle);
+      // No keep-alive: the SafeHandle marshaller refcounts the handle across the call, so
+      // alpm_release cannot run underneath it even when this Alpm is already unreachable.
+      return NativeMethods.alpm_errno(Handle);
     }
   }
 
@@ -142,7 +148,9 @@ public class Alpm : IDisposable
   public unsafe string? GetCurrentErrorString()
   {
     ThrowIfDisposed();
-    return NativeString.FromNative((nint)NativeMethods.alpm_strerror(Errno));
+    var str = NativeString.FromNative((nint)NativeMethods.alpm_strerror(Errno));
+    GC.KeepAlive(this);
+    return str;
   }
 
   public Exception? GetCurrentError()
@@ -186,15 +194,23 @@ public class Alpm : IDisposable
     var pkgOutPtr = (_alpm_pkg_t**)NativeMemory.Alloc((nuint)sizeof(nint));
     try
     {
-      var err = NativeMethods.alpm_pkg_load(_handle, filenameBuf.Ptr, full ? 1 : 0, (int)level, pkgOutPtr);
+      // The SafeHandle marshaller refcounts the handle for the whole call, so the failure path
+      // below cannot leak a refcount and no keep-alive is needed here.
+      var err = NativeMethods.alpm_pkg_load(Handle, filenameBuf.Ptr, full ? 1 : 0, (int)level, pkgOutPtr);
       if (err != 0)
       {
         // Note: alpm_pkg_load sets the handle errno on failure.
         throw GetRequiredCurrentError();
       }
 
-      // The LoadedPackage wrapper now takes ownership of the native handle *pkgOutPtr
-      return new LoadedPackage(*pkgOutPtr);
+      var rawPkg = *pkgOutPtr;
+      lock (_loadedPackagesLock)
+      {
+        _loadedPackages.Add((nint)rawPkg);
+      }
+
+      var pkgLifetime = _lifetime.CreateChild("a loaded package");
+      return new LoadedPackage(this, rawPkg, pkgLifetime);
     }
     finally
     {
@@ -254,7 +270,7 @@ public class Alpm : IDisposable
   public unsafe Database GetLocalDatabase()
   {
     ThrowIfDisposed();
-    var databasePtr = NativeMethods.alpm_get_localdb(_handle);
+    var databasePtr = NativeMethods.alpm_get_localdb(Handle);
     ThrowIfCurrentError();
     _localDatabase ??= _lifetime.CreateChild("the local database");
     return new Database(databasePtr, _localDatabase);
@@ -263,7 +279,7 @@ public class Alpm : IDisposable
   public unsafe AlpmList<Database> GetSyncDatabases()
   {
     ThrowIfDisposed();
-    var syncDatabases = NativeMethods.alpm_get_syncdbs(_handle);
+    var syncDatabases = NativeMethods.alpm_get_syncdbs(Handle);
     ThrowIfCurrentError();
     // The list itself belongs to the handle, so it is guarded by the root token; each element
     // resolves its own per-database child token through the handle registry in Database.Factory.
@@ -276,7 +292,7 @@ public class Alpm : IDisposable
     // Database names are short, hence the 64-byte scratch; alpm_register_syncdb copies the name.
     Span<byte> scratch = stackalloc byte[64];
     using var treeNameBuf = new Utf8Buffer(treename, scratch);
-    var database = NativeMethods.alpm_register_syncdb(_handle, treeNameBuf.Ptr, (int)level);
+    var database = NativeMethods.alpm_register_syncdb(Handle, treeNameBuf.Ptr, (int)level);
     ThrowIfCurrentError();
     // Registry lookup by native pointer: GetSyncDatabases' element factory resolves to this same
     // token, and a tree re-registered at a recycled address receives a fresh one (Unregister
@@ -298,7 +314,7 @@ public class Alpm : IDisposable
   public unsafe void UnregisterAllSyncDatabases()
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_unregister_all_syncdbs(_handle);
+    var err = NativeMethods.alpm_unregister_all_syncdbs(Handle);
     if (err != 0) throw GetRequiredCurrentError();
 
     // Strictly after the native release succeeded (§4.1 order): one sweep retires every registered
@@ -323,6 +339,20 @@ public class Alpm : IDisposable
     _localDatabase = null;
   }
 
+  internal unsafe void UnregisterLoadedPackage(_alpm_pkg_t* pkg, bool freeNative)
+  {
+    bool wasTracked;
+    lock (_loadedPackagesLock)
+    {
+      wasTracked = _loadedPackages.Remove((nint)pkg);
+    }
+
+    if (wasTracked && freeNative)
+    {
+      NativeMethods.alpm_pkg_free(pkg);
+    }
+  }
+
   public void Dispose()
   {
     Dispose(true);
@@ -331,63 +361,33 @@ public class Alpm : IDisposable
 
   protected virtual unsafe void Dispose(bool disposing)
   {
-    // Exactly one teardown ever runs: Dispose() and the finalizer can race on the same instance,
-    // and a second entrant would double-release the handle and double-free the errno buffer. The
-    // loser returns immediately; the winner's teardown is self-contained.
     if (Interlocked.CompareExchange(ref _disposeStarted, 1, 0) != 0) return;
 
-    // An initialized transaction holds the database lock, and libalpm refuses to release a handle
-    // while one exists: alpm_release answers ALPM_ERR_TRANS_NOT_NULL and frees nothing, which leaks
-    // the handle and <dbpath>/db.lck. Releasing the transaction first drops the lock, so the
-    // release below can succeed.
     CurrentTransaction?.Dispose();
 
-    var releaseErr = NativeMethods.alpm_release(_handle);
-    // A failed release leaves the handle alive, so its errno can still be read; the failure is only
-    // reported at the end, once the wrapper itself is fully disposed. Not from the finalizer path,
-    // where an escaping exception would terminate the process.
-    var releaseFailure = disposing && releaseErr != 0 ? ErrorHandler.ToException(Errno) : null;
-    _handle = (_alpm_handle_t*)IntPtr.Zero;
-
-    // The callback context must stay alive until native code can no longer call back, and
-    // alpm_release itself may still fire events, so it is released only now that alpm_release has
-    // returned. A release that failed, on the other hand, leaves the handle alive - and that handle
-    // still holds the context's GCHandle, which its native thunks dereference: a freed handle
-    // resolves to a null target, so the next callback entered from it dereferences null in LogAgent
-    // and the exception escaping that [UnmanagedCallersOnly] thunk terminates the process (measured).
-    // The context therefore stays with the handle it belongs to.
-    // On the success path this must also happen on the finalizer path: Callback is strongly rooted by
-    // its own GCHandle, so if Alpm does not release it, nothing ever will (the Callback and every
-    // object its handler delegates keep alive would leak for the life of the process).
-    if (releaseErr == 0)
+    // Option 4: Sweep and free any undisposed file-loaded packages from this session
+    lock (_loadedPackagesLock)
     {
-      // The handle is gone: retire the whole token tree in one step. Every database, transaction and
-      // view token chains up to this root, so from here on they all answer AlpmLifetimeException
-      // instead of reading freed memory. On the finalizer path this stays a single volatile write -
-      // the token registry is never enumerated from the GC thread (§4.4 invariant).
-      _lifetime.Invalidate(
-        disposing ? "Alpm.Dispose()" : "the owning Alpm was garbage-collected",
-        fromFinalizer: !disposing);
+      foreach (var ptr in _loadedPackages)
+      {
+        NativeMethods.alpm_pkg_free((_alpm_pkg_t*)ptr);
+      }
+      _loadedPackages.Clear();
+    }
 
-      // Deliberately not guarded, although Dispose should not throw: this call cannot, so a guard
-      // would only hide a future defect in this wrapper's own bookkeeping. Callback.Dispose is an
-      // IsAllocated check around GCHandle<T>.Dispose, and that call is idempotent - a repeat call
-      // is a no-op (measured, sequentially and under 8 threads racing on one handle).
-      // Similarly, not guarded on finalizer path since currently it cannot throw, and if there's
-      // a future defect it is alarming that it crashes directly.
+    // The handle is gone: retire the whole token tree in one step.
+    _lifetime.Invalidate("Alpm.Dispose()", fromFinalizer: false);
+
+    // Release the native library handle. SafeAlpmHandle.ReleaseHandle calls alpm_release.
+    _handle.Dispose();
+
+    // Only after alpm_release has succeeded and native code will no longer call back,
+    // dispose the callback context GCHandle.
+    if (_handle.ReleaseSucceeded)
+    {
       Callback.Dispose();
     }
 
-    NativeMemory.Free(_initializeErrno);
     Volatile.Write(ref _disposedFlag, 1);
-
-    // Thrown last, after the wrapper is fully disposed, and never from the finalizer path: a failed
-    // alpm_release is the only sign that the handle and its lock leaked.
-    if (releaseFailure != null) throw releaseFailure;
-  }
-
-  ~Alpm()
-  {
-    Dispose(disposing: false);
   }
 }

@@ -10,7 +10,7 @@ public sealed class FetchFallbackTests
   public unsafe void FetchPackageUrl_WithoutFetchHandler_UsesInternalDownloader_FailsWithRetrieveFailedEvent()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
+    var handle = env.Alpm.Handle;
 
     var events = new List<AlpmEvent>();
     env.Alpm.Callback.EventHandler = events.Add;

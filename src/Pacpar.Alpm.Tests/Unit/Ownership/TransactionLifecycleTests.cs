@@ -1,5 +1,5 @@
+using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
-
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
@@ -64,6 +64,25 @@ public sealed class TransactionLifecycleTests
     transaction.Dispose();
 
     Assert.Null(alpm.CurrentTransaction);
+  }
+  [Fact]
+  public void CurrentTransaction_IsNotCleared_WhenNativeReleaseFails()
+  {
+    using var environment = new IsolatedAlpmEnvironment();
+    var alpm = environment.Alpm;
+
+    var transaction = alpm.BeginTransaction(Lockless);
+
+    // Directly release the native transaction so that transaction.Dispose()'s release call fails with -1
+    var nativeErr = NativeMethods.alpm_trans_release(alpm.Handle);
+    Assert.Equal(0, nativeErr);
+
+    // Now disposing the transaction fails at the native layer because handle->trans is already null
+    transaction.Dispose();
+
+    // The wrapper must keep CurrentTransaction intact because release failed
+    Assert.Same(transaction, alpm.CurrentTransaction);
+    Assert.True(transaction.Lifetime.IsAlive);
   }
 
   [Fact]

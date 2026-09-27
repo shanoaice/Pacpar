@@ -51,13 +51,13 @@ public unsafe class FileList : IReadOnlyList<PackageFile>
       Lifetime?.ThrowIfStale();
       if ((nuint)index >= backingStruct->count) throw new ArgumentOutOfRangeException(nameof(index));
 
-      return new PackageFile(&backingStruct->files[index]);
+      var file = new PackageFile(&backingStruct->files[index]);
+      GC.KeepAlive(this);
+      return file;
     }
   }
-
   /// <summary>Forward-only enumerator over the borrowed array of file entries.</summary>
   /// <remarks>
-  /// The enumerator used to test "is there another element" by comparing the current index with
   /// <c>Count - 1</c> <i>before</i> advancing, which ended every sequence one element early: a
   /// one-entry list yielded nothing at all and a longer list silently dropped its last file. It is
   /// index-based, so it now leaves the index one past the last element, as the contract requires.

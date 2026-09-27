@@ -9,7 +9,7 @@ public sealed class CallbackRegistrationTests
   public unsafe void InitialHandle_HasNoCallbacksRegistered()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
+    var handle = env.Alpm.Handle;
 
     Assert.True(NativeMethods.alpm_option_get_eventcb(handle) == null, "eventcb should not be registered initially");
     Assert.True(NativeMethods.alpm_option_get_fetchcb(handle) == null, "fetchcb should not be registered initially");
@@ -23,7 +23,7 @@ public sealed class CallbackRegistrationTests
   public unsafe void EventHandler_RegistersWhenSet_AndUnregistersWhenNull()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
+    var handle = env.Alpm.Handle;
 
     Assert.True(NativeMethods.alpm_option_get_eventcb(handle) == null);
     env.Alpm.Callback.EventHandler = _ => { };
@@ -36,7 +36,7 @@ public sealed class CallbackRegistrationTests
   public unsafe void FetchHandler_RegistersWhenSet_AndUnregistersWhenNull()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
+    var handle = env.Alpm.Handle;
 
     Assert.True(NativeMethods.alpm_option_get_fetchcb(handle) == null);
     env.Alpm.Callback.FetchHandler = (_, _, _) => FetchResult.Success;
@@ -49,7 +49,7 @@ public sealed class CallbackRegistrationTests
   public unsafe void QuestionHandler_RegistersWhenSet_AndUnregistersWhenNull()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
+    var handle = env.Alpm.Handle;
 
     Assert.True(NativeMethods.alpm_option_get_questioncb(handle) == null);
     env.Alpm.Callback.QuestionHandler = _ => { };
@@ -62,7 +62,7 @@ public sealed class CallbackRegistrationTests
   public unsafe void ProgressHandler_RegistersWhenSet_AndUnregistersWhenNull()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
+    var handle = env.Alpm.Handle;
 
     Assert.True(NativeMethods.alpm_option_get_progresscb(handle) == null);
     env.Alpm.Callback.ProgressHandler = (_, _, _, _, _) => { };
@@ -75,7 +75,7 @@ public sealed class CallbackRegistrationTests
   public unsafe void DownloadHandler_RegistersWhenSet_AndUnregistersWhenNull()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
+    var handle = env.Alpm.Handle;
 
     Assert.True(NativeMethods.alpm_option_get_dlcb(handle) == null);
     env.Alpm.Callback.DownloadHandler = (_, _) => { };
@@ -88,7 +88,7 @@ public sealed class CallbackRegistrationTests
   public unsafe void LogHandler_RegistersWhenSet_AndUnregistersWhenNull()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = (_alpm_handle_t*)env.Alpm.AsHandle();
+    var handle = env.Alpm.Handle;
 
     Assert.True(NativeMethods.alpm_option_get_logcb(handle) == null);
     env.Alpm.Callback.LogHandler = (_, _) => { };

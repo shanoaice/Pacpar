@@ -19,6 +19,8 @@ public unsafe class Database
 {
   private readonly _alpm_db_t* backingStruct;
 
+  private _alpm_handle_t* RawHandle => (_alpm_handle_t*)NativeMethods.alpm_db_get_handle(backingStruct);
+
   /// <summary>
   /// The token guarding this database and every view issued from it. Registered in the handle's
   /// pointer registry (sync databases) or held by a dedicated <see cref="Alpm"/> field (the local
@@ -133,20 +135,14 @@ public unsafe class Database
     return AlpmList<Group>.Borrow(groupCache, &Group.Factory, Lifetime);
   }
 
-  /// <summary>The raw libalpm handle this database belongs to.</summary>
-  [EditorBrowsable(EditorBrowsableState.Never)]
-  public nint AsHandle()
-  {
-    ThrowIfInvalidated();
-    return (nint)NativeMethods.alpm_db_get_handle(backingStruct);
-  }
-
   public SigLevel SigLevel
   {
     get
     {
       ThrowIfInvalidated();
-      return (SigLevel)NativeMethods.alpm_db_get_siglevel(backingStruct);
+      var sig = (SigLevel)NativeMethods.alpm_db_get_siglevel(backingStruct);
+      GC.KeepAlive(this);
+      return sig;
     }
   }
 
@@ -167,8 +163,12 @@ public unsafe class Database
     ThrowIfInvalidated();
 
     var err = NativeMethods.alpm_db_unregister(backingStruct);
-    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno((_alpm_handle_t*)AsHandle()));
-
+    if (err != 0)
+    {
+      var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(RawHandle));
+      GC.KeepAlive(this);
+      throw ex;
+    }
     // Strictly after the native release succeeded (§4.1 order): invalidate the token, then prune
     // the registry so the address can be re-issued cleanly.
     Lifetime.Invalidate("Database.Unregister()");
@@ -188,7 +188,9 @@ public unsafe class Database
     get
     {
       ThrowIfInvalidated();
-      return NativeMethods.alpm_db_get_valid(backingStruct) == 0;
+      var valid = NativeMethods.alpm_db_get_valid(backingStruct) == 0;
+      GC.KeepAlive(this);
+      return valid;
     }
   }
 
@@ -205,12 +207,12 @@ public unsafe class Database
     ThrowIfInvalidated();
     if (IsValid) return;
 
-    var errno = NativeMethods.alpm_errno((_alpm_handle_t*)AsHandle());
+    var errno = NativeMethods.alpm_errno(RawHandle);
+    GC.KeepAlive(this);
     throw errno == _alpm_errno_t.ALPM_ERR_OK
       ? new InvalidOperationException("The database is invalid but libalpm did not set an error code.")
       : ErrorHandler.ToException(errno);
   }
-
   /// <summary>
   /// Throws when libalpm set the handle errno.
   /// </summary>
@@ -221,7 +223,8 @@ public unsafe class Database
   /// </remarks>
   private void ThrowIfErrnoSet()
   {
-    var errno = NativeMethods.alpm_errno((_alpm_handle_t*)AsHandle());
+    var errno = NativeMethods.alpm_errno(RawHandle);
+    GC.KeepAlive(this);
     if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
   }
 

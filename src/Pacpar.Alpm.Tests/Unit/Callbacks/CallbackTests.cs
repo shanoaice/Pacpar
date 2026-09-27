@@ -136,7 +136,7 @@ public sealed class CallbackTests
     var alpm = new Alpm(root, dbpath);
     var weak = new WeakReference(alpm.Callback);
 
-    // Intentionally not disposed: this exercises ~Alpm().
+    // Intentionally not disposed: this exercises SafeAlpmHandle's critical finalizer.
     return weak;
   }
 
@@ -172,6 +172,47 @@ public sealed class CallbackTests
   }
 
   /// <summary>
+  /// The deterministic disposal counterpart to <see cref="AlpmFinalizer_KeepsTheCallbackContext_WhenTheHandleCouldNotBeReleased"/>:
+  /// when <c>alpm_release</c> fails during <see cref="Alpm.Dispose()"/>, the callback context must not be
+  /// freed because the native handle is still alive and will still invoke callbacks through that ctx.
+  /// </summary>
+  [Fact]
+  public void AlpmDispose_KeepsTheCallbackContext_WhenTheHandleCouldNotBeReleased()
+  {
+    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-dispose-tests", Guid.NewGuid().ToString("n"));
+    var root = Path.Combine(workspace, "root");
+    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
+    Directory.CreateDirectory(root);
+    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
+    Directory.CreateDirectory(Path.Combine(root, "tmp"));
+
+    var callback = DisposeAlpmWithAnUnreleasableHandle(root, dbpath);
+
+    for (var i = 0; i < 10 && callback.IsAlive; ++i)
+    {
+      GC.Collect();
+      GC.WaitForPendingFinalizers();
+    }
+
+    Assert.True(callback.IsAlive,
+      "Callback was freed by Alpm.Dispose although the leaked handle still points at its ctx GCHandle.");
+
+    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
+  }
+
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  private static WeakReference DisposeAlpmWithAnUnreleasableHandle(string root, string dbpath)
+  {
+    var alpm = new Alpm(root, dbpath);
+    var weak = new WeakReference(alpm.Callback);
+    _ = alpm.BeginTransaction((TransactionFlags)0);
+    alpm.CurrentTransaction = null;
+
+    alpm.Dispose();
+    return weak;
+  }
+
+  /// <summary>
   /// An <see cref="Alpm"/> whose release must fail: the transaction it owns is hidden from the
   /// wrapper, which is the state a consumer's forgotten transaction leaves libalpm in. The handle
   /// (and its lock) then leak for the life of the process, which is what this test needs.
@@ -184,7 +225,7 @@ public sealed class CallbackTests
     _ = alpm.BeginTransaction((TransactionFlags)0);
     alpm.CurrentTransaction = null;
 
-    // Intentionally not disposed: this exercises ~Alpm().
+    // Intentionally not disposed: this exercises SafeAlpmHandle's critical finalizer.
     return weak;
   }
 }

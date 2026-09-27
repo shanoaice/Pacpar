@@ -10,14 +10,14 @@ namespace Pacpar.Alpm;
 /// </summary>
 public class AlpmOptions
 {
-  private readonly unsafe _alpm_handle_t* _handle;
+  private readonly SafeAlpmHandle _handle;
 
   // The ALPM handle's root lifetime token. The option collections are thin, per-access views over
   // libalpm's handle state: they carry the root token so every native call they make is guarded,
   // and the lists they hand out retire together with the handle.
   private readonly Lifetime _lifetime;
 
-  internal unsafe AlpmOptions(_alpm_handle_t* handle, Lifetime lifetime)
+  internal AlpmOptions(SafeAlpmHandle handle, Lifetime lifetime)
   {
     _handle = handle;
     _lifetime = lifetime;
@@ -26,11 +26,15 @@ public class AlpmOptions
   /// <summary>
   /// Throws for a non-zero libalpm return value, using the handle's current <c>errno</c>.
   /// </summary>
-  private unsafe void ThrowIfError(int err)
+  private void ThrowIfError(int err)
   {
-    if (err != 0) throw ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
+    if (err != 0)
+    {
+      var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
+      GC.KeepAlive(this);
+      throw ex;
+    }
   }
-
   /// <summary>
   /// Marshals <paramref name="value"/> for a string option setter and throws on failure.
   /// </summary>
@@ -42,69 +46,135 @@ public class AlpmOptions
   /// cannot point at a <c>[DllImport]</c> method (CS8786).
   /// </para>
   /// </remarks>
-  private unsafe void SetStringOption(string? value, delegate* managed<_alpm_handle_t*, byte*, int> setter)
+  private unsafe void SetStringOption(string? value, delegate* managed<SafeAlpmHandle, byte*, int> setter)
   {
     Span<byte> scratch = stackalloc byte[256];
     using var buffer = new Utf8Buffer(value, scratch);
     ThrowIfError(setter(_handle, buffer.Ptr));
   }
 
-  public unsafe ICollection<string> Architectures => new Options.Architecture(_handle, _lifetime);
+  public ICollection<string> Architectures => new Options.Architecture(_handle, _lifetime);
 
-  public unsafe ICollection<Depend> AssumeInstalled => new AssumeInstalled(_handle, _lifetime);
+  public ICollection<Depend> AssumeInstalled => new AssumeInstalled(_handle, _lifetime);
 
-  public unsafe ICollection<string> CacheDirectories => new CacheDirectories(_handle, _lifetime);
+  public ICollection<string> CacheDirectories => new CacheDirectories(_handle, _lifetime);
 
-  public unsafe ICollection<string> OverwritableFiles => new OverwritableFiles(_handle, _lifetime);
+  public ICollection<string> OverwritableFiles => new OverwritableFiles(_handle, _lifetime);
 
-  public unsafe ICollection<string> HookDirectories => new HookDirectories(_handle, _lifetime);
+  public ICollection<string> HookDirectories => new HookDirectories(_handle, _lifetime);
 
-  public unsafe ICollection<string> IgnoreGroups => new IgnoreGroups(_handle, _lifetime);
+  public ICollection<string> IgnoreGroups => new IgnoreGroups(_handle, _lifetime);
 
-  public unsafe ICollection<string> IgnorePackages => new IgnorePackages(_handle, _lifetime);
+  public ICollection<string> IgnorePackages => new IgnorePackages(_handle, _lifetime);
 
-  public unsafe ICollection<string> NoExtract => new NoExtractOptionCollection(_handle, _lifetime);
+  public ICollection<string> NoExtract => new NoExtractOptionCollection(_handle, _lifetime);
 
-  public unsafe ICollection<string> NoUpgrade => new NoUpgrade(_handle, _lifetime);
+  public ICollection<string> NoUpgrade => new NoUpgrade(_handle, _lifetime);
 
-  public unsafe bool CheckSpace
+  public bool CheckSpace
   {
-    get => NativeMethods.alpm_option_get_checkspace(_handle) != 0;
-    set => ThrowIfError(NativeMethods.alpm_option_set_checkspace(_handle, value ? 1 : 0));
+    get
+    {
+      var val = NativeMethods.alpm_option_get_checkspace(_handle) != 0;
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_checkspace(_handle, value ? 1 : 0));
+      GC.KeepAlive(this);
+    }
   }
 
   public unsafe string DatabaseExtension
   {
-    get => NativeString.FromNative((nint)NativeMethods.alpm_option_get_dbext(_handle))!;
+    get
+    {
+      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_dbext(_handle))!;
+      GC.KeepAlive(this);
+      return val;
+    }
     set => SetStringOption(value, &NativeMethods.alpm_option_set_dbext);
   }
 
-  public unsafe string DatabasePath => NativeString.FromNative((nint)NativeMethods.alpm_option_get_dbpath(_handle))!;
-
-  public unsafe string Root => NativeString.FromNative((nint)NativeMethods.alpm_option_get_root(_handle))!;
-
-  public unsafe SigLevel DefaultSigLevel
+  public unsafe string DatabasePath
   {
-    get => (SigLevel)NativeMethods.alpm_option_get_default_siglevel(_handle);
-    set => ThrowIfError(NativeMethods.alpm_option_set_default_siglevel(_handle, (int)value));
+    get
+    {
+      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_dbpath(_handle))!;
+      GC.KeepAlive(this);
+      return val;
+    }
   }
 
-  public unsafe SigLevel LocalFileSigLevel
+  public unsafe string Root
   {
-    get => (SigLevel)NativeMethods.alpm_option_get_local_file_siglevel(_handle);
-    set => ThrowIfError(NativeMethods.alpm_option_set_local_file_siglevel(_handle, (int)value));
+    get
+    {
+      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_root(_handle))!;
+      GC.KeepAlive(this);
+      return val;
+    }
   }
 
-  public unsafe SigLevel RemoteFileSigLevel
+  public SigLevel DefaultSigLevel
   {
-    get => (SigLevel)NativeMethods.alpm_option_get_remote_file_siglevel(_handle);
-    set => ThrowIfError(NativeMethods.alpm_option_set_remote_file_siglevel(_handle, (int)value));
+    get
+    {
+      var val = (SigLevel)NativeMethods.alpm_option_get_default_siglevel(_handle);
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_default_siglevel(_handle, (int)value));
+      GC.KeepAlive(this);
+    }
   }
 
-  public unsafe int ParallelDownloads
+  public SigLevel LocalFileSigLevel
   {
-    get => NativeMethods.alpm_option_get_parallel_downloads(_handle);
-    set => ThrowIfError(NativeMethods.alpm_option_set_parallel_downloads(_handle, (uint)value));
+    get
+    {
+      var val = (SigLevel)NativeMethods.alpm_option_get_local_file_siglevel(_handle);
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_local_file_siglevel(_handle, (int)value));
+      GC.KeepAlive(this);
+    }
+  }
+
+  public SigLevel RemoteFileSigLevel
+  {
+    get
+    {
+      var val = (SigLevel)NativeMethods.alpm_option_get_remote_file_siglevel(_handle);
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_remote_file_siglevel(_handle, (int)value));
+      GC.KeepAlive(this);
+    }
+  }
+
+  public int ParallelDownloads
+  {
+    get
+    {
+      var val = NativeMethods.alpm_option_get_parallel_downloads(_handle);
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_parallel_downloads(_handle, (uint)value));
+      GC.KeepAlive(this);
+    }
   }
 
   /// <summary>
@@ -112,27 +182,53 @@ public class AlpmOptions
   /// </summary>
   public unsafe string? LogFile
   {
-    get => NativeString.FromNative((nint)NativeMethods.alpm_option_get_logfile(_handle));
+    get
+    {
+      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_logfile(_handle));
+      GC.KeepAlive(this);
+      return val;
+    }
     set => SetStringOption(value, &NativeMethods.alpm_option_set_logfile);
   }
 
-  public unsafe bool UseSyslog
+  public bool UseSyslog
   {
-    get => NativeMethods.alpm_option_get_usesyslog(_handle) != 0;
-    set => ThrowIfError(NativeMethods.alpm_option_set_usesyslog(_handle, value ? 1 : 0));
+    get
+    {
+      var val = NativeMethods.alpm_option_get_usesyslog(_handle) != 0;
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_usesyslog(_handle, value ? 1 : 0));
+      GC.KeepAlive(this);
+    }
   }
 
-  public unsafe string Lockfile => NativeString.FromNative((nint)NativeMethods.alpm_option_get_lockfile(_handle))!;
+  public unsafe string Lockfile
+  {
+    get
+    {
+      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_lockfile(_handle))!;
+      GC.KeepAlive(this);
+      return val;
+    }
+  }
 
   /// <summary>
   /// libalpm's GnuPG home directory, or <c>null</c> when it has none configured (its default).
   /// </summary>
   public unsafe string? GpgDirectory
   {
-    get => NativeString.FromNative((nint)NativeMethods.alpm_option_get_gpgdir(_handle));
+    get
+    {
+      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_gpgdir(_handle));
+      GC.KeepAlive(this);
+      return val;
+    }
     set => SetStringOption(value, &NativeMethods.alpm_option_set_gpgdir);
   }
-
   // alpm_option_get_disable_dl_timeout and alpm_option_set_disable_dl_timeout are bound in
   // NativeMethods.libalpm.g.cs, but AlpmOptions exposes no property for them.
 
