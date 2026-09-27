@@ -31,3 +31,14 @@ Apart from where the intermediate items should reside, there are also some worki
 
 1. When making coding decision explaniation or reports not specifically intended for agent exchange, use a more natural language. Avoid being overly concise, otherwise it can be difficult for human reviewer to comprehend.
 2. When writing benchmarks, use BenchmarkDotNet framework so that reports are standardized and reproducible. You MAY NOT use simple stopwatches in .NET since there are too many uncontrolled variable and will make results inaccurate.
+## Testing Standards
+
+- **Integration tests require isolated container environment**: DO NOT run integration tests directly on the host machine. NEVER set `PACPAR_ALPM_TEST_ENV=container` on the host environment, as integration tests manipulate package databases and filesystem trees and may inadvertently damage or break the host system.
+- **Filter out integration tests on the host**: Always filter out integration tests when running `dotnet test` on the host:
+  ```bash
+  dotnet test --filter "FullyQualifiedName!~Integration"
+  ```
+  Or under Release configuration:
+  ```bash
+  dotnet test --filter "FullyQualifiedName!~Integration" -c Release
+  ```
