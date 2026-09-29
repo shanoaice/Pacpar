@@ -14,10 +14,6 @@ public class Alpm : IDisposable
   private readonly List<nint> _loadedPackages = [];
   private readonly Lock _loadedPackagesLock = new();
 
-  // The out-parameter of alpm_initialize: libalpm writes it only when initialization fails. The
-  // handle's *current* error is a different thing and is read with alpm_errno(handle) - see Errno.
-  private readonly unsafe _alpm_errno_t* _initializeErrno;
-
   // Root of the lifetime token tree for this handle: the local-database token, the sync-database
   // registry tokens and every transaction token are children of it, so one successful alpm_release
   // retires every wrapper and view ever issued from this handle. The root also anchors this Alpm
@@ -37,7 +33,7 @@ public class Alpm : IDisposable
 
   public unsafe Alpm(string root, string dbpath)
   {
-    _initializeErrno = (_alpm_errno_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_errno_t));
+    var _initializeErrno = (_alpm_errno_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_errno_t));
     *_initializeErrno = _alpm_errno_t.ALPM_ERR_OK;
 
     // alpm_initialize copies root and dbpath during the call (the buffer lifetime ends with this
@@ -50,13 +46,16 @@ public class Alpm : IDisposable
 
     if (rawHandle == null)
     {
-      throw ErrorHandler.GetException(*_initializeErrno) ?? new Exception("Failed to initialize libalpm.");
+      var exception = ErrorHandler.GetException(*_initializeErrno) ?? new Exception("Failed to initialize libalpm.");
+      NativeMemory.Free(_initializeErrno);
+      throw exception;
     }
 
     _handle = new SafeAlpmHandle(rawHandle);
     _lifetime = Lifetime.CreateRoot(this, "the ALPM handle");
     Options = new AlpmOptions(_handle, _lifetime);
     Callback = new Callback(_handle, _lifetime);
+    NativeMemory.Free(_initializeErrno);
   }
 
   private void ThrowIfDisposed()
