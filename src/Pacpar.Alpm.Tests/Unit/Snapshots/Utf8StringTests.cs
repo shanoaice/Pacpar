@@ -1,3 +1,4 @@
+using Pacpar.Alpm.Tests.Fixtures;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -12,36 +13,9 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// there), so these tests pin the encoding choice rather than a behaviour change. They are the
 /// portable half of the sweep: on a Windows host the old code would fail them.
 /// </remarks>
-public sealed unsafe class Utf8StringTests : IDisposable
+public sealed unsafe class Utf8StringTests
 {
   private const string NonAscii = "中文 / ünïcødé";
-
-  private readonly string _workspaceRoot;
-  private readonly Alpm _alpm;
-
-  public Utf8StringTests()
-  {
-    _workspaceRoot = Path.Combine(Path.GetTempPath(), "pacpar-utf8-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(_workspaceRoot, "root");
-    var dbpath = Path.Combine(_workspaceRoot, "var", "lib", "pacman");
-
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
-    Directory.CreateDirectory(Path.Combine(root, "var", "cache", "pacman", "pkg"));
-
-    _alpm = new Alpm(root, dbpath);
-  }
-
-  public void Dispose()
-  {
-    _alpm.Dispose();
-
-    if (Directory.Exists(_workspaceRoot))
-    {
-      Directory.Delete(_workspaceRoot, recursive: true);
-    }
-  }
 
   [Fact]
   public void ToNative_WritesUtf8BytesAndNulTerminator()
@@ -75,7 +49,8 @@ public sealed unsafe class Utf8StringTests : IDisposable
   [Fact]
   public void NonAsciiOption_RoundTripsThroughLibalpm()
   {
-    var architectures = _alpm.Options.Architectures;
+    using var env = new IsolatedAlpmEnvironment();
+    var architectures = env.Alpm.Options.Architectures;
 
     architectures.Add(NonAscii);
 

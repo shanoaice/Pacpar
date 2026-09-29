@@ -28,27 +28,30 @@ public sealed class AlpmErrorStateTests
 
     Assert.NotNull(exception);
     Assert.IsNotType<NullReferenceException>(exception);
+    Assert.NotNull(alpm.GetCurrentError());
     Assert.Equal(_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND, alpm.Errno);
     Assert.Contains("could not find or read package", alpm.GetCurrentErrorString());
   }
 
   [Fact]
-  public void GetCurrentError_IsNotNull_WhileTheHandleHasAnError()
+  public void Constructor_InitializesHandle_InHealthyState()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
 
-    Record.Exception(() => alpm.LoadPackage(MissingPackage, false, SigLevel.ALPM_SIG_USE_DEFAULT));
-
-    Assert.NotNull(alpm.GetCurrentError());
+    Assert.False(environment.Alpm.Handle.IsInvalid);
+    Assert.Equal(_alpm_errno_t.ALPM_ERR_OK, environment.Alpm.Errno);
+    Assert.Null(environment.Alpm.GetCurrentError());
   }
 
   [Fact]
-  public void Errno_IsOk_AndGetCurrentErrorIsNull_AfterASuccessfulInitialization()
+  public void Dispose_InvalidatesManagedAccessors()
   {
-    using var environment = new IsolatedAlpmEnvironment();
+    var environment = new IsolatedAlpmEnvironment();
+    var alpm = environment.Alpm;
+    environment.Dispose();
 
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_OK, environment.Alpm.Errno);
-    Assert.Null(environment.Alpm.GetCurrentError());
+    Assert.Throws<ObjectDisposedException>(() => _ = alpm.Handle);
+    Assert.Throws<ObjectDisposedException>(() => _ = alpm.Errno);
+    Assert.Throws<ObjectDisposedException>(() => alpm.GetCurrentError());
   }
 }

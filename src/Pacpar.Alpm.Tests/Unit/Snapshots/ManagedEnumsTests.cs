@@ -11,27 +11,16 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// </summary>
 public sealed class ManagedEnumsTests
 {
-  [Fact]
-  public void PackageOrigin_MatchesTheNativeEnum() => AssertMirrors<_alpm_pkgfrom_t, PackageOrigin>();
-
-  [Fact]
-  public void PackageReason_MatchesTheNativeEnum() => AssertMirrors<_alpm_pkgreason_t, PackageReason>();
-
-  [Fact]
-  public void DepMod_MatchesTheNativeEnum() => AssertMirrors<_alpm_depmod_t, DepMod>();
-
-  [Fact]
-  public void HookWhen_MatchesTheNativeEnum() => AssertMirrors<_alpm_hook_when_t, HookWhen>();
-
-  [Fact]
-  public void PackageOperation_MatchesTheNativeEnum() => AssertMirrors<_alpm_package_operation_t, PackageOperation>();
-
-  [Fact]
-  public void ProgressType_MatchesTheNativeEnum() => AssertMirrors<_alpm_progress_t, ProgressType>();
-
-  [Fact]
-  public void LogLevel_MatchesTheNativeEnum() => AssertMirrors<_alpm_loglevel_t, LogLevel>();
-
+  [Theory]
+  [InlineData(typeof(_alpm_pkgfrom_t), typeof(PackageOrigin))]
+  [InlineData(typeof(_alpm_pkgreason_t), typeof(PackageReason))]
+  [InlineData(typeof(_alpm_depmod_t), typeof(DepMod))]
+  [InlineData(typeof(_alpm_hook_when_t), typeof(HookWhen))]
+  [InlineData(typeof(_alpm_package_operation_t), typeof(PackageOperation))]
+  [InlineData(typeof(_alpm_progress_t), typeof(ProgressType))]
+  [InlineData(typeof(_alpm_loglevel_t), typeof(LogLevel))]
+  public void ManagedEnum_MatchesTheNativeEnum(Type nativeType, Type managedType)
+    => AssertMirrors(nativeType, managedType);
   [Fact]
   public void PublicMembersUseTheManagedTypes()
   {
@@ -58,22 +47,22 @@ public sealed class ManagedEnumsTests
   }
 
   /// <summary>Both enums must cover exactly the same numeric values.</summary>
-  private static void AssertMirrors<TNative, TManaged>() where TNative : struct, Enum where TManaged : struct, Enum
+  private static void AssertMirrors(Type nativeType, Type managedType)
   {
-    foreach (var native in Enum.GetValues<TNative>())
+    foreach (var native in Enum.GetValues(nativeType))
     {
       var value = Convert.ToUInt32(native);
-      var managed = (TManaged)Enum.ToObject(typeof(TManaged), value);
+      var managed = Enum.ToObject(managedType, value);
 
-      Assert.True(Enum.IsDefined(managed), $"{typeof(TManaged).Name} has no member for {native} ({value})");
+      Assert.True(Enum.IsDefined(managedType, managed), $"{managedType.Name} has no member for {native} ({value})");
     }
 
-    foreach (var managed in Enum.GetValues<TManaged>())
+    foreach (var managed in Enum.GetValues(managedType))
     {
       var value = Convert.ToUInt32(managed);
-      var native = (TNative)Enum.ToObject(typeof(TNative), value);
+      var native = Enum.ToObject(nativeType, value);
 
-      Assert.True(Enum.IsDefined(native), $"{typeof(TNative).Name} has no member for {managed} ({value})");
+      Assert.True(Enum.IsDefined(nativeType, native), $"{nativeType.Name} has no member for {managed} ({value})");
     }
   }
 }

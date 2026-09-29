@@ -4,8 +4,7 @@ This project contains the C# test harness for `Pacpar.Alpm`.
 
 ## Test layout
 
-- `Unit/` contains managed-only tests that do not require an initialized libalpm handle.
-- `Integration/` contains isolated libalpm tests that exercise the native binding against a temporary pacman database layout.
+- `Unit/` contains managed-only tests and hermetic libalpm tests that run against isolated temporary directory trees (`IsolatedAlpmEnvironment`).
 - `Fixtures/` contains reusable environment setup that can also be shared by future F# tests.
 - `Pending/` contains the specification tests for features that are not implemented yet (report item
   M). They are excluded from the build by default, see below.
@@ -20,11 +19,11 @@ out of the build:
 
 ```bash
 # The current, building test set:
-dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj --filter "Category!=Integration"
+dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj
 
 # Turn the specification tests on. Until the API exists this fails to compile, and the compiler
 # errors are the to-do list; once it exists they are the acceptance criteria.
-dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj -p:PacparPendingFeatureTests=true --filter "Category!=Integration"
+dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj -p:PacparPendingFeatureTests=true
 ```
 
 When a feature lands, move its file from `Pending/` to `Unit/`.

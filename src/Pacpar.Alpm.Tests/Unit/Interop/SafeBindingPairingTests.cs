@@ -126,4 +126,14 @@ public sealed class SafeBindingPairingTests
     Assert.NotEmpty(GeneratedDeclarations);
     Assert.NotEmpty(SafeOverloads);
   }
+
+  [Fact]
+  public unsafe void LibalpmVersion_IsAvailable()
+  {
+    var versionPtr = NativeMethods.alpm_version();
+    Assert.True(versionPtr != null);
+    var version = Marshal.PtrToStringUTF8((nint)versionPtr);
+    Assert.NotNull(version);
+    Assert.Matches(@"^[0-9]+.[0-9]+.[0-9]+", version);
+  }
 }

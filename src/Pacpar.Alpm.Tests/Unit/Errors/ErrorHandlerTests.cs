@@ -23,6 +23,7 @@ public sealed class ErrorHandlerTests
   [InlineData(_alpm_errno_t.ALPM_ERR_SIG_MISSING, typeof(AlpmSignatureException))]
   [InlineData(_alpm_errno_t.ALPM_ERR_MISSING_CAPABILITY_SIGNATURES, typeof(AlpmSignatureException))]
   [InlineData(_alpm_errno_t.ALPM_ERR_RETRIEVE, typeof(AlpmRetrieveException))]
+  [InlineData(_alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE, typeof(AlpmRetrieveException))]
   public void GetException_ReturnsExpectedExceptionType(_alpm_errno_t errno, Type expectedType)
   {
     var exception = ErrorHandler.GetException(errno);
@@ -57,16 +58,6 @@ public sealed class ErrorHandlerTests
     Assert.Contains("ALPM_ERR_PKG_NOT_FOUND", exception.Message);
   }
 
-  [Fact]
-  public void GetException_MapsRetrievePrepare_AfterTheLibalpmUpdate()
-  {
-    // Regression: ALPM_ERR_RETRIEVE_PREPARE ("Download setup failed") arrived with libalpm 16 and
-    // the hand-written switch was not updated, so this call used to return null.
-    var exception = Assert.IsType<AlpmRetrieveException>(
-      ErrorHandler.GetException(_alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE));
-
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE, exception.Errno);
-  }
 
   /// <summary>
   /// Every errno the bindings know about must be classified. A libalpm update that adds an errno

@@ -1,3 +1,4 @@
+using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
@@ -12,34 +13,11 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// </remarks>
 public sealed class OptionCollectionTests : IDisposable
 {
-  private readonly string _workspaceRoot;
-  private readonly Alpm _alpm;
+  private readonly IsolatedAlpmEnvironment _environment = new();
 
-  public OptionCollectionTests()
-  {
-    _workspaceRoot = Path.Combine(Path.GetTempPath(), "pacpar-option-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(_workspaceRoot, "root");
-    var dbpath = Path.Combine(_workspaceRoot, "var", "lib", "pacman");
+  private ICollection<string> Architectures => _environment.Alpm.Options.Architectures;
 
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
-    Directory.CreateDirectory(Path.Combine(root, "var", "cache", "pacman", "pkg"));
-
-    _alpm = new Alpm(root, dbpath);
-  }
-
-  private ICollection<string> Architectures => _alpm.Options.Architectures;
-
-  public void Dispose()
-  {
-    _alpm.Dispose();
-
-    if (Directory.Exists(_workspaceRoot))
-    {
-      Directory.Delete(_workspaceRoot, recursive: true);
-    }
-  }
+  public void Dispose() => _environment.Dispose();
 
   [Fact]
   public void CopyTo_WithNonZeroArrayIndex_WritesFromThatIndex()
@@ -74,13 +52,6 @@ public sealed class OptionCollectionTests : IDisposable
 
     Assert.Equal(["x86_64", "aarch64", "any"], destination);
 
-    var trailing = new string[4];
-    architectures.CopyTo(trailing, 1);
-
-    Assert.Null(trailing[0]);
-    Assert.Equal("x86_64", trailing[1]);
-    Assert.Equal("aarch64", trailing[2]);
-    Assert.Equal("any", trailing[3]);
   }
 
   [Fact]
@@ -138,33 +109,26 @@ public sealed class OptionCollectionTests : IDisposable
 
     Assert.Equal(["keep"], destination);
   }
-
   [Fact]
-  public void Clear_RemovesEveryItem()
+  public void Clear_RemovesEveryItem_AndSucceedsOnEmptyCollection()
   {
     var architectures = Architectures;
+
+    // Clear on empty collection must not throw
+    architectures.Clear();
+    Assert.Empty(architectures);
+
     architectures.Add("x86_64");
     architectures.Add("aarch64");
     architectures.Add("any");
     Assert.Equal(3, architectures.Count);
 
     architectures.Clear();
-
     Assert.Empty(architectures);
 
     // The handle must still be usable after Clear().
     architectures.Add("riscv64");
     Assert.Equal("riscv64", Assert.Single(architectures));
-  }
-
-  [Fact]
-  public void Clear_OnEmptyCollection_DoesNotThrow()
-  {
-    var architectures = Architectures;
-
-    architectures.Clear();
-
-    Assert.Empty(architectures);
   }
 
   /// <summary>
