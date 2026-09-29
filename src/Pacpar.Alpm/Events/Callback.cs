@@ -95,85 +95,96 @@ public enum FetchResult
 /// </remarks>
 public sealed partial class Callback
 {
-  // The ALPM context, reached WEAKLY on purpose - the same reasoning as the lifetime token below.
-  // This instance stays rooted by its own ctx GCHandle until Alpm releases it, so a strong
-  // reference here would form GCHandle -> Callback -> SafeAlpmHandle -> Lifetime._root -> Alpm and
-  // pin the owning Alpm in memory forever: SafeAlpmHandle could never run its finalizer and the native handle would
-  // leak. Every native configuration call resolves this weak reference and hands the strong local
-  // to the [LibraryImport] overloads, so the runtime's SafeHandle marshaller holds a refcount on
-  // the ALPM context for the whole duration of the call.
+  // The ALPM context, guarded behind a SafeHandle so it is not disposed while
+  // callbacks are still active.
   private readonly SafeAlpmHandle _handle;
   private int _invokeDepth;
   private bool _detached;
 
-  // The ALPM handle's root lifetime token, reached WEAKLY on purpose. This instance stays rooted
-  // by its own ctx GCHandle until Alpm releases it, so a strong reference here would form
-  // GCHandle -> Callback -> token -> Alpm and pin the handle in memory forever: SafeAlpmHandle could never
-  // run its finalizer and the native handle would leak. An event or question callback only fires while a thread is
-  // inside a libalpm call that already keeps the owner alive, so the reference resolves in
-  // practice; if it ever does not, the snapshots degrade to unguarded views instead of crashing the
-  // thunk. The thunks still hand the token to AlpmEvent/AlpmQuestion.FromUnion so the package views
-  // they snapshot out of the union are born with it: those views stay readable exactly as long as
-  // the handle lives, and retire with it.
+  // The ALPM handle's root lifetime token
   private readonly Lifetime _lifetime;
 
   // do not Dispose this before the callback class has been disposed
   // otherwise it will screw up the callbacks
-  // additionally, no GC.KeepAlive(this) is needed in the callback methods,
-  // because the GCHandle keeps the Callback object alive
   private WeakGCHandle<Callback> _ctxHandle;
 
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void EventAgent(void* ctx, _alpm_event_t* eventT)
   {
-    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
-    if (!success || callback == null) return;
-    callback._invokeDepth++;
+    if (ctx == null) return;
     try
     {
-      SafeInvoke(() => callback.EventHandler?.Invoke(AlpmEvent.FromUnion(eventT, callback._lifetime)), callback.HandlerException);
+      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      if (!success || callback == null) return;
+      callback._invokeDepth++;
+      try
+      {
+        SafeInvoke(() => callback.EventHandler?.Invoke(AlpmEvent.FromUnion(eventT, callback._lifetime)), callback.HandlerException);
+      }
+      finally
+      {
+        callback._invokeDepth--;
+      }
     }
-    finally
+    catch
     {
-      callback._invokeDepth--;
+      // This catch is to guard against a race condition where the callback is disposed while the native code is still calling back. In that case, the WeakGCHandle will throw an exception, which we want to ignore.
     }
   }
 
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe int FetchAgent(void* ctx, byte* url, byte* localPath, int force)
   {
-    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
-    if (!success || callback == null) return -1;
-    callback._invokeDepth++;
+    // fails without a valid ctx
+    if (ctx == null) return -1;
     try
     {
-      return SafeInvoke(() =>
+      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      if (!success || callback == null) return -1;
+      callback._invokeDepth++;
+      try
       {
-        var urlString = NativeString.FromNative((IntPtr)url) ?? "";
-        var localPathString = NativeString.FromNative((IntPtr)localPath) ?? "";
+        return SafeInvoke(() =>
+        {
+          var urlString = NativeString.FromNative((IntPtr)url) ?? "";
+          var localPathString = NativeString.FromNative((IntPtr)localPath) ?? "";
 
-        return (int)(callback.FetchHandler?.Invoke(urlString, localPathString, force != 0) ?? FetchResult.Error);
-      }, (int)FetchResult.Error, callback.HandlerException);
+          return (int)(callback.FetchHandler?.Invoke(urlString, localPathString, force != 0) ?? FetchResult.Error);
+        }, (int)FetchResult.Error, callback.HandlerException);
+      }
+      finally
+      {
+        callback._invokeDepth--;
+      }
     }
-    finally
+    catch
     {
-      callback._invokeDepth--;
+      // This catch is to guard against a race condition where the callback is disposed while the native code is still calling back. In that case, the WeakGCHandle will throw an exception, which we want to identify as a failure.
+      return -1;
     }
   }
 
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void QuestionAgent(void* ctx, _alpm_question_t* questionT)
   {
-    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
-    if (!success || callback == null) return;
-    callback._invokeDepth++;
+    if (ctx == null) return;
     try
     {
-      SafeInvoke(() => callback.QuestionHandler?.Invoke(AlpmQuestion.FromUnion(questionT, callback._lifetime)), callback.HandlerException);
+      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      if (!success || callback == null) return;
+      callback._invokeDepth++;
+      try
+      {
+        SafeInvoke(() => callback.QuestionHandler?.Invoke(AlpmQuestion.FromUnion(questionT, callback._lifetime)), callback.HandlerException);
+      }
+      finally
+      {
+        callback._invokeDepth--;
+      }
     }
-    finally
+    catch
     {
-      callback._invokeDepth--;
+      // This catch is to guard against a race condition where the callback is disposed while the native code is still calling back. In that case, the WeakGCHandle will throw an exception, which we want to ignore.
     }
   }
 
@@ -181,36 +192,52 @@ public sealed partial class Callback
   private static unsafe void ProgressAgent(void* ctx, _alpm_progress_t progress, byte* pkg, int percent, nuint howmany,
     nuint current)
   {
-    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
-    if (!success || callback == null) return;
-    callback._invokeDepth++;
+    if (ctx == null) return;
     try
     {
-      SafeInvoke(
+      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      if (!success || callback == null) return;
+      callback._invokeDepth++;
+      try
+      {
+        SafeInvoke(
         () => callback.ProgressHandler?.Invoke((ProgressType)(uint)progress, NativeString.FromNative((nint)pkg) ?? "", percent,
           howmany, current), callback.HandlerException);
+      }
+      finally
+      {
+        callback._invokeDepth--;
+      }
     }
-    finally
+    catch
     {
-      callback._invokeDepth--;
+      // This catch is to guard against a race condition where the callback is disposed while the native code is still calling back. In that case, the WeakGCHandle will throw an exception, which we want to ignore.
     }
   }
 
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void DownloadAgent(void* ctx, byte* filename, _alpm_download_event_type_t eventType, void* data)
   {
-    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
-    if (!success || callback == null) return;
-    callback._invokeDepth++;
+    if (ctx == null) return;
     try
     {
-      SafeInvoke(
-        () => callback.DownloadHandler?.Invoke(NativeString.FromNative((nint)filename) ?? "",
-          AlpmDownloadEvent.FromUnion(eventType, data)), callback.HandlerException);
+      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      if (!success || callback == null) return;
+      callback._invokeDepth++;
+      try
+      {
+        SafeInvoke(
+          () => callback.DownloadHandler?.Invoke(NativeString.FromNative((nint)filename) ?? "",
+            AlpmDownloadEvent.FromUnion(eventType, data)), callback.HandlerException);
+      }
+      finally
+      {
+        callback._invokeDepth--;
+      }
     }
-    finally
+    catch
     {
-      callback._invokeDepth--;
+      // This catch is to guard against a race condition where the callback is disposed while the native code is still calling back. In that case, the WeakGCHandle will throw an exception, which we want to ignore.
     }
   }
 
@@ -222,7 +249,10 @@ public sealed partial class Callback
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void LogAgent(void* ctx, _alpm_loglevel_t level, byte* fmt, void* vaList)
   {
-    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+    if (ctx == null) return;
+    try
+    {
+      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
     if (!success || callback == null) return;
     callback._invokeDepth++;
     try
@@ -234,6 +264,10 @@ public sealed partial class Callback
     finally
     {
       callback._invokeDepth--;
+    }}
+    catch
+    {
+      // This catch is to guard against a race condition where the callback is disposed while the native code is still calling back. In that case, the WeakGCHandle will throw an exception, which we want to ignore.
     }
   }
 
