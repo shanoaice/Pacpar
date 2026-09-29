@@ -10,8 +10,6 @@ namespace Pacpar.Alpm;
 /// </summary>
 internal sealed unsafe class SafeAlpmHandle : SafeHandleZeroOrMinusOneIsInvalid
 {
-  private Callback? _callback;
-  private _alpm_errno_t* _initializeErrno;
   private volatile int _releaseResult = -1;
 
   internal SafeAlpmHandle() : base(ownsHandle: true)
@@ -23,12 +21,6 @@ internal sealed unsafe class SafeAlpmHandle : SafeHandleZeroOrMinusOneIsInvalid
     SetHandle((nint)handle);
   }
 
-  internal void SetContext(Callback callback, _alpm_errno_t* initializeErrno)
-  {
-    _callback = callback;
-    _initializeErrno = initializeErrno;
-  }
-
   /// <summary>
   /// Whether the native <c>alpm_release</c> invocation succeeded (returned 0).
   /// </summary>
@@ -38,17 +30,6 @@ internal sealed unsafe class SafeAlpmHandle : SafeHandleZeroOrMinusOneIsInvalid
   {
     var err = NativeMethods.alpm_release((_alpm_handle_t*)handle);
     _releaseResult = err;
-
-    if (err == 0)
-    {
-      _callback?.Dispose();
-    }
-
-    if (_initializeErrno != null)
-    {
-      NativeMemory.Free(_initializeErrno);
-      _initializeErrno = null;
-    }
 
     return err == 0;
   }

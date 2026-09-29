@@ -102,7 +102,7 @@ public sealed partial class Callback
   // leak. Every native configuration call resolves this weak reference and hands the strong local
   // to the [LibraryImport] overloads, so the runtime's SafeHandle marshaller holds a refcount on
   // the ALPM context for the whole duration of the call.
-  private readonly WeakReference<SafeAlpmHandle> _handleRef;
+  private readonly SafeAlpmHandle _handle;
   private int _invokeDepth;
   private bool _detached;
 
@@ -115,53 +115,23 @@ public sealed partial class Callback
   // thunk. The thunks still hand the token to AlpmEvent/AlpmQuestion.FromUnion so the package views
   // they snapshot out of the union are born with it: those views stay readable exactly as long as
   // the handle lives, and retire with it.
-  private readonly WeakReference<Lifetime> _lifetimeRef;
-
-  private Lifetime? LifetimeOrNull() =>
-    _lifetimeRef.TryGetTarget(out var lifetime) ? lifetime : null;
-
-  /// <summary>
-  /// Resolves the owning ALPM context for a native configuration call.
-  /// </summary>
-  /// <remarks>
-  /// The context is held weakly, so this can fail once the owning <see cref="Alpm"/> has been
-  /// collected. That only happens after <c>alpm_release</c> returned, at which point
-  /// <see cref="ValidateCanConfigure"/> has already marked this instance detached; reaching here
-  /// with no target means the native configuration would touch a released handle, so it must not
-  /// proceed.
-  /// </remarks>
-  private SafeAlpmHandle HandleOrThrow()
-  {
-    if (!_handleRef.TryGetTarget(out var handle))
-    {
-      throw new ObjectDisposedException(
-        nameof(Alpm),
-        "The ALPM handle that owns this callback has been released.");
-    }
-
-    return handle;
-  }
+  private readonly Lifetime _lifetime;
 
   // do not Dispose this before the callback class has been disposed
   // otherwise it will screw up the callbacks
-  private GCHandle<Callback> _ctxHandle;
-
-  private Action<AlpmEvent>? _eventHandler;
-  private Func<string, string, bool, FetchResult>? _fetchHandler;
-  private Action<AlpmQuestion>? _questionHandler;
-  private Action<string, AlpmDownloadEvent>? _downloadHandler;
-  private Action<ProgressType, string, int, nuint, nuint>? _progressHandler;
-  private Action<LogLevel, string>? _logHandler;
+  // additionally, no GC.KeepAlive(this) is needed in the callback methods,
+  // because the GCHandle keeps the Callback object alive
+  private WeakGCHandle<Callback> _ctxHandle;
 
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void EventAgent(void* ctx, _alpm_event_t* eventT)
   {
-    var callback = ctx != null ? GCHandle<Callback>.FromIntPtr((nint)ctx).Target : null;
-    if (callback == null) return;
+    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+    if (!success || callback == null) return;
     callback._invokeDepth++;
     try
     {
-      SafeInvoke(() => callback.EventHandler?.Invoke(AlpmEvent.FromUnion(eventT, callback.LifetimeOrNull())), callback.HandlerException);
+      SafeInvoke(() => callback.EventHandler?.Invoke(AlpmEvent.FromUnion(eventT, callback._lifetime)), callback.HandlerException);
     }
     finally
     {
@@ -172,8 +142,8 @@ public sealed partial class Callback
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe int FetchAgent(void* ctx, byte* url, byte* localPath, int force)
   {
-    var callback = ctx != null ? GCHandle<Callback>.FromIntPtr((nint)ctx).Target : null;
-    if (callback == null) return -1;
+    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+    if (!success || callback == null) return -1;
     callback._invokeDepth++;
     try
     {
@@ -194,12 +164,12 @@ public sealed partial class Callback
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void QuestionAgent(void* ctx, _alpm_question_t* questionT)
   {
-    var callback = ctx != null ? GCHandle<Callback>.FromIntPtr((nint)ctx).Target : null;
-    if (callback == null) return;
+    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+    if (!success || callback == null) return;
     callback._invokeDepth++;
     try
     {
-      SafeInvoke(() => callback.QuestionHandler?.Invoke(AlpmQuestion.FromUnion(questionT, callback.LifetimeOrNull())), callback.HandlerException);
+      SafeInvoke(() => callback.QuestionHandler?.Invoke(AlpmQuestion.FromUnion(questionT, callback._lifetime)), callback.HandlerException);
     }
     finally
     {
@@ -211,8 +181,8 @@ public sealed partial class Callback
   private static unsafe void ProgressAgent(void* ctx, _alpm_progress_t progress, byte* pkg, int percent, nuint howmany,
     nuint current)
   {
-    var callback = ctx != null ? GCHandle<Callback>.FromIntPtr((nint)ctx).Target : null;
-    if (callback == null) return;
+    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+    if (!success || callback == null) return;
     callback._invokeDepth++;
     try
     {
@@ -229,8 +199,8 @@ public sealed partial class Callback
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void DownloadAgent(void* ctx, byte* filename, _alpm_download_event_type_t eventType, void* data)
   {
-    var callback = ctx != null ? GCHandle<Callback>.FromIntPtr((nint)ctx).Target : null;
-    if (callback == null) return;
+    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+    if (!success || callback == null) return;
     callback._invokeDepth++;
     try
     {
@@ -252,8 +222,8 @@ public sealed partial class Callback
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void LogAgent(void* ctx, _alpm_loglevel_t level, byte* fmt, void* vaList)
   {
-    var callback = ctx != null ? GCHandle<Callback>.FromIntPtr((nint)ctx).Target : null;
-    if (callback == null) return;
+    var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+    if (!success || callback == null) return;
     callback._invokeDepth++;
     try
     {
@@ -269,12 +239,12 @@ public sealed partial class Callback
 
   internal Callback(SafeAlpmHandle alpmHandle, Lifetime lifetime)
   {
-    _handleRef = new WeakReference<SafeAlpmHandle>(alpmHandle);
-    _lifetimeRef = new WeakReference<Lifetime>(lifetime);
-    _ctxHandle = new GCHandle<Callback>(this);
+    _handle = alpmHandle;
+    _lifetime = lifetime;
+    _ctxHandle = new WeakGCHandle<Callback>(this);
   }
 
-  private void ValidateCanConfigure()
+  private void ConfigureGuard()
   {
     ObjectDisposedException.ThrowIf(_detached, this);
     if (_invokeDepth != 0)
@@ -288,26 +258,11 @@ public sealed partial class Callback
   {
     if (err != 0)
     {
-      var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(HandleOrThrow()));
+      var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
       GC.KeepAlive(this);
       throw ex;
     }
   }
-
-  /// <summary>
-  /// <c>alpm_option_set_logcb</c>, declared by hand rather than taken from the generated bindings.
-  /// </summary>
-  /// <remarks>
-  /// The generated declaration names the <c>va_list</c> parameter <c>__va_list_tag*</c>, which is
-  /// the x86_64 SysV representation of it. That type does not exist on AArch64 (where bindgen emits
-  /// a 32-byte <c>va_list</c> struct instead), so regenerating the bindings on another architecture
-  /// would leave this call site referring to a type that is no longer generated. Declaring the
-  /// parameter as <c>void*</c> keeps the managed side architecture-independent: a
-  /// <c>va_list</c> argument is delivered as a pointer on every ABI .NET supports on Linux.
-  /// </remarks>
-  [LibraryImport("libalpm", EntryPoint = "alpm_option_set_logcb")]
-  private static unsafe partial int SetLogCallback(SafeAlpmHandle handle,
-    delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, void*, void> callback, void* ctx);
 
   /// <summary>
   /// Receives libalpm event notifications. Setting a non-null delegate registers the native event
@@ -315,15 +270,20 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Action<AlpmEvent>? EventHandler
   {
-    get => _eventHandler;
+    get => field;
     set
     {
-      ValidateCanConfigure();
-      _eventHandler = value;
-      delegate* unmanaged[Cdecl]<void*, _alpm_event_t*, void> shim = value != null ? &EventAgent : null;
-      void* ctx = value != null ? (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle) : null;
-      ThrowIfError(NativeMethods.alpm_option_set_eventcb(HandleOrThrow(), shim, ctx));
-      GC.KeepAlive(this);
+      ConfigureGuard();
+      if (value == null)
+      {
+        ThrowIfError(NativeMethods.alpm_option_set_eventcb(_handle, null, null));
+        field = null;
+        return;
+      }
+
+      field = value;
+      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      ThrowIfError(NativeMethods.alpm_option_set_eventcb(_handle, &EventAgent, ctx));
     }
   }
 
@@ -333,15 +293,20 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Func<string, string, bool, FetchResult>? FetchHandler
   {
-    get => _fetchHandler;
+    get => field;
     set
     {
-      ValidateCanConfigure();
-      _fetchHandler = value;
-      delegate* unmanaged[Cdecl]<void*, byte*, byte*, int, int> shim = value != null ? &FetchAgent : null;
-      void* ctx = value != null ? (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle) : null;
-      ThrowIfError(NativeMethods.alpm_option_set_fetchcb(HandleOrThrow(), shim, ctx));
-      GC.KeepAlive(this);
+      ConfigureGuard();
+      if (value == null)
+      {
+        ThrowIfError(NativeMethods.alpm_option_set_fetchcb(_handle, null, null));
+        field = null;
+        return;
+      }
+
+      field = value;
+      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      ThrowIfError(NativeMethods.alpm_option_set_fetchcb(_handle, &FetchAgent, ctx));
     }
   }
 
@@ -351,15 +316,19 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Action<AlpmQuestion>? QuestionHandler
   {
-    get => _questionHandler;
+    get => field;
     set
     {
-      ValidateCanConfigure();
-      _questionHandler = value;
-      delegate* unmanaged[Cdecl]<void*, _alpm_question_t*, void> shim = value != null ? &QuestionAgent : null;
-      void* ctx = value != null ? (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle) : null;
-      ThrowIfError(NativeMethods.alpm_option_set_questioncb(HandleOrThrow(), shim, ctx));
-      GC.KeepAlive(this);
+      ConfigureGuard();
+      if (value == null)
+      {
+        ThrowIfError(NativeMethods.alpm_option_set_questioncb(_handle, null, null));
+        return;
+      }
+
+      field = value;
+      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      ThrowIfError(NativeMethods.alpm_option_set_questioncb(_handle, &QuestionAgent, ctx));
     }
   }
 
@@ -371,15 +340,20 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Action<string, AlpmDownloadEvent>? DownloadHandler
   {
-    get => _downloadHandler;
+    get => field;
     set
     {
-      ValidateCanConfigure();
-      _downloadHandler = value;
-      delegate* unmanaged[Cdecl]<void*, byte*, _alpm_download_event_type_t, void*, void> shim = value != null ? &DownloadAgent : null;
-      void* ctx = value != null ? (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle) : null;
-      ThrowIfError(NativeMethods.alpm_option_set_dlcb(HandleOrThrow(), shim, ctx));
-      GC.KeepAlive(this);
+      ConfigureGuard();
+      if (value == null)
+      {
+        ThrowIfError(NativeMethods.alpm_option_set_dlcb(_handle, null, null));
+        field = null;
+        return;
+      }
+
+      field = value;
+      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      ThrowIfError(NativeMethods.alpm_option_set_dlcb(_handle, &DownloadAgent, ctx));
     }
   }
 
@@ -389,14 +363,20 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Action<ProgressType, string, int, nuint, nuint>? ProgressHandler
   {
-    get => _progressHandler;
+    get => field;
     set
     {
-      ValidateCanConfigure();
-      _progressHandler = value;
-      delegate* unmanaged[Cdecl]<void*, _alpm_progress_t, byte*, int, nuint, nuint, void> shim = value != null ? &ProgressAgent : null;
-      void* ctx = value != null ? (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle) : null;
-      ThrowIfError(NativeMethods.alpm_option_set_progresscb(HandleOrThrow(), shim, ctx));
+      ConfigureGuard();
+      if (value == null)
+      {
+        ThrowIfError(NativeMethods.alpm_option_set_progresscb(_handle, null, null));
+        field = null;
+        return;
+      }
+
+      field = value;
+      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      ThrowIfError(NativeMethods.alpm_option_set_progresscb(_handle, &ProgressAgent, ctx));
       GC.KeepAlive(this);
     }
   }
@@ -412,14 +392,20 @@ public sealed partial class Callback
   /// </remarks>
   public unsafe Action<LogLevel, string>? LogHandler
   {
-    get => _logHandler;
+    get => field;
     set
     {
-      ValidateCanConfigure();
-      _logHandler = value;
-      delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, void*, void> shim = value != null ? &LogAgent : null;
-      void* ctx = value != null ? (void*)GCHandle<Callback>.ToIntPtr(_ctxHandle) : null;
-      ThrowIfError(SetLogCallback(HandleOrThrow(), shim, ctx));
+      ConfigureGuard();
+      if (value == null)
+      {
+        ThrowIfError(NativeMethods.alpm_option_set_logcb(_handle, null, null));
+        field = null;
+        return;
+      }
+
+      field = value;
+      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      ThrowIfError(NativeMethods.alpm_option_set_logcb(_handle, &LogAgent, ctx));
     }
   }
 

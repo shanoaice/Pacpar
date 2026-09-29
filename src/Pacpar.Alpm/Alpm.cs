@@ -57,7 +57,6 @@ public class Alpm : IDisposable
     _lifetime = Lifetime.CreateRoot(this, "the ALPM handle");
     Options = new AlpmOptions(_handle, _lifetime);
     Callback = new Callback(_handle, _lifetime);
-    _handle.SetContext(Callback, _initializeErrno);
   }
 
   private void ThrowIfDisposed()

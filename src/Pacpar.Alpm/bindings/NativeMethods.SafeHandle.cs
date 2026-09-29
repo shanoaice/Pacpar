@@ -68,6 +68,9 @@ public static unsafe partial class NativeMethods
   [LibraryImport(__DllName, EntryPoint = "alpm_option_set_progresscb")]
   internal static partial int alpm_option_set_progresscb(SafeAlpmHandle handle, delegate* unmanaged[Cdecl]<void*, _alpm_progress_t, byte*, int, nuint, nuint, void> cb, void* ctx);
 
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_set_logcb")]
+  internal static partial int alpm_option_set_logcb(SafeAlpmHandle handle, delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, void*, void> cb, void* ctx);
+
   [LibraryImport(__DllName, EntryPoint = "alpm_option_get_root")]
   internal static partial byte* alpm_option_get_root(SafeAlpmHandle handle);
 
