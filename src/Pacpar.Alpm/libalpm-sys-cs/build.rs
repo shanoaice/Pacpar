@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut include = lib
         .include_paths
         .iter()
-        .map(|i| format!("-I{}", i.display().to_string()))
+        .map(|i| format!("-I{}", i.display()))
         .collect::<Vec<_>>();
 
     println!("cargo:rerun-if-env-changed=ALPM_INCLUDE_DIR");
