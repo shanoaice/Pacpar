@@ -14,10 +14,10 @@ namespace Pacpar.Alpm;
 /// decay and AArch64 by reference, and likewise on riscv64, powerpc64le, s390x, armv7, i686 and
 /// loongarch64 -- so the C# side never has to name the type.
 /// </remarks>
-internal static unsafe class LogMessageFormatter
+internal static unsafe partial class LogMessageFormatter
 {
-  [DllImport("libc", EntryPoint = "vasprintf", CallingConvention = CallingConvention.Cdecl)]
-  private static extern int Vasprintf(byte** buffer, byte* format, void* vaList);
+  [LibraryImport("libc", EntryPoint = "vasprintf")]
+  private static partial int Vasprintf(byte** buffer, byte* format, void* vaList);
 
   /// <summary>
   /// Formats one log message. Returns <see langword="null"/> when libalpm passed a null format

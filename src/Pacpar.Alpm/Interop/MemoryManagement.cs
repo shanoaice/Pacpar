@@ -5,10 +5,10 @@ using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm;
 
-internal static class MemoryManagement
+internal static partial class MemoryManagement
 {
-  [DllImport("libc", EntryPoint = "free", CallingConvention = CallingConvention.Cdecl)]
-  internal extern unsafe static void CFree(void* ptr);
+  [LibraryImport("libc", EntryPoint = "free")]
+  internal unsafe static partial void CFree(void* ptr);
 
   /// <summary>
   /// libc <c>free</c> as an element destructor for <c>alpm_list_free_inner</c>.
