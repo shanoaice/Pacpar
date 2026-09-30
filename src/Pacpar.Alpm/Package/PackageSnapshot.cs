@@ -64,7 +64,6 @@ public sealed class PackageSnapshot
     if (includeFiles) Files = [.. package.Files];
   }
 
-  /// <summary>The package name; libalpm always sets one.</summary>
   public string Name { get; }
 
   public PackageVersion Version { get; }

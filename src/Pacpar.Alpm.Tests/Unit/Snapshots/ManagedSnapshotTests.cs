@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using Pacpar.Alpm.Bindings;
-using Pacpar.Alpm.List;
+using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 
 /// <summary>
 /// Locks in the snapshot contract for the value types that used to be borrowed views over
@@ -310,74 +310,205 @@ public sealed unsafe class ManagedSnapshotTests
   [Fact]
   public void QuestionPayload_CopiesItsFieldsOutOfTheCallbackUnion()
   {
-    var oldPackage = NativeString.ToNative("pacpar-old");
-    var newPackage = NativeString.ToNative("pacpar-new");
-    var newDatabase = NativeString.ToNative("core");
-    var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+    using var env = new IsolatedAlpmEnvironment();
+    var pkgDir = Path.Combine(Path.GetTempPath(), "pacpar-snapshot-" + Guid.NewGuid().ToString("n"));
+    Directory.CreateDirectory(pkgDir);
 
     try
     {
-      native->type_ = _alpm_question_type_t.ALPM_QUESTION_REPLACE_PKG;
-      native->replace.replace = 1;
-      native->replace.oldpkg = (_alpm_pkg_t*)oldPackage;
-      native->replace.newpkg = (_alpm_pkg_t*)newPackage;
-      native->replace.newdb = (_alpm_db_t*)newDatabase;
+      using var oldPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-old"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+      using var newPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-new"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+      var db = env.Alpm.RegisterSyncDatabase("core", SigLevel.ALPM_SIG_USE_DEFAULT);
 
-      var payload = AlpmQuestion.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
+      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+      try
+      {
+        native->type_ = _alpm_question_type_t.ALPM_QUESTION_REPLACE_PKG;
+        native->replace.replace = 1;
+        native->replace.oldpkg = oldPkg.BackingStruct;
+        native->replace.newpkg = newPkg.BackingStruct;
+        native->replace.newdb = db.BackingStruct;
 
-      *native = default;
-      NativeMemory.Free((void*)(nint)oldPackage);
-      oldPackage = null;
-      NativeMemory.Free((void*)(nint)newPackage);
-      newPackage = null;
-      NativeMemory.Free((void*)(nint)newDatabase);
-      newDatabase = null;
+        var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
 
-      var replace = Assert.IsType<AlpmQuestion.ReplacePackage>(payload);
-      Assert.True(replace.Replace);
-      Assert.Equal("pacpar-old", replace.OldPackage);
-      Assert.Equal("pacpar-new", replace.NewPackage);
-      Assert.Equal("core", replace.NewDatabase);
+        *native = default;
+
+        var replace = Assert.IsType<AlpmQuestion.ReplacePackage>(payload);
+        Assert.True(replace.Replace);
+        Assert.Equal("pacpar-old", replace.OldPackage.Name);
+        Assert.Equal("pacpar-new", replace.NewPackage.Name);
+        Assert.Equal("core", replace.NewDatabase);
+      }
+      finally
+      {
+        NativeMemory.Free((void*)(nint)native);
+      }
     }
     finally
     {
-      if (oldPackage != null) NativeMemory.Free((void*)(nint)oldPackage);
-      if (newPackage != null) NativeMemory.Free((void*)(nint)newPackage);
-      if (newDatabase != null) NativeMemory.Free((void*)(nint)newDatabase);
-      NativeMemory.Free((void*)(nint)native);
+      if (Directory.Exists(pkgDir))
+      {
+        Directory.Delete(pkgDir, recursive: true);
+      }
+    }
+  }
+
+  [Fact]
+  public void InstallIgnoredPackage_CopiesItsFieldsOutOfTheCallbackUnion()
+  {
+    using var env = new IsolatedAlpmEnvironment();
+    var pkgDir = Path.Combine(Path.GetTempPath(), "pacpar-ignorepkg-" + Guid.NewGuid().ToString("n"));
+    Directory.CreateDirectory(pkgDir);
+
+    try
+    {
+      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "ignored-pkg"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+
+      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+      try
+      {
+        native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
+        native->install_ignorepkg.install = 1;
+        native->install_ignorepkg.pkg = pkg.BackingStruct;
+
+        var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
+
+        *native = default;
+
+        var question = Assert.IsType<AlpmQuestion.InstallIgnoredPackage>(payload);
+        Assert.True(question.Install);
+        Assert.Equal("ignored-pkg", question.Package.Name);
+      }
+      finally
+      {
+        NativeMemory.Free((void*)(nint)native);
+      }
+    }
+    finally
+    {
+      if (Directory.Exists(pkgDir))
+      {
+        Directory.Delete(pkgDir, recursive: true);
+      }
+    }
+  }
+
+  [Fact]
+  public void ConflictPackage_CopiesItsFieldsOutOfTheCallbackUnion()
+  {
+    using var env = new IsolatedAlpmEnvironment();
+    var pkgDir = Path.Combine(Path.GetTempPath(), "pacpar-conflict-" + Guid.NewGuid().ToString("n"));
+    Directory.CreateDirectory(pkgDir);
+
+    try
+    {
+      using var pkg1 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-one"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+      using var pkg2 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-two"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+
+      var conflictStruct = (_alpm_conflict_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_conflict_t));
+      var dependStruct = (_alpm_depend_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_depend_t));
+      var nameBuf = NativeString.ToNative("dep-name");
+      var verBuf = NativeString.ToNative("1.0");
+      var descBuf = NativeString.ToNative("dep-desc");
+      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+
+      try
+      {
+        dependStruct->name = nameBuf;
+        dependStruct->version = verBuf;
+        dependStruct->desc = descBuf;
+
+        conflictStruct->package1 = pkg1.BackingStruct;
+        conflictStruct->package2 = pkg2.BackingStruct;
+        conflictStruct->reason = dependStruct;
+
+        native->type_ = _alpm_question_type_t.ALPM_QUESTION_CONFLICT_PKG;
+        native->conflict.remove = 1;
+        native->conflict.conflict = conflictStruct;
+
+        var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
+
+        *native = default;
+        *conflictStruct = default;
+        *dependStruct = default;
+
+        var conflict = Assert.IsType<AlpmQuestion.ConflictPkg>(payload);
+        Assert.True(conflict.Remove);
+        Assert.Equal("pkg-one", conflict.Package1.Name);
+        Assert.Equal("pkg-two", conflict.Package2.Name);
+        Assert.Equal("dep-name", conflict.Name);
+        Assert.Equal("1.0", conflict.Version);
+        Assert.Equal("dep-desc", conflict.Description);
+      }
+      finally
+      {
+        NativeMemory.Free((void*)(nint)nameBuf);
+        NativeMemory.Free((void*)(nint)verBuf);
+        NativeMemory.Free((void*)(nint)descBuf);
+        NativeMemory.Free((void*)(nint)dependStruct);
+        NativeMemory.Free((void*)(nint)conflictStruct);
+        NativeMemory.Free((void*)(nint)native);
+      }
+    }
+    finally
+    {
+      if (Directory.Exists(pkgDir))
+      {
+        Directory.Delete(pkgDir, recursive: true);
+      }
     }
   }
 
   /// <summary>
   /// The member list of a question lives in the same callback-scoped memory as the union, so it is
-  /// copied as well - a view would answer with an empty or dangling list here.
+  /// copied as well - and so are the packages it points at, which belong to the transaction or the
+  /// database rather than to the callback.
   /// </summary>
   [Fact]
   public void QuestionPayload_CopiesTheMemberList()
   {
-    var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
-    var members = NativeMethods.alpm_list_add(null, null);
+    using var env = new IsolatedAlpmEnvironment();
+    var pkgDir = Path.Combine(Path.GetTempPath(), "pacpar-member-list-" + Guid.NewGuid().ToString("n"));
+    Directory.CreateDirectory(pkgDir);
 
     try
     {
-      native->type_ = _alpm_question_type_t.ALPM_QUESTION_REMOVE_PKGS;
-      native->remove_pkgs.skip = 0;
-      native->remove_pkgs.packages = members;
+      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "member-list"),
+        full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+      var members = NativeMethods.alpm_list_add(null, pkg.BackingStruct);
 
-      // The REMOVE_PKGS branch borrows the member list under the passed token and copies the
-      // PackageView snapshots out of it, so the token must be alive while the union is.
-      var payload = AlpmQuestion.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
+      try
+      {
+        native->type_ = _alpm_question_type_t.ALPM_QUESTION_REMOVE_PKGS;
+        native->remove_pkgs.skip = 0;
+        native->remove_pkgs.packages = members;
 
-      *native = default;
-      NativeMethods.alpm_list_free(members);
-      members = null;
+        // The REMOVE_PKGS branch traverses the member list and copies each package out of it,
+        // so the resulting payload retains no native memory.
+        var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
 
-      Assert.Single(Assert.IsType<AlpmQuestion.RemovePkgs>(payload).Packages);
+        *native = default;
+        NativeMethods.alpm_list_free(members);
+        members = null;
+        pkg.Dispose();
+
+        var remove = Assert.IsType<AlpmQuestion.RemovePkgs>(payload);
+        Assert.False(remove.Skip);
+        Assert.Equal("member-list", Assert.Single(remove.Packages).Name);
+      }
+      finally
+      {
+        if (members != null) NativeMethods.alpm_list_free(members);
+        NativeMemory.Free((void*)(nint)native);
+      }
     }
     finally
     {
-      if (members != null) NativeMethods.alpm_list_free(members);
-      NativeMemory.Free((void*)(nint)native);
+      if (Directory.Exists(pkgDir))
+      {
+        Directory.Delete(pkgDir, recursive: true);
+      }
     }
   }
 

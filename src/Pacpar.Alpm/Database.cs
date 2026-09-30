@@ -19,6 +19,8 @@ public unsafe class Database
 {
   private readonly _alpm_db_t* backingStruct;
 
+  internal _alpm_db_t* BackingStruct => backingStruct;
+
   private _alpm_handle_t* RawHandle => (_alpm_handle_t*)NativeMethods.alpm_db_get_handle(backingStruct);
 
   /// <summary>

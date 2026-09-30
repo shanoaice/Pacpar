@@ -151,7 +151,7 @@ internal static unsafe IReadOnlyList<T> Take(
 | `Transactions.cs`: `GetAddedPackages()` / `GetRemoved` | `alpm_trans_get_add` | `this.Lifetime` (Transaction child token) | `trans.Dispose()`, `Alpm.Dispose()` |
 | `Transactions.cs`: `AddPackage(LoadedPackage)` | Staged package | `this.Lifetime` (Transaction child token) | `trans.Dispose()`, `Alpm.Dispose()` |
 | `Callback.cs`: `EventType.FromUnion` | Native event struct | Root `_lifetime` (via weak reference) | `Alpm.Dispose()` |
-| `Callback.cs`: `QuestionType.FromUnion` | Native question struct | Root `_lifetime` (via weak reference) | `Alpm.Dispose()` |
+| `Callback.cs`: `AlpmQuestion.FromUnion` | Native question struct and the packages it points at | Copied eagerly; each package becomes a `PackageSnapshot` (`AlpmBindingConfig.QuestionPayloadIncludeFiles` picks whether files are copied) | None: the payload retains no native memory |
 | `Options.cs`: 9 Option Collections | `alpm_option_get_*` | Root `_lifetime` | `Alpm.Dispose()` |
 
 ---

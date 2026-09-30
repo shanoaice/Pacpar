@@ -40,6 +40,7 @@ Reports land in `BenchmarkDotNet.Artifacts/results/` (markdown, CSV, HTML).
 | `ColdLoadBenchmarks` | What does libalpm's lazy loading actually cost on first access (`INFRQ_BASE` -> `INFRQ_DESC` -> `INFRQ_FILES`)? |
 | `NullMissBenchmarks` | How expensive is re-entering the P/Invoke boundary for an absent property, and what does the bool-flag fix buy? |
 | `ListTraversalBenchmarks` | What does one dependency-list pass cost: streaming the enumerator, re-reading the property, or materializing with `ToArray`? |
+| `QuestionPayloadLifetimeCostBenchmarks` | What does fixing the question payload's lifetime granularity cost per package: resolving the owning-database token (nanoseconds, no garbage) or copying the package eagerly into a `PackageSnapshot` (microseconds to milliseconds, with the file list as the expensive part)? |
 
 ## Methodology
 
