@@ -304,7 +304,7 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Action<AlpmEvent>? EventHandler
   {
-    get => field;
+    get;
     set
     {
       ConfigureGuard();
@@ -327,7 +327,7 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Func<string, string, bool, FetchResult>? FetchHandler
   {
-    get => field;
+    get;
     set
     {
       ConfigureGuard();
@@ -350,7 +350,7 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Action<AlpmQuestion>? QuestionHandler
   {
-    get => field;
+    get;
     set
     {
       ConfigureGuard();
@@ -374,7 +374,7 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Action<string, AlpmDownloadEvent>? DownloadHandler
   {
-    get => field;
+    get;
     set
     {
       ConfigureGuard();
@@ -397,7 +397,7 @@ public sealed partial class Callback
   /// </summary>
   public unsafe Action<ProgressType, string, int, nuint, nuint>? ProgressHandler
   {
-    get => field;
+    get;
     set
     {
       ConfigureGuard();
@@ -426,7 +426,7 @@ public sealed partial class Callback
   /// </remarks>
   public unsafe Action<LogLevel, string>? LogHandler
   {
-    get => field;
+    get;
     set
     {
       ConfigureGuard();
