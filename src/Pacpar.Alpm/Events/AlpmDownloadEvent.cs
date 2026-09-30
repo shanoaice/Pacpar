@@ -44,14 +44,14 @@ public abstract class AlpmDownloadEvent
   {
     internal unsafe Progress(_alpm_download_event_progress_t* progress)
     {
-      Downloaded = progress->downloaded;
-      Total = progress->total;
+      Downloaded = progress->downloaded.Value;
+      Total = progress->total.Value;
     }
 
     /// <summary>Gets the number of bytes downloaded so far.</summary>
-    public CLong Downloaded { get; }
+    public long Downloaded { get; }
     /// <summary>Gets the expected total size of the download in bytes.</summary>
-    public CLong Total { get; }
+    public long Total { get; }
   }
 
   /// <summary>Download retry event.</summary>
@@ -71,12 +71,12 @@ public abstract class AlpmDownloadEvent
   {
     internal unsafe Completed(_alpm_download_event_completed_t* completed)
     {
-      Total = completed->total;
+      Total = completed->total.Value;
       Result = completed->result;
     }
 
     /// <summary>Gets the total size of the downloaded file in bytes.</summary>
-    public CLong Total { get; }
+    public long Total { get; }
 
     /// <summary>Gets libalpm's raw download result code: 0 on success, 1 when the file was already up to date, or -1 on error.</summary>
     public int Result { get; }

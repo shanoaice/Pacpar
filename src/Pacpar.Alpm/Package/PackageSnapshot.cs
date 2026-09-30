@@ -47,8 +47,8 @@ public sealed class PackageSnapshot
     Md5Sum = package.Md5Sum;
     Sha256Sum = package.Sha256Sum;
     Arch = package.Arch;
-    Size = package.Size.Value;
-    InstalledSize = package.InstalledSize.Value;
+    Size = package.Size;
+    InstalledSize = package.InstalledSize;
     Origin = package.Origin;
     Reason = package.Reason;
     Validation = package.Validation;

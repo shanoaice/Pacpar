@@ -328,13 +328,13 @@ public abstract class AlpmEvent
     internal unsafe PackageRetrieveStart(_alpm_event_t* native)
     {
       PackageCount = native->pkg_retrieve.num;
-      TotalSize = native->pkg_retrieve.total_size;
+      TotalSize = native->pkg_retrieve.total_size.Value;
     }
 
     /// <summary>Gets the number of packages to be retrieved.</summary>
     public nuint PackageCount { get; }
     /// <summary>Gets the total download size in bytes across all packages to be retrieved.</summary>
-    public CLong TotalSize { get; }
+    public long TotalSize { get; }
   }
 
   /// <summary>Triggered when package retrieval for a transaction completes successfully.</summary>
@@ -343,13 +343,13 @@ public abstract class AlpmEvent
     internal unsafe PackageRetrieveDone(_alpm_event_t* native)
     {
       PackageCount = native->pkg_retrieve.num;
-      TotalSize = native->pkg_retrieve.total_size;
+      TotalSize = native->pkg_retrieve.total_size.Value;
     }
 
     /// <summary>Gets the number of packages retrieved.</summary>
     public nuint PackageCount { get; }
     /// <summary>Gets the total download size in bytes across all retrieved packages.</summary>
-    public CLong TotalSize { get; }
+    public long TotalSize { get; }
   }
 
   /// <summary>Triggered when package retrieval for a transaction fails.</summary>
@@ -358,12 +358,12 @@ public abstract class AlpmEvent
     internal unsafe PackageRetrieveFailed(_alpm_event_t* native)
     {
       PackageCount = native->pkg_retrieve.num;
-      TotalSize = native->pkg_retrieve.total_size;
+      TotalSize = native->pkg_retrieve.total_size.Value;
     }
 
     /// <summary>Gets the number of packages that were to be retrieved.</summary>
     public nuint PackageCount { get; }
     /// <summary>Gets the total download size in bytes across all packages that were to be retrieved.</summary>
-    public CLong TotalSize { get; }
+    public long TotalSize { get; }
   }
 }

@@ -151,7 +151,7 @@ public sealed unsafe class ManagedSnapshotTests
 
       Assert.Equal("usr/bin/probe", file.Name);
       Assert.Equal(0b111_101_101u, file.Mode);
-      Assert.Equal(4096L, file.Size.Value);
+      Assert.Equal(4096L, file.Size);
     }
     finally
     {
@@ -397,7 +397,7 @@ public sealed unsafe class ManagedSnapshotTests
       data->result = -1;
 
       var completed = Assert.IsType<AlpmDownloadEvent.Completed>(payload);
-      Assert.Equal(1024L, completed.Total.Value);
+      Assert.Equal(1024L, completed.Total);
       Assert.Equal(0, completed.Result);
       Assert.True(completed.IsSuccessful);
       Assert.False(completed.IsError);

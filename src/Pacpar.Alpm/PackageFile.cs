@@ -15,7 +15,7 @@ public readonly struct PackageFile
   internal unsafe PackageFile(_alpm_file_t* backingStruct)
   {
     Mode = backingStruct->mode;
-    Size = backingStruct->size;
+    Size = backingStruct->size.Value;
     Name = NativeString.FromNative((nint)backingStruct->name);
   }
 
@@ -29,7 +29,7 @@ public readonly struct PackageFile
   /// <summary>
   /// The size of the file in bytes.
   /// </summary>
-  public CLong Size { get; }
+  public long Size { get; }
 
   /// <summary>
   /// The relative path of the file within the package.

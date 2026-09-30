@@ -341,28 +341,28 @@ public abstract unsafe class PackageBase
   /// <summary>
   /// The download size of the package archive in bytes.
   /// </summary>
-  public CLong Size
+  public long Size
   {
     get
     {
       ThrowIfDisposed();
       var size = NativeMethods.alpm_pkg_get_size(BackingStruct);
       GC.KeepAlive(this);
-      return size;
+      return size.Value;
     }
   }
 
   /// <summary>
   /// The unpacked size of the package when installed on disk, in bytes.
   /// </summary>
-  public CLong InstalledSize
+  public long InstalledSize
   {
     get
     {
       ThrowIfDisposed();
-      var isize = NativeMethods.alpm_pkg_get_isize(BackingStruct);
+      var installedSize = NativeMethods.alpm_pkg_get_isize(BackingStruct);
       GC.KeepAlive(this);
-      return isize;
+      return installedSize.Value;
     }
   }
 
