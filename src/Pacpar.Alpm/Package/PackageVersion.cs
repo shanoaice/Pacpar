@@ -8,9 +8,7 @@ namespace Pacpar.Alpm;
 /// </summary>
 /// <remarks>
 /// A managed snapshot: the version text is copied on construction, so a value taken from
-/// <see cref="PackageView.Version"/> stays readable after the package that produced it is gone.
-/// libalpm can only compare native strings, so <see cref="CompareTo"/> marshals both operands for
-/// the duration of the call instead of holding a pointer to package-owned memory.
+/// <see cref="PackageBase.Version"/> stays valid after the package that produced it is disposed.
 /// </remarks>
 public class PackageVersion : IComparable<PackageVersion>
 {

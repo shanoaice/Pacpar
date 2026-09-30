@@ -40,12 +40,8 @@ internal sealed unsafe class AssumeInstalled(SafeAlpmHandle handle, Lifetime lif
   /// <c>null</c> when the list holds no such dependency.
   /// </summary>
   /// <remarks>
-  /// The lookup is a managed comparison on purpose. libalpm's removal predicate
-  /// (<c>alpm_option_remove_assumeinstalled</c>) compares name, version and modifier <i>and</i> the
-  /// internal <c>name_hash</c>; a struct built here has no hash libalpm recognises, and the stored
-  /// copy's hash cannot be recomputed from the snapshot - libalpm's hash function is private and not
-  /// exported. Handing the stored element back keeps both operations agreeing with each other and
-  /// with libalpm: the element passed to the native remover is the one it would have matched.
+  /// Finds the stored native pointer matching <paramref name="item"/> by value so that it can be safely
+  /// passed to libalpm removal functions that compare internal pointers and hashes.
   /// </remarks>
   private protected override byte* Acquire(Depend item, out bool owned)
   {

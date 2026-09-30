@@ -15,21 +15,14 @@ namespace Pacpar.Alpm.List;
 /// documentation states "the list will be duped and the original will still need to be freed by
 /// the caller").
 /// <para>
-/// Because a borrowed view cannot free, it deliberately does not implement
-/// <see cref="IDisposable"/> and has no finalizer: freeing library-owned memory from a GC
-/// callback is impossible by construction. Lists that the caller <i>must</i> free are either
-/// materialized into a managed collection inside the method that produced them, or wrapped in
-/// <see cref="AlpmOwnedList{T}"/> for the duration of that method.
+/// Because a borrowed view does not own the memory, it does not implement <see cref="IDisposable"/>.
+/// Lists that must be freed by the caller are either materialized into managed collections or
+/// managed through <see cref="AlpmOwnedList{T}"/>.
 /// </para>
 /// <para>
-/// Lifetime contract: the optional <see cref="Lifetime"/> token guards every dereference of the
-/// native list. <see cref="GetEnumerator"/>, <see cref="Enumerator.Current"/> and
-/// <see cref="ToArray"/> call <c>ThrowIfStale()</c> before touching the <c>_alpm_list_t*</c>
-/// pointer, so a view whose owner was released throws <see cref="AlpmLifetimeException"/> instead
-/// of reading freed memory. <see cref="Enumerator.MoveNext"/> only advances the node cursor and is
-/// deliberately left unchecked - the check on every <see cref="Enumerator.Current"/> already covers
-/// each element actually consumed, and per-element checks measured +0.77 ns/pkg over the whole
-/// local package cache (+1.7% on a realistic full scan).
+/// Lifetime safety: The view is guarded by its owning context's <see cref="Lifetime"/> token. If
+/// the owning database, transaction, or ALPM handle is disposed, accessing elements from this view
+/// throws an <see cref="AlpmLifetimeException"/> to prevent reading freed memory.
 /// </para>
 /// </remarks>
 public abstract class AlpmList<T> : IEnumerable<T>
@@ -172,20 +165,16 @@ internal sealed class AlpmBorrowedList<T> : AlpmList<T>
 }
 
 /// <summary>
-/// The single place in this library that frees native <c>alpm_list_t</c> memory.
+/// Helper methods for freeing native <c>alpm_list_t</c> structures.
 /// </summary>
-/// <remarks>
-/// Keeping <c>alpm_list_free</c>/<c>alpm_list_free_inner</c> here makes the ownership rule greppable:
-/// a list is freed only where the caller is documented to own it, never from a borrowed view.
-/// </remarks>
 internal static class AlpmNativeList
 {
   /// <summary>
-  /// Frees a caller-owned list and optionally its elements. Safe with a <c>null</c> list.
+  /// Frees a native list and optionally its elements. Safe with a <c>null</c> pointer.
   /// </summary>
-  /// <param name="list">List the caller owns, or <c>null</c>.</param>
+  /// <param name="list">The native list to free, or <c>null</c>.</param>
   /// <param name="innerFree">
-  /// Element destructor, or <c>null</c> when the elements are owned elsewhere.
+  /// Optional element destructor, or <c>null</c> if elements do not require individual destruction.
   /// </param>
   internal static unsafe void Free(_alpm_list_t* list, delegate* unmanaged[Cdecl]<void*, void> innerFree)
   {
@@ -197,18 +186,8 @@ internal static class AlpmNativeList
 }
 
 /// <summary>
-/// A list the caller owns and must free.
+/// Represents a caller-owned native list that frees its resources upon disposal.
 /// </summary>
-/// <remarks>
-/// This is the only <i>type</i> in this library whose use results in <c>alpm_list_free</c>. The
-/// element destructor is a required constructor argument on purpose: there is no default, so every
-/// call site has to state how the elements are freed (or pass <c>null</c> for "elements are owned
-/// elsewhere").
-/// <para>
-/// There is no finalizer: a missed <see cref="Dispose"/> leaks memory, which is strictly safer
-/// than freeing native memory at an unpredictable GC point.
-/// </para>
-/// </remarks>
 internal sealed class AlpmOwnedList<T> : AlpmList<T>, IDisposable
 {
   private readonly unsafe delegate* unmanaged[Cdecl]<void*, void> _innerFree;

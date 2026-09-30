@@ -81,10 +81,9 @@ public abstract unsafe class PackageBase
     }
   }
 
-  /// <remarks>
-  /// libalpm always sets a package name, so the coalescing form has no miss to repeat; every property
-  /// that can be absent uses a flag instead (see <see cref="PackageBase"/>).
-  /// </remarks>
+  /// <summary>
+  /// The package name.
+  /// </summary>
   public string Name
   {
     get
@@ -94,6 +93,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// Checks whether the package's MD5 checksum matches the expected value.
+  /// </summary>
   public bool CheckMd5Sum()
   {
     ThrowIfDisposed();
@@ -102,6 +104,9 @@ public abstract unsafe class PackageBase
     return ok;
   }
 
+  /// <summary>
+  /// Checks whether this package should be ignored according to the library configuration.
+  /// </summary>
   public bool ShouldIgnore()
   {
     ThrowIfDisposed();
@@ -113,6 +118,9 @@ public abstract unsafe class PackageBase
   private string? _filename;
   private bool _filenameLoaded;
 
+  /// <summary>
+  /// The archive filename of the package, or <c>null</c> if not applicable (such as for local database packages).
+  /// </summary>
   public string? Filename
   {
     get
@@ -131,6 +139,9 @@ public abstract unsafe class PackageBase
   private string? _base;
   private bool _baseLoaded;
 
+  /// <summary>
+  /// The base package name (pkgbase) if part of a split package, or <c>null</c> if none.
+  /// </summary>
   public string? Base
   {
     get
@@ -146,6 +157,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The version of the package.
+  /// </summary>
   public PackageVersion Version
   {
     get
@@ -157,6 +171,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The origin indicating where this package was loaded from.
+  /// </summary>
   public PackageOrigin Origin
   {
     get
@@ -170,6 +187,9 @@ public abstract unsafe class PackageBase
   private string? _description;
   private bool _descriptionLoaded;
 
+  /// <summary>
+  /// The description of the package.
+  /// </summary>
   public string? Description
   {
     get
@@ -188,6 +208,9 @@ public abstract unsafe class PackageBase
   private string? _url;
   private bool _urlLoaded;
 
+  /// <summary>
+  /// The upstream project website or homepage URL.
+  /// </summary>
   public string? Url
   {
     get
@@ -203,6 +226,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The date and time when the package was built.
+  /// </summary>
   public DateTimeOffset BuildDate
   {
     get
@@ -214,6 +240,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The date and time when the package was installed locally, or <c>null</c> if not installed.
+  /// </summary>
   public DateTimeOffset? InstallDate
   {
     get
@@ -224,9 +253,13 @@ public abstract unsafe class PackageBase
       return date == 0 ? null : DateTimeOffset.FromUnixTimeSeconds(date);
     }
   }
+
   private string? _packager;
   private bool _packagerLoaded;
 
+  /// <summary>
+  /// The name and contact information of the packager.
+  /// </summary>
   public string? Packager
   {
     get
@@ -245,6 +278,9 @@ public abstract unsafe class PackageBase
   private string? _md5Sum;
   private bool _md5SumLoaded;
 
+  /// <summary>
+  /// The MD5 checksum of the package archive, or <c>null</c> if not available.
+  /// </summary>
   public string? Md5Sum
   {
     get
@@ -263,6 +299,9 @@ public abstract unsafe class PackageBase
   private string? _sha256Sum;
   private bool _sha256SumLoaded;
 
+  /// <summary>
+  /// The SHA-256 checksum of the package archive, or <c>null</c> if not available.
+  /// </summary>
   public string? Sha256Sum
   {
     get
@@ -281,6 +320,9 @@ public abstract unsafe class PackageBase
   private string? _arch;
   private bool _archLoaded;
 
+  /// <summary>
+  /// The target CPU architecture for this package (e.g. "x86_64", "any").
+  /// </summary>
   public string? Arch
   {
     get
@@ -296,6 +338,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The download size of the package archive in bytes.
+  /// </summary>
   public CLong Size
   {
     get
@@ -307,6 +352,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The unpacked size of the package when installed on disk, in bytes.
+  /// </summary>
   public CLong InstalledSize
   {
     get
@@ -318,6 +366,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The reason why this package is installed (explicitly requested or installed as a dependency).
+  /// </summary>
   public PackageReason Reason
   {
     get
@@ -329,6 +380,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The validation methods used to verify this package.
+  /// </summary>
   public PackageValidation Validation
   {
     get
@@ -339,6 +393,9 @@ public abstract unsafe class PackageBase
       return val;
     }
   }
+  /// <summary>
+  /// The licenses governing the distribution and use of this package.
+  /// </summary>
   public AlpmStringList Licenses
   {
     get
@@ -348,6 +405,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The package groups that this package belongs to.
+  /// </summary>
   public AlpmStringList Groups
   {
     get
@@ -357,6 +417,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The list of packages required to run this package.
+  /// </summary>
   public AlpmList<Depend> Depends
   {
     get
@@ -366,6 +429,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The list of optional packages that provide additional functionality.
+  /// </summary>
   public AlpmList<Depend> OptionalDepends
   {
     get
@@ -375,6 +441,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The list of dependencies required only to run the test suite when building.
+  /// </summary>
   public AlpmList<Depend> CheckDepends
   {
     get
@@ -384,6 +453,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The list of dependencies required only to build the package from source.
+  /// </summary>
   public AlpmList<Depend> MakeDepends
   {
     get
@@ -393,6 +465,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The list of packages that conflict with this package.
+  /// </summary>
   public AlpmList<Depend> Conflicts
   {
     get
@@ -402,6 +477,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The virtual provisions or features provided by this package.
+  /// </summary>
   public AlpmList<Depend> Provides
   {
     get
@@ -411,6 +489,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The list of packages that this package replaces.
+  /// </summary>
   public AlpmList<Depend> Replaces
   {
     get
@@ -423,11 +504,6 @@ public abstract unsafe class PackageBase
   /// <summary>
   /// The package's file list, read on demand.
   /// </summary>
-  /// <remarks>
-  /// Deliberately neither cached nor read at construction: eagerly loading it for every package costs
-  /// about two orders of magnitude more than reading the rest of the metadata.
-  /// <see cref="ToSnapshot(bool)"/> copies it only on request.
-  /// </remarks>
   public FileList Files
   {
     get
@@ -437,6 +513,9 @@ public abstract unsafe class PackageBase
     }
   }
 
+  /// <summary>
+  /// The list of configuration files marked for backup.
+  /// </summary>
   public AlpmList<Backup> Backup
   {
     get
@@ -446,18 +525,9 @@ public abstract unsafe class PackageBase
     }
   }
 
-  // TODO: DB
-
-  // TODO: CHANGELOG
-
   /// <summary>
-  /// Packages that require this package.
+  /// Gets the names of packages that depend on this package.
   /// </summary>
-  /// <remarks>
-  /// libalpm computes this on demand and the caller owns the result ("a newly allocated list of
-  /// package names (char*), it should be freed by the caller"), so the names are copied into a
-  /// managed collection and the list plus its strings are freed here.
-  /// </remarks>
   public IReadOnlyList<string> GetRequiredBy()
   {
     ThrowIfDisposed();
@@ -468,7 +538,7 @@ public abstract unsafe class PackageBase
   }
 
   /// <summary>
-  /// Packages that optionally require this package. See <see cref="GetRequiredBy"/> for ownership.
+  /// Gets the names of packages that optionally depend on this package.
   /// </summary>
   public IReadOnlyList<string> GetOptionalFor()
   {

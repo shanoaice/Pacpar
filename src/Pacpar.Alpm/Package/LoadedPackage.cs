@@ -40,9 +40,8 @@ public sealed unsafe class LoadedPackage : PackageBase, IDisposable
 
   /// <summary>Throws when the package was already released or handed to a transaction.</summary>
   /// <remarks>
-  /// Checked by the caller <i>before</i> it touches libalpm: a hand-over that already happened is a
-  /// caller error, and repeating the native call would be pointless (libalpm dedupes the same
-  /// package pointer in a transaction's list anyway, probed).
+  /// Checked before invoking native calls to prevent double-free or performing operations on a package
+  /// whose ownership has already been transferred to a transaction.
   /// </remarks>
   internal void ThrowIfNotOwned()
   {

@@ -34,7 +34,7 @@ public static class ErrorHandler
       : Create(errno);
 
   /// <summary>
-  /// libalpm's description of <paramref name="errno"/>; <c>null</c> when there is none.
+  /// Returns libalpm's textual description of <paramref name="errno"/>, or a fallback error string if unknown.
   /// </summary>
   internal static string? StrError(_alpm_errno_t errno) => StrErrorCore(errno);
 

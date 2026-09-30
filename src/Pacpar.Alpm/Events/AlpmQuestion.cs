@@ -8,19 +8,12 @@ namespace Pacpar.Alpm;
 /// A question libalpm asks a callback handler (<c>alpm_question_t</c>).
 /// </summary>
 /// <remarks>
-/// Every case is a managed snapshot: its fields - including the package names and the member lists
-/// - are copied out of libalpm's union while the callback runs, which is the only time that union
-/// exists (probed: libalpm builds it on the calling thread's stack and overwrites it as soon as the
-/// callback returns - report item F9). Keeping a case and reading it after the callback is
-/// therefore safe, which the borrowed views this replaces were not.
+/// Every question subclass is a managed snapshot whose values are copied from libalpm during callback
+/// execution. Instances are safe to persist or inspect after the callback completes.
 /// <para>
-/// The packages in <see cref="RemovePkgs.Packages"/> and <see cref="SelectProvider.Providers"/>
-/// remain <see cref="PackageView"/> views: the <i>list</i> is callback-scoped and is copied, the
-/// packages themselves belong to libalpm. Those views carry the ALPM handle's root lifetime token,
-/// a deliberately conservative choice - libalpm does not say which context (sync database,
-/// transaction) owns each package, so they stay readable exactly as long as the handle is alive.
-/// The callback context reaches that token weakly, so its context handle can never pin the ALPM
-/// handle itself.
+/// Packages in <see cref="RemovePkgs.Packages"/> and <see cref="SelectProvider.Providers"/>
+/// are exposed as <see cref="PackageView"/> instances bound to the lifetime of the parent <see cref="Alpm"/>
+/// handle, remaining readable as long as the parent handle is active.
 /// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
@@ -41,6 +34,7 @@ public abstract class AlpmQuestion
     };
   }
 
+  /// <summary>Question asked when attempting to install a package marked in IgnorePkg.</summary>
   public class InstallIgnoredPackage : AlpmQuestion
   {
     internal unsafe InstallIgnoredPackage(_alpm_question_t* question)
@@ -49,10 +43,13 @@ public abstract class AlpmQuestion
       Package = NativeString.FromNative((nint)question->install_ignorepkg.pkg) ?? "";
     }
 
+    /// <summary>Gets whether to install the ignored package.</summary>
     public bool Install { get; }
+    /// <summary>Gets the name of the ignored package.</summary>
     public string Package { get; }
   }
 
+  /// <summary>Question asked when an existing package is to be replaced by another package.</summary>
   public class ReplacePackage : AlpmQuestion
   {
     internal unsafe ReplacePackage(_alpm_question_t* question)
@@ -63,19 +60,19 @@ public abstract class AlpmQuestion
       NewDatabase = NativeString.FromNative((nint)question->replace.newdb) ?? "";
     }
 
+    /// <summary>Gets whether the package should be replaced.</summary>
     public bool Replace { get; }
+    /// <summary>Gets the name of the existing package to be replaced.</summary>
     public string OldPackage { get; }
+    /// <summary>Gets the name of the replacement package.</summary>
     public string NewPackage { get; }
+    /// <summary>Gets the name of the database providing the replacement package.</summary>
     public string NewDatabase { get; }
   }
 
+  /// <summary>Question asked when two packages conflict during transaction preparation.</summary>
   public class ConflictPkg : AlpmQuestion
   {
-    /// <remarks>
-    /// <c>alpm_conflict_t</c> holds <c>alpm_pkg_t</c> pointers, not names (alpm.h: "The first
-    /// package"), so <see cref="Package1"/>/<see cref="Package2"/> read the packages' names through
-    /// <c>alpm_pkg_get_name</c>. The previous version interpreted those pointers as C strings.
-    /// </remarks>
     internal unsafe ConflictPkg(_alpm_question_t* question)
     {
       var conflict = question->conflict.conflict;
@@ -88,14 +85,21 @@ public abstract class AlpmQuestion
       Description = NativeString.FromNative((nint)conflict->reason->desc) ?? "";
     }
 
+    /// <summary>Gets whether the conflicting package should be removed.</summary>
     public bool Remove { get; }
+    /// <summary>Gets the name of the first conflicting package.</summary>
     public string Package1 { get; }
+    /// <summary>Gets the name of the second conflicting package.</summary>
     public string Package2 { get; }
+    /// <summary>Gets the dependency name causing the conflict.</summary>
     public string Name { get; }
+    /// <summary>Gets the dependency version requirement causing the conflict.</summary>
     public string Version { get; }
+    /// <summary>Gets the description of the conflict reason.</summary>
     public string Description { get; }
   }
 
+  /// <summary>Question asked when a downloaded package file is found to be corrupted.</summary>
   public class CorruptedPkg : AlpmQuestion
   {
     internal unsafe CorruptedPkg(_alpm_question_t* question)
@@ -104,43 +108,52 @@ public abstract class AlpmQuestion
       FilePath = NativeString.FromNative((nint)question->corrupted.filepath) ?? "";
     }
 
+    /// <summary>Gets whether the corrupted package file should be removed.</summary>
     public bool Remove { get; }
+    /// <summary>Gets the filesystem path to the corrupted package file.</summary>
     public string FilePath { get; }
   }
 
+  /// <summary>Question asked when unresolvable dependencies require removing packages.</summary>
   public class RemovePkgs : AlpmQuestion
   {
     internal unsafe RemovePkgs(_alpm_question_t* question, Lifetime? lifetime)
     {
       Skip = question->remove_pkgs.skip != 0;
-      // The list is copied out of the union immediately; the package views keep the handle's root
-      // token (see class remarks), so they survive the callback but not the handle.
       Packages = [.. AlpmList<PackageView>.Borrow(question->remove_pkgs.packages, &PackageView.Factory, lifetime)];
     }
 
+    /// <summary>Gets whether to skip removing the packages.</summary>
     public bool Skip { get; }
+    /// <summary>Gets the packages proposed for removal.</summary>
     public IReadOnlyList<PackageView> Packages { get; }
   }
 
+  /// <summary>Question asked when multiple providers satisfy a dependency and a selection is required.</summary>
   public class SelectProvider : AlpmQuestion
   {
     internal unsafe SelectProvider(_alpm_question_t* question, Lifetime? lifetime)
     {
       UseIndex = question->select_provider.use_index != 0;
-      // Same ownership story as RemovePkgs: copied list, views carry the root token.
       Providers = [.. AlpmList<PackageView>.Borrow(question->select_provider.providers, &PackageView.Factory, lifetime)];
       Name = NativeString.FromNative((nint)question->select_provider.depend->name) ?? "";
       Version = NativeString.FromNative((nint)question->select_provider.depend->version) ?? "";
       Description = NativeString.FromNative((nint)question->select_provider.depend->desc) ?? "";
     }
 
+    /// <summary>Gets whether the provider selection is based on index rather than name.</summary>
     public bool UseIndex { get; }
+    /// <summary>Gets the candidate packages providing the dependency.</summary>
     public IReadOnlyList<PackageView> Providers { get; }
+    /// <summary>Gets the name of the dependency needing a provider.</summary>
     public string Name { get; }
+    /// <summary>Gets the required version of the dependency.</summary>
     public string Version { get; }
+    /// <summary>Gets the description of the dependency.</summary>
     public string Description { get; }
   }
 
+  /// <summary>Question asked when an unknown PGP key needs to be imported into the keyring.</summary>
   public class ImportKey : AlpmQuestion
   {
     internal unsafe ImportKey(_alpm_question_t* question)
@@ -150,8 +163,11 @@ public abstract class AlpmQuestion
       Fingerprint = NativeString.FromNative((nint)question->import_key.fingerprint) ?? "";
     }
 
+    /// <summary>Gets whether to import the key.</summary>
     public bool Import { get; }
+    /// <summary>Gets the user ID or identity associated with the key.</summary>
     public string Uid { get; }
+    /// <summary>Gets the fingerprint of the key.</summary>
     public string Fingerprint { get; }
   }
 }

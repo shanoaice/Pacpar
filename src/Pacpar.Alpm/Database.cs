@@ -55,6 +55,9 @@ public unsafe class Database
     return new Database((_alpm_db_t*)ptr, lifetime.GetLifetimeTokenForHandle(ptr, $"the sync database {name}"));
   }
 
+  /// <summary>
+  /// The name of this database.
+  /// </summary>
   public string Name
   {
     get
@@ -64,6 +67,11 @@ public unsafe class Database
     }
   }
 
+  /// <summary>
+  /// Finds a package by name within this database.
+  /// </summary>
+  /// <param name="name">The name of the package to find.</param>
+  /// <returns>A <see cref="PackageView"/> for the package, or <c>null</c> if not found.</returns>
   public PackageView? GetPackage(string name)
   {
     ThrowIfInvalidated();
@@ -114,6 +122,11 @@ public unsafe class Database
     return new AlpmStringList(servers, Lifetime);
   }
 
+  /// <summary>
+  /// Finds a package group by name within this database.
+  /// </summary>
+  /// <param name="name">The name of the group to find.</param>
+  /// <returns>A <see cref="Group"/> matching the specified name, or <c>null</c> if not found.</returns>
   public Group? GetGroup(string name)
   {
     ThrowIfInvalidated();
@@ -135,6 +148,9 @@ public unsafe class Database
     return AlpmList<Group>.Borrow(groupCache, &Group.Factory, Lifetime);
   }
 
+  /// <summary>
+  /// The signature verification level configured for this database.
+  /// </summary>
   public SigLevel SigLevel
   {
     get
@@ -169,8 +185,6 @@ public unsafe class Database
       GC.KeepAlive(this);
       throw ex;
     }
-    // Strictly after the native release succeeded (§4.1 order): invalidate the token, then prune
-    // the registry so the address can be re-issued cleanly.
     Lifetime.Invalidate("Database.Unregister()");
     Lifetime.Parent?.ForgetHandle(backingStruct);
   }

@@ -7,12 +7,8 @@ namespace Pacpar.Alpm;
 /// Expands the <c>(fmt, va_list)</c> payload libalpm hands to <c>alpm_cb_log</c>.
 /// </summary>
 /// <remarks>
-/// A <c>va_list</c> cannot be declared in C# (there is no variadic P/Invoke, and no way to
-/// materialise one), so the managed thunks receive it as an opaque <see cref="void"/> pointer and
-/// pass it straight to libc's <c>vasprintf</c>. That mapping is the whole trick: a <c>va_list</c>
-/// parameter is delivered as a pointer on every ABI .NET supports on Linux -- x86_64 through array
-/// decay and AArch64 by reference, and likewise on riscv64, powerpc64le, s390x, armv7, i686 and
-/// loongarch64 -- so the C# side never has to name the type.
+/// A C <c>va_list</c> cannot be represented directly in C#, so it is received as an opaque <c>void*</c> pointer
+/// and formatted using libc's <c>vasprintf</c>.
 /// </remarks>
 internal static unsafe partial class LogMessageFormatter
 {

@@ -7,7 +7,7 @@ namespace Pacpar.Alpm;
 /// <summary>
 /// A NUL-terminated UTF-8 buffer for handing a managed string to libalpm for the duration of a
 /// single call: it encodes into a caller-provided stack scratch buffer when the string fits and
-/// falls back to <see cref="NativeMemory.Alloc"/> on the native heap otherwise, so short strings
+/// falls back to <see cref="NativeMemory.Alloc(nuint)"/> on the native heap otherwise, so short strings
 /// — package names, versions, group names — never touch malloc at all.
 /// </summary>
 /// <remarks>
@@ -42,7 +42,7 @@ internal unsafe ref struct Utf8Buffer
 
   /// <summary>
   /// Encodes <paramref name="value"/> into <paramref name="scratch"/> when it fits (leaving room
-  /// for the terminator), otherwise allocates with <see cref="NativeMemory.Alloc"/>.
+  /// for the terminator), otherwise allocates with <see cref="NativeMemory.Alloc(nuint)"/>.
   /// </summary>
   /// <param name="value">The string to marshal; null yields a null pointer, matching <see cref="NativeString.ToNative"/>.</param>
   /// <param name="scratch">Stack memory owned by the caller; 64 bytes suits names and versions, 256 suits paths and descriptions.</param>

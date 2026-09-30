@@ -57,10 +57,9 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   private protected abstract int RemoveNative(SafeAlpmHandle handle, byte* item);
 
   /// <summary>
-  /// Produces the native item that a lookup or removal must hand to libalpm: usually a marshalled
-  /// needle, or - when the list stores copies and compares them by value rather than by pointer - the
-  /// stored element itself.
+  /// Produces the native item pointer required by libalpm for lookups or removal.
   /// </summary>
+  /// <param name="item">The item to acquire a native representation for.</param>
   /// <param name="owned">Whether <see cref="Release"/> must free the returned pointer.</param>
   private protected abstract byte* Acquire(T item, out bool owned);
 
@@ -71,18 +70,12 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   private protected abstract AlpmList<T> View(_alpm_list_t* list);
 
   /// <summary>
-  /// Marshals an item for <see cref="Add"/>. Defaults to <see cref="Acquire"/>; a list that copies
-  /// what it is given overrides this, because the value it needs is the item itself and not whatever
-  /// element an earlier add stored.
+  /// Marshals an item for <see cref="Add"/>. Defaults to <see cref="Acquire"/>.
   /// </summary>
   private protected virtual byte* AcquireForAdd(T item, out bool owned) => Acquire(item, out owned);
 
   /// <summary>
-  /// Finds an item in the native list: <c>null</c> when the list holds no match, otherwise the stored
-  /// element. libalpm's string finder returns the <i>stored</i> element rather than the needle
-  /// (probed: <c>alpm_list_find_str</c> returned the list's own <c>char*</c>), so a caller may only
-  /// test the result for null - comparing it with the needle would report "absent" for every string
-  /// list.
+  /// Finds an item in the native list. Returns <c>null</c> if not found, otherwise returns a pointer to the stored element.
   /// </summary>
   private protected virtual byte* FindIn(_alpm_list_t* list, byte* item)
     => NativeMethods.alpm_list_find_str(list, item);

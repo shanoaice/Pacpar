@@ -19,7 +19,7 @@ internal static unsafe class NativeString
 
   /// <summary>
   /// Copies <paramref name="value"/> into a NUL-terminated UTF-8 buffer allocated with
-  /// <see cref="NativeMemory.Alloc"/>; a null input yields a null pointer.
+  /// <see cref="NativeMemory.Alloc(nuint)"/>; a null input yields a null pointer.
   /// </summary>
   /// <remarks>
   /// The caller owns the result and frees it with <see cref="NativeMemory.Free"/>. Use this only

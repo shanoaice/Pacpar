@@ -6,15 +6,9 @@ namespace Pacpar.Alpm;
 /// A package libalpm owns: a database package, a transaction member, or one reached through a group.
 /// </summary>
 /// <remarks>
-/// Nothing here frees it, which is why this type is deliberately not <see cref="IDisposable"/>; a
-/// package this library loaded from a file is a <see cref="LoadedPackage"/> instead, and the two do
-/// not convert to one another (see <see cref="PackageBase"/>).
-/// <para>
-/// Being a view over libalpm's memory is exactly what makes bulk scans cheap, so keep it that way: read
-/// the view while scanning, and call <see cref="ToSnapshot"/> only for the packages that must outlive
-/// the scan. The lifetime token the issuing context passed in guards the view: once that context is
-/// released, every read throws <see cref="AlpmLifetimeException"/> instead of touching freed memory.
-/// </para>
+/// A package view is a lightweight reference to memory owned by libalpm.
+/// If you need package information to persist after the database, transaction, or ALPM handle is disposed,
+/// call <see cref="PackageBase.ToSnapshot"/> to create an independent managed snapshot.
 /// </remarks>
 public sealed unsafe class PackageView : PackageBase
 {

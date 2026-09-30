@@ -22,23 +22,11 @@ public enum PackageOperation : uint
 }
 
 /// <summary>
-/// An event libalpm reports to a callback handler (<c>alpm_event_t</c>).
+/// An event reported by libalpm to an event callback handler (<c>alpm_event_t</c>).
 /// </summary>
 /// <remarks>
-/// Every case is a managed snapshot: its fields are copied out of libalpm's union while the callback
-/// runs, which is the only time that union exists (probed: libalpm builds it on the calling thread's
-/// stack and overwrites it as soon as the callback returns, so a view read afterwards silently
-/// returned zeros - report item F9). Keeping a case and reading it after the callback is therefore
-/// safe, which the borrowed views this replaces were not.
-/// <para>
-/// The packages a case exposes remain <see cref="PackageView"/> views, because that is what a
-/// package always is: libalpm owns it and this library reads through its accessors. They outlive
-/// the callback (they belong to the transaction or a database), unlike the event union itself.
-/// Those views carry the ALPM handle's root lifetime token, a deliberately conservative choice:
-/// libalpm does not say which context owns each package, so they stay readable exactly as long as
-/// the handle is alive. The callback context reaches that token weakly, so its context handle can
-/// never pin the ALPM handle itself.
-/// </para>
+/// Event payloads are copied into managed snapshot objects during the callback execution so that
+/// they remain safe to read after the callback returns.
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class AlpmEvent
@@ -88,62 +76,55 @@ public abstract class AlpmEvent
     };
   }
 
-  public class CheckDepsStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when dependency checking begins.</summary>
+  public class CheckDepsStart : AlpmEvent;
 
-  public class CheckDepsDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when dependency checking completes.</summary>
+  public class CheckDepsDone : AlpmEvent;
 
-  public class FileConflictsStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when file conflict checking begins.</summary>
+  public class FileConflictsStart : AlpmEvent;
 
-  public class FileConflictsDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when file conflict checking completes.</summary>
+  public class FileConflictsDone : AlpmEvent;
 
-  public class ResolveDepsStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when dependency resolution begins.</summary>
+  public class ResolveDepsStart : AlpmEvent;
 
-  public class ResolveDepsDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when dependency resolution completes.</summary>
+  public class ResolveDepsDone : AlpmEvent;
 
-  public class InterConflictsStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when inter-package conflict checking begins.</summary>
+  public class InterConflictsStart : AlpmEvent;
 
-  public class InterConflictsDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when inter-package conflict checking completes.</summary>
+  public class InterConflictsDone : AlpmEvent;
 
-  public class TransactionStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when transaction processing begins.</summary>
+  public class TransactionStart : AlpmEvent;
 
-  public class TransactionDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when transaction processing completes.</summary>
+  public class TransactionDone : AlpmEvent;
 
+  /// <summary>Triggered when a package operation (install, upgrade, downgrade, or remove) begins.</summary>
   public class PackageOperationStart : AlpmEvent
   {
     internal unsafe PackageOperationStart(_alpm_event_t* native, Lifetime? lifetime)
     {
-      // For an install the old pointer is null, for a remove the new one is; the view constructor
-      // does not dereference, so both survive the copy and readers see what libalpm gave us.
       NewPackage = new PackageView(native->package_operation.newpkg, lifetime);
       OldPackage = new PackageView(native->package_operation.oldpkg, lifetime);
       Operation = (PackageOperation)(uint)native->package_operation.operation;
     }
 
+    /// <summary>Gets the package being installed or upgraded to, or an invalid package view if this operation is a package removal.</summary>
     public PackageView NewPackage { get; }
+    /// <summary>Gets the package being upgraded from or removed, or an invalid package view if this operation is a new package installation.</summary>
     public PackageView OldPackage { get; }
+    /// <summary>Gets the type of package operation being performed.</summary>
     public PackageOperation Operation { get; }
   }
 
+  /// <summary>Triggered when a package operation completes.</summary>
   public class PackageOperationDone : AlpmEvent
   {
     internal unsafe PackageOperationDone(_alpm_event_t* native, Lifetime? lifetime)
@@ -153,27 +134,27 @@ public abstract class AlpmEvent
       Operation = (PackageOperation)(uint)native->package_operation.operation;
     }
 
+    /// <summary>Gets the package being installed or upgraded to, or an invalid package view if this operation is a package removal.</summary>
     public PackageView NewPackage { get; }
+    /// <summary>Gets the package being upgraded from or removed, or an invalid package view if this operation is a new package installation.</summary>
     public PackageView OldPackage { get; }
+    /// <summary>Gets the type of package operation that completed.</summary>
     public PackageOperation Operation { get; }
   }
 
-  public class IntegrityStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when package integrity checking begins.</summary>
+  public class IntegrityStart : AlpmEvent;
 
-  public class IntegrityDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when package integrity checking completes.</summary>
+  public class IntegrityDone : AlpmEvent;
 
-  public class LoadStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when package loading begins.</summary>
+  public class LoadStart : AlpmEvent;
 
-  public class LoadDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when package loading completes.</summary>
+  public class LoadDone : AlpmEvent;
 
+  /// <summary>Carries output from an install or remove scriptlet.</summary>
   public class ScriptletInfo : AlpmEvent
   {
     internal unsafe ScriptletInfo(_alpm_event_t* native)
@@ -181,29 +162,26 @@ public abstract class AlpmEvent
       Line = NativeString.FromNative((nint)native->scriptlet_info.line) ?? "";
     }
 
+    /// <summary>Gets the output line emitted by the scriptlet.</summary>
     public string Line { get; }
   }
 
-  public class RetrieveStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when package file retrieval begins.</summary>
+  public class RetrieveStart : AlpmEvent;
 
-  public class RetrieveDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when package file retrieval completes successfully.</summary>
+  public class RetrieveDone : AlpmEvent;
 
-  public class RetrieveFailed : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when package file retrieval fails.</summary>
+  public class RetrieveFailed : AlpmEvent;
 
-  public class DiskSpaceStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when disk space checking begins.</summary>
+  public class DiskSpaceStart : AlpmEvent;
 
-  public class DiskSpaceDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when disk space checking completes.</summary>
+  public class DiskSpaceDone : AlpmEvent;
 
+  /// <summary>Triggered when an optional dependency is being removed.</summary>
   public class OptionalDependencyRemoval : AlpmEvent
   {
     internal unsafe OptionalDependencyRemoval(_alpm_event_t* native, Lifetime? lifetime)
@@ -212,10 +190,13 @@ public abstract class AlpmEvent
       Package = new PackageView(native->optdep_removal.pkg, lifetime);
     }
 
+    /// <summary>Gets the optional dependency being removed.</summary>
     public Depend OptionalDependency { get; }
+    /// <summary>Gets the package that referenced the optional dependency.</summary>
     public PackageView Package { get; }
   }
 
+  /// <summary>Triggered when a requested sync database file is missing.</summary>
   public class DatabaseMissing : AlpmEvent
   {
     internal unsafe DatabaseMissing(_alpm_event_t* native)
@@ -223,25 +204,23 @@ public abstract class AlpmEvent
       DatabaseName = NativeString.FromNative((nint)native->database_missing.dbname) ?? "";
     }
 
+    /// <summary>Gets the name of the missing database.</summary>
     public string DatabaseName { get; }
   }
 
-  public class KeyringStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when keyring verification or initialization begins.</summary>
+  public class KeyringStart : AlpmEvent;
 
-  public class KeyringDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when keyring verification or initialization completes.</summary>
+  public class KeyringDone : AlpmEvent;
 
-  public class KeyDownloadStart : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when downloading a PGP key begins.</summary>
+  public class KeyDownloadStart : AlpmEvent;
 
-  public class KeyDownloadDone : AlpmEvent
-  {
-  }
+  /// <summary>Triggered when downloading a PGP key completes.</summary>
+  public class KeyDownloadDone : AlpmEvent;
 
+  /// <summary>Triggered when a .pacnew configuration file is created during package extraction.</summary>
   public class PacnewCreated : AlpmEvent
   {
     internal unsafe PacnewCreated(_alpm_event_t* native, Lifetime? lifetime)
@@ -252,12 +231,17 @@ public abstract class AlpmEvent
       File = NativeString.FromNative((nint)native->pacnew_created.file) ?? "";
     }
 
+    /// <summary>Gets whether the .pacnew file was generated due to a NoUpgrade directive.</summary>
     public bool FromNoUpgrade { get; }
+    /// <summary>Gets the existing installed package view, if available.</summary>
     public PackageView OldPackage { get; }
+    /// <summary>Gets the new package view providing the updated file, if available.</summary>
     public PackageView NewPackage { get; }
+    /// <summary>Gets the filesystem path to the file.</summary>
     public string File { get; }
   }
 
+  /// <summary>Triggered when a .pacsave backup file is created during package removal.</summary>
   public class PacsaveCreated : AlpmEvent
   {
     internal unsafe PacsaveCreated(_alpm_event_t* native, Lifetime? lifetime)
@@ -266,10 +250,13 @@ public abstract class AlpmEvent
       File = NativeString.FromNative((nint)native->pacsave_created.file) ?? "";
     }
 
+    /// <summary>Gets the package being removed that owned the file.</summary>
     public PackageView OldPackage { get; }
+    /// <summary>Gets the filesystem path to the file.</summary>
     public string File { get; }
   }
 
+  /// <summary>Triggered when transaction hooks begin executing.</summary>
   public class HookStart : AlpmEvent
   {
     internal unsafe HookStart(_alpm_event_t* native)
@@ -277,9 +264,11 @@ public abstract class AlpmEvent
       When = (HookWhen)(uint)native->hook.when;
     }
 
+    /// <summary>Gets the hook execution stage (pre- or post-transaction).</summary>
     public HookWhen When { get; }
   }
 
+  /// <summary>Triggered when transaction hooks finish executing.</summary>
   public class HookDone : AlpmEvent
   {
     internal unsafe HookDone(_alpm_event_t* native)
@@ -287,9 +276,11 @@ public abstract class AlpmEvent
       When = (HookWhen)(uint)native->hook.when;
     }
 
+    /// <summary>Gets the hook execution stage (pre- or post-transaction).</summary>
     public HookWhen When { get; }
   }
 
+  /// <summary>Triggered when a specific hook starts running.</summary>
   public class HookRunStart : AlpmEvent
   {
     internal unsafe HookRunStart(_alpm_event_t* native)
@@ -300,12 +291,17 @@ public abstract class AlpmEvent
       Total = native->hook_run.total;
     }
 
+    /// <summary>Gets the name of the hook.</summary>
     public string Name { get; }
+    /// <summary>Gets the description of the hook, if available.</summary>
     public string Description { get; }
+    /// <summary>Gets the 1-based index of the running hook within the current stage.</summary>
     public nuint Position { get; }
+    /// <summary>Gets the total number of hooks scheduled to run in the current stage.</summary>
     public nuint Total { get; }
   }
 
+  /// <summary>Triggered when a specific hook finishes running.</summary>
   public class HookRunDone : AlpmEvent
   {
     internal unsafe HookRunDone(_alpm_event_t* native)
@@ -316,12 +312,17 @@ public abstract class AlpmEvent
       Total = native->hook_run.total;
     }
 
+    /// <summary>Gets the name of the hook.</summary>
     public string Name { get; }
+    /// <summary>Gets the description of the hook, if available.</summary>
     public string Description { get; }
+    /// <summary>Gets the 1-based index of the completed hook within the current stage.</summary>
     public nuint Position { get; }
+    /// <summary>Gets the total number of hooks scheduled to run in the current stage.</summary>
     public nuint Total { get; }
   }
 
+  /// <summary>Triggered when package retrieval for a transaction begins.</summary>
   public class PackageRetrieveStart : AlpmEvent
   {
     internal unsafe PackageRetrieveStart(_alpm_event_t* native)
@@ -330,10 +331,13 @@ public abstract class AlpmEvent
       TotalSize = native->pkg_retrieve.total_size;
     }
 
+    /// <summary>Gets the number of packages to be retrieved.</summary>
     public nuint PackageCount { get; }
+    /// <summary>Gets the total download size in bytes across all packages to be retrieved.</summary>
     public CLong TotalSize { get; }
   }
 
+  /// <summary>Triggered when package retrieval for a transaction completes successfully.</summary>
   public class PackageRetrieveDone : AlpmEvent
   {
     internal unsafe PackageRetrieveDone(_alpm_event_t* native)
@@ -342,10 +346,13 @@ public abstract class AlpmEvent
       TotalSize = native->pkg_retrieve.total_size;
     }
 
+    /// <summary>Gets the number of packages retrieved.</summary>
     public nuint PackageCount { get; }
+    /// <summary>Gets the total download size in bytes across all retrieved packages.</summary>
     public CLong TotalSize { get; }
   }
 
+  /// <summary>Triggered when package retrieval for a transaction fails.</summary>
   public class PackageRetrieveFailed : AlpmEvent
   {
     internal unsafe PackageRetrieveFailed(_alpm_event_t* native)
@@ -354,7 +361,9 @@ public abstract class AlpmEvent
       TotalSize = native->pkg_retrieve.total_size;
     }
 
+    /// <summary>Gets the number of packages that were to be retrieved.</summary>
     public nuint PackageCount { get; }
+    /// <summary>Gets the total download size in bytes across all packages that were to be retrieved.</summary>
     public CLong TotalSize { get; }
   }
 }

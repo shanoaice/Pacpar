@@ -36,7 +36,7 @@ public enum DepMod : uint
 /// <i>changing</i> the dependency means replacing the entry in the list that owns it.
 /// <para>
 /// Handing a snapshot back to libalpm is explicit: <see cref="ToNative"/> materialises a struct for
-/// the calls that take one, and <see cref="AssumeInstalled"/> uses it for <c>Add</c>. Lookups
+/// the calls that take one, and <see cref="Options.AssumeInstalled"/> uses it for <c>Add</c>. Lookups
 /// (<c>Contains</c>, <c>Remove</c>) compare by value through <see cref="Matches"/> instead, because
 /// libalpm's removal predicate also compares the internal <c>name_hash</c>, which only a struct
 /// libalpm built itself carries.
@@ -64,8 +64,6 @@ public unsafe class Depend
     Depmod = depmod;
   }
 
-  // The token parameter matches the element-factory delegate signature; a Depend is an eager
-  // snapshot, so an issued element retains no native pointer and needs no element token.
   internal static Depend Factory(void* ptr, Lifetime? lifetime) => new((_alpm_depend_t*)ptr);
 
   /// <summary>
@@ -77,18 +75,28 @@ public unsafe class Depend
   internal static AlpmList<Depend> ListFactory(_alpm_list_t* alpmList, Lifetime? lifetime)
     => AlpmList<Depend>.Borrow(alpmList, &Factory, lifetime);
 
+  /// <summary>
+  /// An optional description of why this dependency is required or recommended.
+  /// </summary>
   public string? Description { get; }
 
+  /// <summary>
+  /// The package name required by this dependency.
+  /// </summary>
   public string? Name { get; }
 
+  /// <summary>
+  /// The version constraint for this dependency, or <c>null</c> if any version satisfies it.
+  /// </summary>
   public string? Version { get; }
 
+  /// <summary>
+  /// The comparison operator applied to <see cref="Version"/>.
+  /// </summary>
   public DepMod Depmod { get; }
 
   /// <summary>
-  /// Value equality as libalpm's own option-list removal predicate sees it, probed against
-  /// libalpm 16.0.1: <see cref="Name"/>, <see cref="Version"/> and <see cref="Depmod"/> take part,
-  /// <see cref="Description"/> does not.
+  /// Determines whether this dependency matches <paramref name="other"/> by name, version, and version modifier.
   /// </summary>
   internal bool Matches(Depend other)
     => string.Equals(Name, other.Name, StringComparison.Ordinal)
@@ -96,16 +104,11 @@ public unsafe class Depend
        && Depmod == other.Depmod;
 
   /// <summary>
-  /// Materialises a native <c>alpm_depend_t</c> carrying this snapshot, for the libalpm calls that
-  /// take a dependency by pointer. The caller owns the result and releases it with
-  /// <see cref="FreeNative"/>.
+  /// Materialises a native <c>alpm_depend_t</c> carrying this snapshot for native calls that
+  /// accept a dependency pointer.
   /// </summary>
   /// <remarks>
-  /// <c>name_hash</c> is deliberately left zero. libalpm recomputes it in the copy it stores -
-  /// verified with a probe that handed <c>alpm_option_add_assumeinstalled</c> a hand-built struct
-  /// with a zero hash and read back libalpm's own hash - while the removal predicate <i>compares</i>
-  /// the field, so only a struct libalpm itself produced (or the element it stored) can be removed.
-  /// <see cref="AssumeInstalled"/> therefore never passes a materialised struct to <c>Remove</c>.
+  /// The caller owns the returned pointer and must release it using <see cref="FreeNative"/>.
   /// </remarks>
   internal _alpm_depend_t* ToNative()
   {

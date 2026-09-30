@@ -10,27 +10,22 @@ public class Alpm : IDisposable
 {
   // opaque handle to libalpm wrapped in a SafeHandle
   private readonly SafeAlpmHandle _handle;
-  // Low-cardinality registry tracking file-loaded packages for Option 4 lifetime management
+  // Registry tracking file-loaded packages for session-scoped cleanup
   private readonly List<nint> _loadedPackages = [];
   private readonly Lock _loadedPackagesLock = new();
 
-  // Root of the lifetime token tree for this handle: the local-database token, the sync-database
-  // registry tokens and every transaction token are children of it, so one successful alpm_release
-  // retires every wrapper and view ever issued from this handle. The root also anchors this Alpm
-  // instance for GC purposes: any live token keeps the owner reachable in one hop.
   private readonly Lifetime _lifetime;
-
-  // Token of the local database, deliberately kept out of the handle registry:
-  // alpm_unregister_all_syncdbs never releases the local database, so its token must not ride the
-  // registry sweep that retires sync databases. Reset to null by InvalidateLocalDatabase so the
-  // next GetLocalDatabase issues a fresh token after a commit.
   private Lifetime? _localDatabase;
 
-  // Dispose bookkeeping: _disposeStarted admits exactly one teardown winner;
-  // _disposedFlag is the published state read through Disposed.
   private int _disposeStarted;
   private int _disposedFlag;
 
+  /// <summary>
+  /// Initializes a new instance of the <see cref="Alpm"/> library handle.
+  /// </summary>
+  /// <param name="root">The root directory of the installation (e.g. <c>"/"</c>).</param>
+  /// <param name="dbpath">The path to the pacman database directory (e.g. <c>"/var/lib/pacman"</c>).</param>
+  /// <exception cref="Exception">Thrown if libalpm fails to initialize.</exception>
   public unsafe Alpm(string root, string dbpath)
   {
     var _initializeErrno = (_alpm_errno_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_errno_t));
@@ -142,7 +137,10 @@ public class Alpm : IDisposable
     }
   }
 
-  // ReSharper disable once MemberCanBePrivate.Global
+  /// <summary>
+  /// Gets the textual description of the last error reported by libalpm on this handle.
+  /// </summary>
+  /// <returns>A string describing the current error, or <c>null</c> if none.</returns>
   public unsafe string? GetCurrentErrorString()
   {
     ThrowIfDisposed();
@@ -151,6 +149,10 @@ public class Alpm : IDisposable
     return str;
   }
 
+  /// <summary>
+  /// Gets the current error reported by libalpm on this handle as an <see cref="Exception"/>, or <c>null</c> if there is no error.
+  /// </summary>
+  /// <returns>An exception representing the current error, or <c>null</c> if <see cref="Errno"/> is OK.</returns>
   public Exception? GetCurrentError()
   {
     ThrowIfDisposed();
@@ -182,6 +184,14 @@ public class Alpm : IDisposable
     if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
   }
 
+  /// <summary>
+  /// Loads a package archive from disk.
+  /// </summary>
+  /// <param name="filename">The path to the package archive file.</param>
+  /// <param name="full">Whether to load all package metadata eagerly into memory.</param>
+  /// <param name="level">The signature verification requirements for loading the package.</param>
+  /// <returns>A <see cref="LoadedPackage"/> representing the package file.</returns>
+  /// <exception cref="Exception">Thrown if libalpm fails to load or parse the package archive.</exception>
   public unsafe LoadedPackage LoadPackage(string filename, bool full, SigLevel level)
   {
     ThrowIfDisposed();
@@ -274,27 +284,31 @@ public class Alpm : IDisposable
     return new Database(databasePtr, _localDatabase);
   }
 
+  /// <summary>
+  /// Gets the list of registered sync package databases.
+  /// </summary>
+  /// <returns>A read-only <see cref="AlpmList{Database}"/> of sync databases.</returns>
   public unsafe AlpmList<Database> GetSyncDatabases()
   {
     ThrowIfDisposed();
     var syncDatabases = NativeMethods.alpm_get_syncdbs(Handle);
     ThrowIfCurrentError();
-    // The list itself belongs to the handle, so it is guarded by the root token; each element
-    // resolves its own per-database child token through the handle registry in Database.Factory.
     return AlpmList<Database>.Borrow(syncDatabases, &Database.Factory, _lifetime);
   }
 
+  /// <summary>
+  /// Registers a new sync package database on this handle.
+  /// </summary>
+  /// <param name="treename">The name of the database repository (e.g. "core", "extra").</param>
+  /// <param name="level">The signature verification requirements for this database.</param>
+  /// <returns>The newly registered <see cref="Database"/>.</returns>
   public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
   {
     ThrowIfDisposed();
-    // Database names are short, hence the 64-byte scratch; alpm_register_syncdb copies the name.
     Span<byte> scratch = stackalloc byte[64];
     using var treeNameBuf = new Utf8Buffer(treename, scratch);
     var database = NativeMethods.alpm_register_syncdb(Handle, treeNameBuf.Ptr, (int)level);
     ThrowIfCurrentError();
-    // Registry lookup by native pointer: GetSyncDatabases' element factory resolves to this same
-    // token, and a tree re-registered at a recycled address receives a fresh one (Unregister
-    // dropped the dead entry).
     var token = _lifetime.GetLifetimeTokenForHandle(database, $"the sync database {treename}");
     return new Database(database, token);
   }
@@ -302,21 +316,12 @@ public class Alpm : IDisposable
   /// <summary>
   /// Unregisters every sync database from this handle.
   /// </summary>
-  /// <remarks>
-  /// On success the lifetime tokens of all registered sync databases are invalidated and the handle
-  /// registry is emptied: wrappers and views issued from those databases throw
-  /// <see cref="AlpmLifetimeException"/>, and a future registration at a recycled address receives
-  /// a fresh token. The local database is not affected - its token is deliberately not in the
-  /// registry.
-  /// </remarks>
   public unsafe void UnregisterAllSyncDatabases()
   {
     ThrowIfDisposed();
     var err = NativeMethods.alpm_unregister_all_syncdbs(Handle);
     if (err != 0) throw GetRequiredCurrentError();
 
-    // Strictly after the native release succeeded (§4.1 order): one sweep retires every registered
-    // token and clears the registry.
     _lifetime.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
   }
 
@@ -363,7 +368,7 @@ public class Alpm : IDisposable
 
     CurrentTransaction?.Dispose();
 
-    // Option 4: Sweep and free any undisposed file-loaded packages from this session
+    // Free any undisposed file-loaded packages from this session
     lock (_loadedPackagesLock)
     {
       foreach (var ptr in _loadedPackages)

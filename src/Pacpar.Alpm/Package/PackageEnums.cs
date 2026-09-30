@@ -1,6 +1,6 @@
 namespace Pacpar.Alpm;
 
-/// <summary>Where a package handle comes from (libalpm's <c>_alpm_pkgfrom_t</c>).</summary>
+/// <summary>Specifies the source or origin of a package.</summary>
 public enum PackageOrigin : uint
 {
   /// <summary>Loaded from a package file.</summary>
@@ -13,7 +13,7 @@ public enum PackageOrigin : uint
   SyncDatabase = 3
 }
 
-/// <summary>Why a package is installed (libalpm's <c>_alpm_pkgreason_t</c>).</summary>
+/// <summary>Why a package was installed on the system.</summary>
 public enum PackageReason : uint
 {
   /// <summary>Explicitly installed by the user.</summary>
@@ -22,7 +22,7 @@ public enum PackageReason : uint
   /// <summary>Installed as a dependency.</summary>
   Dependency = 1,
 
-  /// <summary>libalpm could not determine the reason.</summary>
+  /// <summary>The installation reason could not be determined (for example, due to a parse failure in the local database).</summary>
   Unknown = 2
 }
 

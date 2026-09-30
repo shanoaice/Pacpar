@@ -7,10 +7,8 @@ namespace Pacpar.Alpm;
 /// A backup entry (<c>alpm_backup_t</c>).
 /// </summary>
 /// <remarks>
-/// A managed snapshot: the name is copied on construction, so the entry stays readable after the
-/// package it came from is gone. <see cref="PackageView.Backup"/> still hands out a borrowed
-/// <see cref="AlpmList{T}"/> - the list itself belongs to the package - but every element it yields
-/// is one of these copies.
+/// A managed snapshot of an ALPM package backup file entry. The name is copied on construction,
+/// so the entry remains accessible even after the originating package is released.
 /// </remarks>
 public class Backup
 {
@@ -32,5 +30,8 @@ public class Backup
   internal static unsafe AlpmList<Backup> ListFactory(_alpm_list_t* ptr, Lifetime? lifetime)
     => AlpmList<Backup>.Borrow(ptr, &Factory, lifetime);
 
+  /// <summary>
+  /// The relative file path of the backup configuration file.
+  /// </summary>
   public string? Name { get; }
 }

@@ -200,6 +200,10 @@ public class Transaction : IDisposable
     }
   }
 
+  /// <summary>
+  /// Marks an installed package to be removed as part of this transaction.
+  /// </summary>
+  /// <param name="pkg">The package to remove.</param>
   public unsafe void RemovePackage(PackageView pkg)
   {
     ThrowIfDisposed();
@@ -210,6 +214,10 @@ public class Transaction : IDisposable
     }
   }
 
+  /// <summary>
+  /// Searches registered sync databases for updates to installed packages and adds them to this transaction.
+  /// </summary>
+  /// <param name="enableDowngrade">Whether to allow downgrading packages if the repository version is older.</param>
   public void SystemUpgrade(bool enableDowngrade)
   {
     ThrowIfDisposed();
@@ -220,6 +228,9 @@ public class Transaction : IDisposable
     }
   }
 
+  /// <summary>
+  /// Requests that the active transaction operation be interrupted.
+  /// </summary>
   public void Interrupt()
   {
     ThrowIfDisposed();
@@ -276,6 +287,9 @@ public class Transaction : IDisposable
       &PackageView.Factory, Lifetime);
   }
 
+  /// <summary>
+  /// Gets the flags configured for this transaction.
+  /// </summary>
   public TransactionFlags GetFlags()
   {
     ThrowIfDisposed();
@@ -301,28 +315,6 @@ public class Transaction : IDisposable
   /// <summary>
   /// Releases the transaction (and its database lock) deterministically.
   /// </summary>
-  /// <remarks>
-  /// Releasing also <b>frees every file-loaded package that was handed over</b> (see
-  /// <see cref="AddPackage(LoadedPackage)"/>), so after this call no wrapper - and no borrowed view
-  /// handed out earlier by <see cref="GetAddedPackages"/> - still points at a live package: the
-  /// release invalidates this transaction's lifetime token, so those views throw
-  /// <see cref="AlpmLifetimeException"/> instead. Packages added through
-  /// <see cref="AddPackage(PackageView)"/> are not affected: libalpm owns those.
-  /// <para>
-  /// There is deliberately no finalizer. An initialized transaction is released by
-  /// <see cref="Alpm.Dispose()"/> before it releases the handle, because <c>alpm_release</c> does
-  /// <b>not</b> release an active transaction: it answers <c>ALPM_ERR_TRANS_NOT_NULL</c> and frees
-  /// nothing, which leaks the handle and <c>db.lck</c>. A finalizer here would run after that
-  /// release, with the handle already gone, and an exception escaping it terminates the process
-  /// (that is what <c>~Transaction()</c> used to do through the disposed check on the handle
-  /// <see cref="Alpm.Handle"/> returns).
-  /// </para>
-  /// <para>
-  /// <see cref="GC.SuppressFinalize"/> is still called, so a derived type that adds its own
-  /// finalizer does not have to override <see cref="Dispose"/> to suppress it: the native
-  /// transaction this instance owns is already released by the time it would run.
-  /// </para>
-  /// </remarks>
   public void Dispose()
   {
     if (_released) return;
@@ -335,20 +327,11 @@ public class Transaction : IDisposable
       return;
     }
 
-    // The library is still alive, so release the native transaction - which drops the database lock
-    // - and clear the handle's reference to it on success, so Alpm.Dispose finds nothing left to release.
     var err = NativeMethods.alpm_trans_release(_library.Handle);
     if (err == 0)
     {
       _released = true;
       _library.CurrentTransaction = null;
-
-      // The release freed the native transaction together with every file-loaded package handed to it:
-      // views issued from this transaction now point into freed memory. Invalidate strictly after the
-      // native release succeeded (§4.1) - a failed release leaves the transaction (and its packages)
-      // alive, and retiring the token then would misreport a live context as dead. When the library
-      // was already disposed the early return above skipped the release; the root token is dead in
-      // that case and the parent chain retires this token's views all the same.
       Lifetime.Invalidate("Transaction.Dispose()");
     }
   }

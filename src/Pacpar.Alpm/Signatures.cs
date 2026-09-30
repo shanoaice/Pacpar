@@ -16,8 +16,7 @@ public enum SigLevel : uint
   /// </summary>
   ALPM_SIG_PACKAGE_OPTIONAL = 2,
   /// <summary>
-  ///  Packages do not require a signature,
-  ///  but check packages that do have signatures
+  ///  Allow packages with signatures that have marginal trust.
   /// </summary>
   ALPM_SIG_PACKAGE_MARGINAL_OK = 4,
   /// <summary>

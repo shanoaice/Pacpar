@@ -7,8 +7,8 @@ namespace Pacpar.Alpm;
 /// One entry of a package's file list (<c>alpm_file_t</c>).
 /// </summary>
 /// <remarks>
-/// A managed snapshot: mode, size and name are copied out of the borrowed array when the entry is
-/// read, so a <see cref="PackageFile"/> taken from <see cref="PackageView.Files"/> stays valid.
+/// A managed snapshot: mode, size and name are copied out of the package's file list when the entry is
+/// read, so a <see cref="PackageFile"/> taken from <see cref="PackageBase.Files"/> remains valid.
 /// </remarks>
 public readonly struct PackageFile
 {
@@ -19,13 +19,20 @@ public readonly struct PackageFile
     Name = NativeString.FromNative((nint)backingStruct->name);
   }
 
-  // The token parameter matches the element-factory delegate signature; a PackageFile is an eager
-  // snapshot and needs no element token.
   internal static unsafe PackageFile Factory(void* ptr, Lifetime? lifetime) => new((_alpm_file_t*)ptr);
 
+  /// <summary>
+  /// The POSIX file mode and permissions.
+  /// </summary>
   public uint Mode { get; }
 
+  /// <summary>
+  /// The size of the file in bytes.
+  /// </summary>
   public CLong Size { get; }
 
+  /// <summary>
+  /// The relative path of the file within the package.
+  /// </summary>
   public string? Name { get; }
 }
