@@ -36,6 +36,20 @@ public sealed class SafeBindingPairingTests
   /// </summary>
   private static readonly string[] RawOnlyEntryPoints = ["alpm_release"];
 
+  /// <summary>
+  /// Hand-written overloads that deliberately deviate from their generated declaration: entry point
+  /// to the indices of the parameters whose types intentionally differ. The log callback keeps its
+  /// <c>va_list</c> argument opaque (<c>void*</c> instead of the generated <c>__va_list_tag*</c>)
+  /// so that regenerating the bindings can never re-materialise a typed <c>va_list</c> in the
+  /// native thunk signature: <c>Callback.LogAgent</c> forwards it unchanged to the native
+  /// <c>vasprintf</c> shim (see <c>LogMessageFormatter</c>). Everything else about the overload -
+  /// entry point, arity, the other parameter types, the return type - is still paired and checked.
+  /// </summary>
+  private static readonly Dictionary<string, int[]> IntentionalParameterDeviations = new()
+  {
+    ["alpm_option_set_logcb"] = [1],
+  };
+
   private static readonly MethodInfo[] GeneratedDeclarations =
     [.. Declarations(typeof(DllImportAttribute))];
 
@@ -61,7 +75,9 @@ public sealed class SafeBindingPairingTests
   /// Every hand-written overload must match the generated declaration it mirrors: same entry point,
   /// same arity, same parameter types (with <see cref="SafeAlpmHandle"/> standing in for the raw
   /// handle pointer), and the same return type. This is the check that catches libalpm signature
-  /// drift, which would otherwise silently corrupt the stack at the call boundary.
+  /// drift, which would otherwise silently corrupt the stack at the call boundary. The only
+  /// tolerated departures are the deliberate ones whitelisted in
+  /// <see cref="IntentionalParameterDeviations"/>.
   /// </summary>
   [Fact]
   public void EverySafeHandleOverload_MatchesItsGeneratedSignature()
@@ -88,6 +104,11 @@ public sealed class SafeBindingPairingTests
 
       for (var i = 0; i < expected.Length; i++)
       {
+        if (IntentionalParameterDeviations.TryGetValue(EntryPointOf(safe), out var deviated) && deviated.Contains(i))
+        {
+          continue;
+        }
+
         var wanted = HandleSubstitutions.TryGetValue(actual[i].ParameterType, out var substituted)
           ? substituted
           : actual[i].ParameterType;

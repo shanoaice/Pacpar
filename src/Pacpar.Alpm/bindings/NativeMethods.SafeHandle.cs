@@ -68,6 +68,10 @@ public static unsafe partial class NativeMethods
   [LibraryImport(__DllName, EntryPoint = "alpm_option_set_progresscb")]
   internal static partial int alpm_option_set_progresscb(SafeAlpmHandle handle, delegate* unmanaged[Cdecl]<void*, _alpm_progress_t, byte*, int, nuint, nuint, void> cb, void* ctx);
 
+  // Deliberately keeps the va_list argument of cb opaque (void* instead of the generated
+  // __va_list_tag*): Callback.LogAgent forwards it unchanged to the native vasprintf shim, and a
+  // regenerated binding must never re-materialise a typed va_list in the thunk signature. The
+  // deviation is whitelisted in SafeBindingPairingTests.IntentionalParameterDeviations.
   [LibraryImport(__DllName, EntryPoint = "alpm_option_set_logcb")]
   internal static partial int alpm_option_set_logcb(SafeAlpmHandle handle, delegate* unmanaged[Cdecl]<void*, _alpm_loglevel_t, byte*, void*, void> cb, void* ctx);
 
