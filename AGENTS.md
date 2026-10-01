@@ -42,3 +42,13 @@ Apart from where the intermediate items should reside, there are also some worki
   ```bash
   dotnet test --filter "FullyQualifiedName!~Integration" -c Release
   ```
+
+## Documentation Lifecycle
+
+Architecture Decision Records have two stages.
+
+**Intermediate ADRs** live in `docs/adr/`, one decision per file, numbered sequentially. Write them while a design is still being settled or implemented. They are working documents: they may overlap, be superseded, or contradict a sibling that is still in flight, and they should be cross-referenced by number rather than rewritten into finished prose.
+
+**Maintainer reference** is the finished form. Once the work an ADR describes is implemented and stable, revise and compact or merge the ADRs covering it into the appropriate DocFX chapters under `docfx/`, so that a future maintainer reads one coherent account instead of a trail of interim decisions. The corresponding `docs/adr/` entries are then superseded or removed.
+
+`GLOSSARY.md` is the single source of vocabulary for the domain. Update it as terms are settled rather than at the end, and keep it free of implementation detail.
