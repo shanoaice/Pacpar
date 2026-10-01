@@ -108,7 +108,10 @@ public static class ErrorHandler
         or _alpm_errno_t.ALPM_ERR_TRANS_ABORT
         or _alpm_errno_t.ALPM_ERR_TRANS_TYPE
         or _alpm_errno_t.ALPM_ERR_TRANS_NOT_LOCKED
-        or _alpm_errno_t.ALPM_ERR_TRANS_HOOK_FAILED => AlpmErrorCategory.Transaction,
+        or _alpm_errno_t.ALPM_ERR_TRANS_HOOK_FAILED
+        or _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS
+        or _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS
+        or _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS => AlpmErrorCategory.Transaction,
 
       _alpm_errno_t.ALPM_ERR_SIG_MISSING
         or _alpm_errno_t.ALPM_ERR_SIG_INVALID
@@ -131,9 +134,6 @@ public static class ErrorHandler
         or _alpm_errno_t.ALPM_ERR_HANDLE_LOCK
         or _alpm_errno_t.ALPM_ERR_SERVER_BAD_URL
         or _alpm_errno_t.ALPM_ERR_SERVER_NONE
-        or _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS
-        or _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS
-        or _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS
         or _alpm_errno_t.ALPM_ERR_INVALID_REGEX
         or _alpm_errno_t.ALPM_ERR_LIBARCHIVE
         or _alpm_errno_t.ALPM_ERR_GPGME => AlpmErrorCategory.Generic,
