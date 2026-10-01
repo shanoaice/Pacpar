@@ -3,5 +3,4 @@
   <Project Path="src/Pacpar.Alpm/Pacpar.Alpm.csproj" />
   <Project Path="src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj" />
   <Project Path="src/Pacpar.Benchmarks/Pacpar.Benchmarks.csproj" />
-  <Project Path="src/Pacpar.CLI/Pacpar.CLI.csproj" />
 </Solution>
