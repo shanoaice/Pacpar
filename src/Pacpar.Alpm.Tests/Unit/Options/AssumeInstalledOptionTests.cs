@@ -103,7 +103,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
     var stored = Assert.Single(collection);
     Assert.Equal("foobar", stored.Name);
     Assert.Equal("1.0", stored.Version);
-    Assert.Equal(DepMod.EQUAL, stored.Depmod);
+    Assert.Equal(DepMod.Equal, stored.Depmod);
 
     // The snapshot is a value, not a pointer into the list, and the list is not the snapshot's owner.
     collection.Clear();
@@ -115,7 +115,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   {
     var collection = _alpm.Options.AssumeInstalled;
 
-    collection.Add(HandBuilt("foobar", "1.0", "needed by a test", DepMod.EQUAL));
+    collection.Add(HandBuilt("foobar", "1.0", "needed by a test", DepMod.Equal));
 
     Assert.Equal("needed by a test", Assert.Single(collection).Description);
   }
@@ -130,7 +130,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
     var stored = Assert.Single(collection);
     Assert.Equal("foobar", stored.Name);
     Assert.Null(stored.Version);
-    Assert.Equal(DepMod.ANY, stored.Depmod);
+    Assert.Equal(DepMod.Any, stored.Depmod);
     Assert.True(collection.Contains(Parse("foobar")));
   }
 
@@ -159,9 +159,9 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   public void Contains_IgnoresTheDescription()
   {
     var collection = _alpm.Options.AssumeInstalled;
-    collection.Add(HandBuilt("foobar", "1.0", "stored description", DepMod.EQUAL));
+    collection.Add(HandBuilt("foobar", "1.0", "stored description", DepMod.Equal));
 
-    Assert.True(collection.Contains(HandBuilt("foobar", "1.0", "another description", DepMod.EQUAL)));
+    Assert.True(collection.Contains(HandBuilt("foobar", "1.0", "another description", DepMod.Equal)));
     Assert.True(collection.Contains(Parse("foobar=1.0")));
   }
 
@@ -224,7 +224,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
     var collection = _alpm.Options.AssumeInstalled;
 
     var exception = Assert.Throws<AlpmException>(
-      () => collection.Add(HandBuilt("foobar", "1.0", null, DepMod.GREATER_OR_EQUAL)));
+      () => collection.Add(HandBuilt("foobar", "1.0", null, DepMod.GreaterOrEqual)));
 
     Assert.Equal(_alpm_errno_t.ALPM_ERR_WRONG_ARGS, exception.Errno);
     Assert.Empty(collection);

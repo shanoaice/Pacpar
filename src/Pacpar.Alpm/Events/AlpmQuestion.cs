@@ -32,7 +32,7 @@ public abstract unsafe class AlpmQuestion(_alpm_question_t* question)
 {
   protected _alpm_question_t* BackingStruct = question;
 
-  protected bool Disarmed = false;
+  protected bool Disarmed;
 
   internal static AlpmQuestion FromUnion(_alpm_question_t* backingStruct, AlpmBindingConfig binding)
   {

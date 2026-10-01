@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
@@ -17,11 +16,9 @@ namespace Pacpar.Alpm;
 /// </remarks>
 public unsafe class Database
 {
-  private readonly _alpm_db_t* backingStruct;
+  internal _alpm_db_t* BackingStruct { get; }
 
-  internal _alpm_db_t* BackingStruct => backingStruct;
-
-  private _alpm_handle_t* RawHandle => (_alpm_handle_t*)NativeMethods.alpm_db_get_handle(backingStruct);
+  private _alpm_handle_t* RawHandle => NativeMethods.alpm_db_get_handle(BackingStruct);
 
   /// <summary>
   /// The token guarding this database and every view issued from it. Registered in the handle's
@@ -34,7 +31,7 @@ public unsafe class Database
   /// <param name="lifetime">The database's token; all accessors and issued views guard on it.</param>
   internal Database(_alpm_db_t* backingStruct, Lifetime lifetime)
   {
-    this.backingStruct = backingStruct;
+    this.BackingStruct = backingStruct;
     Lifetime = lifetime;
   }
 
@@ -65,7 +62,7 @@ public unsafe class Database
     get
     {
       ThrowIfInvalidated();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_db_get_name(backingStruct))!;
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_db_get_name(BackingStruct))!;
     }
   }
 
@@ -79,7 +76,7 @@ public unsafe class Database
     ThrowIfInvalidated();
     Span<byte> scratch = stackalloc byte[64];
     using var nameBuf = new Utf8Buffer(name, scratch);
-    var pkg = NativeMethods.alpm_db_get_pkg(backingStruct, nameBuf.Ptr);
+    var pkg = NativeMethods.alpm_db_get_pkg(BackingStruct, nameBuf.Ptr);
     if ((nint)pkg == IntPtr.Zero) return null;
     return new PackageView(pkg, Lifetime);
   }
@@ -95,7 +92,7 @@ public unsafe class Database
   public AlpmList<PackageView> GetPackageCache()
   {
     ThrowIfInvalidated();
-    var pkgCache = NativeMethods.alpm_db_get_pkgcache(backingStruct);
+    var pkgCache = NativeMethods.alpm_db_get_pkgcache(BackingStruct);
     ThrowIfErrnoSet();
     return AlpmList<PackageView>.Borrow(pkgCache, &PackageView.Factory, Lifetime);
   }
@@ -107,7 +104,7 @@ public unsafe class Database
   public AlpmStringList GetServers()
   {
     ThrowIfInvalidated();
-    var servers = NativeMethods.alpm_db_get_servers(backingStruct);
+    var servers = NativeMethods.alpm_db_get_servers(BackingStruct);
     ThrowIfErrnoSet();
     return new AlpmStringList(servers, Lifetime);
   }
@@ -119,7 +116,7 @@ public unsafe class Database
   public AlpmStringList GetCacheServers()
   {
     ThrowIfInvalidated();
-    var servers = NativeMethods.alpm_db_get_cache_servers(backingStruct);
+    var servers = NativeMethods.alpm_db_get_cache_servers(BackingStruct);
     ThrowIfErrnoSet();
     return new AlpmStringList(servers, Lifetime);
   }
@@ -134,7 +131,7 @@ public unsafe class Database
     ThrowIfInvalidated();
     Span<byte> scratch = stackalloc byte[64];
     using var nameBuf = new Utf8Buffer(name, scratch);
-    var group = NativeMethods.alpm_db_get_group(backingStruct, nameBuf.Ptr);
+    var group = NativeMethods.alpm_db_get_group(BackingStruct, nameBuf.Ptr);
     if ((nint)group == IntPtr.Zero) return null;
     return new Group(group, Lifetime);
   }
@@ -145,7 +142,7 @@ public unsafe class Database
   public AlpmList<Group> GetGroupCache()
   {
     ThrowIfInvalidated();
-    var groupCache = NativeMethods.alpm_db_get_groupcache(backingStruct);
+    var groupCache = NativeMethods.alpm_db_get_groupcache(BackingStruct);
     ThrowIfErrnoSet();
     return AlpmList<Group>.Borrow(groupCache, &Group.Factory, Lifetime);
   }
@@ -158,7 +155,7 @@ public unsafe class Database
     get
     {
       ThrowIfInvalidated();
-      var sig = (SigLevel)NativeMethods.alpm_db_get_siglevel(backingStruct);
+      var sig = (SigLevel)NativeMethods.alpm_db_get_siglevel(BackingStruct);
       GC.KeepAlive(this);
       return sig;
     }
@@ -180,7 +177,7 @@ public unsafe class Database
   {
     ThrowIfInvalidated();
 
-    var err = NativeMethods.alpm_db_unregister(backingStruct);
+    var err = NativeMethods.alpm_db_unregister(BackingStruct);
     if (err != 0)
     {
       var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(RawHandle));
@@ -188,7 +185,7 @@ public unsafe class Database
       throw ex;
     }
     Lifetime.Invalidate("Database.Unregister()");
-    Lifetime.Parent?.ForgetHandle(backingStruct);
+    Lifetime.Parent?.ForgetHandle(BackingStruct);
   }
 
   /// <summary>
@@ -204,7 +201,7 @@ public unsafe class Database
     get
     {
       ThrowIfInvalidated();
-      var valid = NativeMethods.alpm_db_get_valid(backingStruct) == 0;
+      var valid = NativeMethods.alpm_db_get_valid(BackingStruct) == 0;
       GC.KeepAlive(this);
       return valid;
     }

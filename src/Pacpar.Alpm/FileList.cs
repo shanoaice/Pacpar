@@ -18,23 +18,23 @@ namespace Pacpar.Alpm;
 /// </remarks>
 public unsafe class FileList : IReadOnlyList<PackageFile>
 {
-  private readonly _alpm_filelist_t* backingStruct;
-  private readonly Lifetime? Lifetime;
+  private readonly _alpm_filelist_t* _backingStruct;
+  private readonly Lifetime? _lifetime;
 
   /// <param name="backingStruct">The package-owned file list.</param>
   /// <param name="lifetime">Token of the package that owns the array; <c>null</c> disables the guard.</param>
   internal FileList(_alpm_filelist_t* backingStruct, Lifetime? lifetime)
   {
-    this.backingStruct = backingStruct;
-    Lifetime = lifetime;
+    _backingStruct = backingStruct;
+    _lifetime = lifetime;
   }
 
   public int Count
   {
     get
     {
-      Lifetime?.ThrowIfStale();
-      return (int)backingStruct->count;
+      _lifetime?.ThrowIfStale();
+      return (int)_backingStruct->count;
     }
   }
 
@@ -48,10 +48,10 @@ public unsafe class FileList : IReadOnlyList<PackageFile>
   {
     get
     {
-      Lifetime?.ThrowIfStale();
-      if ((nuint)index >= backingStruct->count) throw new ArgumentOutOfRangeException(nameof(index));
+      _lifetime?.ThrowIfStale();
+      if ((nuint)index >= _backingStruct->count) throw new ArgumentOutOfRangeException(nameof(index));
 
-      var file = new PackageFile(&backingStruct->files[index]);
+      var file = new PackageFile(&_backingStruct->files[index]);
       GC.KeepAlive(this);
       return file;
     }
@@ -83,7 +83,7 @@ public unsafe class FileList : IReadOnlyList<PackageFile>
 
   public Enumerator GetEnumerator()
   {
-    Lifetime?.ThrowIfStale();
+    _lifetime?.ThrowIfStale();
     return new Enumerator(this);
   }
 

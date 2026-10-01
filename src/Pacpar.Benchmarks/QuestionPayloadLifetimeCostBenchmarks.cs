@@ -75,7 +75,7 @@ public class QuestionPayloadLifetimeCostBenchmarks
   private Dictionary<nint, Token> _registry = null!;
 
   [GlobalSetup]
-  public unsafe void Setup()
+  public void Setup()
   {
     _alpm = BenchEnvironment.Open();
     _payload = [.. _alpm.GetLocalDatabase().GetPackageCache().Take(PayloadSize)];

@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm;

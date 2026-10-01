@@ -128,5 +128,5 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   private static LoadedPackage LoadInto(IsolatedAlpmEnvironment environment, string directory, string name,
     string file)
     => environment.Alpm.LoadPackage(PackageArchive.Create(directory, name, file: file),
-      full: true, SigLevel.ALPM_SIG_USE_DEFAULT);
+      full: true, SigLevel.AlpmSigUseDefault);
 }

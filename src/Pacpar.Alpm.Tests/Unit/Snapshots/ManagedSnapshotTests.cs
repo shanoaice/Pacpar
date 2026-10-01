@@ -316,9 +316,9 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var oldPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-old"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
-      using var newPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-new"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
-      var db = env.Alpm.RegisterSyncDatabase("core", SigLevel.ALPM_SIG_USE_DEFAULT);
+      using var oldPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-old"), full: false, SigLevel.AlpmSigUseDefault);
+      using var newPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-new"), full: false, SigLevel.AlpmSigUseDefault);
+      var db = env.Alpm.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
 
       var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
       try
@@ -362,7 +362,7 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "ignored-pkg"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "ignored-pkg"), full: false, SigLevel.AlpmSigUseDefault);
 
       var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
       try
@@ -402,8 +402,8 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var pkg1 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-one"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
-      using var pkg2 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-two"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+      using var pkg1 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-one"), full: false, SigLevel.AlpmSigUseDefault);
+      using var pkg2 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-two"), full: false, SigLevel.AlpmSigUseDefault);
 
       var conflictStruct = (_alpm_conflict_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_conflict_t));
       var dependStruct = (_alpm_depend_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_depend_t));
@@ -474,7 +474,7 @@ public sealed unsafe class ManagedSnapshotTests
     try
     {
       using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "member-list"),
-        full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+        full: false, SigLevel.AlpmSigUseDefault);
       var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
       var members = NativeMethods.alpm_list_add(null, pkg.BackingStruct);
 
@@ -548,7 +548,7 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "disarm-pkg"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "disarm-pkg"), full: false, SigLevel.AlpmSigUseDefault);
       var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
 
       try

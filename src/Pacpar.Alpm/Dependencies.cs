@@ -8,22 +8,22 @@ namespace Pacpar.Alpm;
 public enum DepMod : uint
 {
   /// <summary>Any version satisfies the dependency.</summary>
-  ANY = 1,
+  Any = 1,
 
   /// <summary>=</summary>
-  EQUAL = 2,
+  Equal = 2,
 
   /// <summary>&gt;=</summary>
-  GREATER_OR_EQUAL = 3,
+  GreaterOrEqual = 3,
 
   /// <summary>&lt;=</summary>
-  LESS_OR_EQUAL = 4,
+  LessOrEqual = 4,
 
   /// <summary>&gt;</summary>
-  GREATER = 5,
+  Greater = 5,
 
   /// <summary>&lt;</summary>
-  LESS = 6
+  Less = 6
 }
 
 /// <summary>

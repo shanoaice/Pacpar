@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
@@ -28,8 +27,8 @@ public class Alpm : IDisposable
   /// <exception cref="Exception">Thrown if libalpm fails to initialize.</exception>
   public unsafe Alpm(string root, string dbpath)
   {
-    var _initializeErrno = (_alpm_errno_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_errno_t));
-    *_initializeErrno = _alpm_errno_t.ALPM_ERR_OK;
+    var initializeErrno = (_alpm_errno_t*)NativeMemory.Alloc(sizeof(_alpm_errno_t));
+    *initializeErrno = _alpm_errno_t.ALPM_ERR_OK;
 
     // alpm_initialize copies root and dbpath during the call (the buffer lifetime ends with this
     // frame), and both are paths - hence the 256-byte scratch.
@@ -37,12 +36,12 @@ public class Alpm : IDisposable
     Span<byte> dbpathScratch = stackalloc byte[256];
     using var rootBuf = new Utf8Buffer(root, rootScratch);
     using var dbpathBuf = new Utf8Buffer(dbpath, dbpathScratch);
-    var rawHandle = NativeMethods.alpm_initialize(rootBuf.Ptr, dbpathBuf.Ptr, _initializeErrno);
+    var rawHandle = NativeMethods.alpm_initialize(rootBuf.Ptr, dbpathBuf.Ptr, initializeErrno);
 
     if (rawHandle == null)
     {
-      var exception = ErrorHandler.GetException(*_initializeErrno) ?? new Exception("Failed to initialize libalpm.");
-      NativeMemory.Free(_initializeErrno);
+      var exception = ErrorHandler.GetException(*initializeErrno) ?? new Exception("Failed to initialize libalpm.");
+      NativeMemory.Free(initializeErrno);
       throw exception;
     }
 
@@ -51,7 +50,7 @@ public class Alpm : IDisposable
     Options = new AlpmOptions(_handle, _lifetime);
     BindingConfig = new AlpmBindingConfig();
     Callback = new Callback(_handle, _lifetime, BindingConfig);
-    NativeMemory.Free(_initializeErrno);
+    NativeMemory.Free(initializeErrno);
   }
 
   private void ThrowIfDisposed()
@@ -139,7 +138,7 @@ public class Alpm : IDisposable
   /// <c>alpm_initialize</c> is a different value: libalpm writes it only when initialization fails,
   /// so using it here reported <c>ALPM_ERR_OK</c> for the entire lifetime of a healthy handle.
   /// </remarks>
-  public unsafe _alpm_errno_t Errno
+  public _alpm_errno_t Errno
   {
     get
     {
@@ -191,7 +190,7 @@ public class Alpm : IDisposable
   /// Used right after a native call that signals failure through the handle errno, and whose return
   /// value can also be a <c>null</c> pointer that is legitimate when there is no error.
   /// </remarks>
-  private unsafe void ThrowIfCurrentError()
+  private void ThrowIfCurrentError()
   {
     var errno = Errno;
     if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
@@ -329,7 +328,7 @@ public class Alpm : IDisposable
   /// <summary>
   /// Unregisters every sync database from this handle.
   /// </summary>
-  public unsafe void UnregisterAllSyncDatabases()
+  public void UnregisterAllSyncDatabases()
   {
     ThrowIfDisposed();
     var err = NativeMethods.alpm_unregister_all_syncdbs(Handle);

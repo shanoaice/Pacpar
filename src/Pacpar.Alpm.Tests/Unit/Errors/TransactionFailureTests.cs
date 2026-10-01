@@ -20,7 +20,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 public sealed unsafe class TransactionFailureTests : IDisposable
 {
   /// <summary>No flags: dependency and conflict checks stay on, which is what these tests exercise.</summary>
-  private const TransactionFlags NoFlags = (TransactionFlags)0;
+  private const TransactionFlags NoFlags = 0;
 
   private readonly string _workspaceRoot;
   private readonly string _root;
@@ -62,14 +62,14 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   /// </remarks>
   private void AddTo(Transaction transaction, string path)
   {
-    var package = _alpm.LoadPackage(path, full: true, SigLevel.ALPM_SIG_USE_DEFAULT);
+    var package = _alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
     transaction.AddPackage(package);
   }
 
   [Fact]
   public void Prepare_WithAnUnsatisfiedDependency_ReportsTheMissingDependency()
   {
-    using var transaction = _alpm.BeginTransaction(NoFlags);
+    using var transaction = _alpm.BeginTransaction();
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-needs", depend: "missing-xyz"));
 
     var failure = Assert.Throws<AlpmTransactionException.MissingDependencies>(() => transaction.Prepare());
@@ -90,7 +90,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Prepare_WithConflictingPackages_ReportsTheConflictWithoutAborting()
   {
-    using var transaction = _alpm.BeginTransaction(NoFlags);
+    using var transaction = _alpm.BeginTransaction();
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-left"));
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-right", conflict: "audit-left"));
 
@@ -109,7 +109,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   {
     _alpm.Options.Architectures.Add("aarch64");
 
-    using var transaction = _alpm.BeginTransaction(NoFlags);
+    using var transaction = _alpm.BeginTransaction();
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-arch", arch: "notarealarchitecture"));
 
     var failure = Assert.Throws<AlpmTransactionException.InvalidPackageArchitecture>(() => transaction.Prepare());
@@ -127,7 +127,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   {
     _alpm.Options.Architectures.Add("aarch64");
 
-    using var transaction = _alpm.BeginTransaction(NoFlags);
+    using var transaction = _alpm.BeginTransaction();
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-arch-one", arch: "notarealarchitecture"));
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-arch-two", arch: "notarealarchitecture"));
 
@@ -143,9 +143,9 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   {
     var owned = Path.Combine(_root, "usr", "bin", "probe-file");
     Directory.CreateDirectory(Path.GetDirectoryName(owned)!);
-    System.IO.File.WriteAllText(owned, "already on disk, owned by nobody");
+    File.WriteAllText(owned, "already on disk, owned by nobody");
 
-    using var transaction = _alpm.BeginTransaction(NoFlags);
+    using var transaction = _alpm.BeginTransaction();
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-file", file: "usr/bin/probe-file"));
 
     transaction.Prepare();
@@ -168,7 +168,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Prepare_And_Commit_ReportNothingForASoundTransaction()
   {
-    var transaction = _alpm.BeginTransaction(NoFlags);
+    var transaction = _alpm.BeginTransaction();
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-ok", file: "usr/bin/probe-file"));
 
     transaction.Prepare();
@@ -186,7 +186,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Commit_BeforePrepare_ReportsTheBaseState()
   {
-    using var transaction = _alpm.BeginTransaction(NoFlags);
+    using var transaction = _alpm.BeginTransaction();
     AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-early"));
 
     var failure = Assert.Throws<AlpmTransactionException>(() => transaction.Commit());
@@ -215,7 +215,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Prepare_AfterDispose_ThrowsObjectDisposed()
   {
-    var transaction = _alpm.BeginTransaction(NoFlags);
+    var transaction = _alpm.BeginTransaction();
     transaction.Dispose();
 
     Assert.Throws<ObjectDisposedException>(() => transaction.Prepare());

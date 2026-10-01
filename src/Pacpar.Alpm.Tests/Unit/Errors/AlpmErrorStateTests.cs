@@ -24,7 +24,7 @@ public sealed class AlpmErrorStateTests
 
     // A failure libalpm reports through the handle. (This used to be a second BeginTransaction,
     // which is a join of the active transaction now, so the handle stays clean.)
-    var exception = Record.Exception(() => alpm.LoadPackage(MissingPackage, false, SigLevel.ALPM_SIG_USE_DEFAULT));
+    var exception = Record.Exception(() => alpm.LoadPackage(MissingPackage, false, SigLevel.AlpmSigUseDefault));
 
     Assert.NotNull(exception);
     Assert.IsNotType<NullReferenceException>(exception);

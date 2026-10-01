@@ -283,7 +283,7 @@ public sealed class CallbackTests
     // Registration is presence-driven: without a handler no thunk is registered and the leaked
     // handle never dereferences the ctx. The log thunk is the one teardown would enter.
     alpm.Callback.LogHandler = (_, _) => { };
-    _ = alpm.BeginTransaction((TransactionFlags)0);
+    _ = alpm.BeginTransaction();
     alpm.CurrentTransaction = null;
     var handle = alpm.Handle;   // captured before Dispose: the getter refuses afterwards
 
@@ -311,7 +311,7 @@ public sealed class CallbackTests
     var alpm = new Alpm(root, dbpath);
     alpm.Callback.LogHandler = (_, _) => { };
     var weak = new WeakReference(alpm.Callback);
-    _ = alpm.BeginTransaction((TransactionFlags)0);
+    _ = alpm.BeginTransaction();
     alpm.CurrentTransaction = null;
 
     // Intentionally not disposed: this exercises SafeAlpmHandle's critical finalizer.
@@ -367,7 +367,7 @@ public sealed class CallbackTests
     var alpm = new Alpm(root, dbpath);
     var received = new List<string>();
     alpm.Callback.LogHandler = (_, message) => received.Add(message);
-    _ = alpm.BeginTransaction((TransactionFlags)0);
+    _ = alpm.BeginTransaction();
     alpm.CurrentTransaction = null;
     var handle = alpm.Handle;   // captured before Dispose: the getter refuses afterwards
 

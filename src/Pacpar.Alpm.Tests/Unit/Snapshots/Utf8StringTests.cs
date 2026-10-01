@@ -1,6 +1,6 @@
-using Pacpar.Alpm.Tests.Fixtures;
 using System.Runtime.InteropServices;
 using System.Text;
+using Pacpar.Alpm.Tests.Fixtures;
 
 namespace Pacpar.Alpm.Tests.Unit;
 

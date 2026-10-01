@@ -14,6 +14,7 @@
 //
 // alpm_release is deliberately absent: SafeAlpmHandle.ReleaseHandle() calls it, and a SafeHandle
 // must not be marshaled from inside its own release path.
+
 using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm.Bindings;
@@ -217,7 +218,7 @@ public static unsafe partial class NativeMethods
   internal static partial int alpm_option_get_parallel_downloads(SafeAlpmHandle handle);
 
   [LibraryImport(__DllName, EntryPoint = "alpm_option_set_parallel_downloads")]
-  internal static partial int alpm_option_set_parallel_downloads(SafeAlpmHandle handle, uint num_streams);
+  internal static partial int alpm_option_set_parallel_downloads(SafeAlpmHandle handle, uint numStreams);
 
   [LibraryImport(__DllName, EntryPoint = "alpm_fetch_pkgurl")]
   internal static partial int alpm_fetch_pkgurl(SafeAlpmHandle handle, _alpm_list_t* urls, _alpm_list_t** fetched);
@@ -250,7 +251,7 @@ public static unsafe partial class NativeMethods
   internal static partial int alpm_trans_release(SafeAlpmHandle handle);
 
   [LibraryImport(__DllName, EntryPoint = "alpm_sync_sysupgrade")]
-  internal static partial int alpm_sync_sysupgrade(SafeAlpmHandle handle, int enable_downgrade);
+  internal static partial int alpm_sync_sysupgrade(SafeAlpmHandle handle, int enableDowngrade);
 
   [LibraryImport(__DllName, EntryPoint = "alpm_add_pkg")]
   internal static partial int alpm_add_pkg(SafeAlpmHandle handle, _alpm_pkg_t* pkg);

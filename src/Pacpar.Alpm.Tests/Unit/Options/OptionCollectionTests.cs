@@ -1,4 +1,5 @@
 using Pacpar.Alpm.Tests.Fixtures;
+
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>

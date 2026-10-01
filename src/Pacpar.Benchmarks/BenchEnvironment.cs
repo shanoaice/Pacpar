@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using Pacpar.Alpm;
 using AlpmHandle = Pacpar.Alpm.Alpm;
 
@@ -39,9 +37,9 @@ internal static class BenchEnvironment
     var syncDir = Path.Combine(DbPath, "sync");
     foreach (var name in new[] { "extra", "core" })
     {
-      if (System.IO.File.Exists(Path.Combine(syncDir, name + ".db")))
+      if (File.Exists(Path.Combine(syncDir, name + ".db")))
       {
-        return alpm.RegisterSyncDatabase(name, SigLevel.ALPM_SIG_PACKAGE_OPTIONAL);
+        return alpm.RegisterSyncDatabase(name, SigLevel.AlpmSigPackageOptional);
       }
     }
     throw new InvalidOperationException(

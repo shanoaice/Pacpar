@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
@@ -17,7 +18,7 @@ public sealed class FetchFallbackTests
 
     var urlPtr = NativeString.ToNative("http://127.0.0.1:1/x-1.0-1-x86_64.pkg.tar.zst");
     _alpm_list_t* urls = null;
-    urls = NativeMethods.alpm_list_add(urls, (void*)urlPtr);
+    urls = NativeMethods.alpm_list_add(urls, urlPtr);
     _alpm_list_t* fetched = null;
 
     try
@@ -42,7 +43,7 @@ public sealed class FetchFallbackTests
     }
   }
 
-  [UnmanagedCallersOnly(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+  [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void FreeData(void* data)
   {
     NativeMemory.Free(data);

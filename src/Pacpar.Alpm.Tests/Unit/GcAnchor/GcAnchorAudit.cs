@@ -375,8 +375,8 @@ internal static class GcAnchorAudit
   }
 
   private static bool IsLoadThis(IlInstruction instruction) =>
-    instruction.OpCode.Value is unchecked((short)0x02) // ldarg.0
-    || (instruction.OpCode.Value is unchecked((short)0x0E) && instruction.VariableIndex == 0); // ldarg.s 0
+    instruction.OpCode.Value is unchecked(0x02) // ldarg.0
+    || (instruction.OpCode.Value is unchecked(0x0E) && instruction.VariableIndex == 0); // ldarg.s 0
 
   private static bool UsesThisAfter(
     Module module, IReadOnlyList<IlInstruction> instructions, int hazardIndex, Type type)
@@ -550,12 +550,12 @@ internal static class GcAnchorAudit
       var value = instructions[j].OpCode.Value;
       int argIndex = value switch
       {
-        _ when value == unchecked((short)0x02) => 0, // ldarg.0
-        _ when value == unchecked((short)0x03) => 1, // ldarg.1
-        _ when value == unchecked((short)0x04) => 2, // ldarg.2
-        _ when value == unchecked((short)0x05) => 3, // ldarg.3
+        _ when value == unchecked(0x02) => 0, // ldarg.0
+        _ when value == unchecked(0x03) => 1, // ldarg.1
+        _ when value == unchecked(0x04) => 2, // ldarg.2
+        _ when value == unchecked(0x05) => 3, // ldarg.3
         // ldarg.s / ldarga.s carry the index in the operand byte.
-        _ when value == unchecked((short)0x0E) || value == unchecked((short)0x0F) => instructions[j].VariableIndex,
+        _ when value == unchecked(0x0E) || value == unchecked(0x0F) => instructions[j].VariableIndex,
         _ => -1,
       };
       if (argIndex < 0) continue;

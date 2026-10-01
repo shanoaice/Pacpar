@@ -15,7 +15,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 public sealed class LifetimeInvalidationTests : IDisposable
 {
   /// <summary>No flags: the tests only care about lifetimes, but the transaction must still be sound.</summary>
-  private const TransactionFlags NoFlags = (TransactionFlags)0;
+  private const TransactionFlags NoFlags = 0;
 
   private readonly IsolatedAlpmEnvironment _environment = new();
 
@@ -39,9 +39,9 @@ public sealed class LifetimeInvalidationTests : IDisposable
 
   private void Install(string name, string? depend = null)
   {
-    using var transaction = _environment.Alpm.BeginTransaction(NoFlags);
+    using var transaction = _environment.Alpm.BeginTransaction();
     transaction.AddPackage(_environment.Alpm.LoadPackage(Archive(name, depend),
-      full: true, SigLevel.ALPM_SIG_USE_DEFAULT));
+      full: true, SigLevel.AlpmSigUseDefault));
     transaction.Prepare();
     transaction.Commit();
   }
@@ -50,7 +50,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   public void LoadedPackageDispose_InvalidatesTheViewsItIssued()
   {
     var pkg = _environment.Alpm.LoadPackage(Archive("audit-lifetime-dep", depend: "glibc"),
-      full: true, SigLevel.ALPM_SIG_USE_DEFAULT);
+      full: true, SigLevel.AlpmSigUseDefault);
 
     var depends = pkg.Depends;
     var copied = depends.ToArray();
@@ -75,9 +75,9 @@ public sealed class LifetimeInvalidationTests : IDisposable
   public void HandOver_InvalidatesTheWrapperAndTheReturnedViewCarriesTheTransaction()
   {
     var pkg = _environment.Alpm.LoadPackage(Archive("audit-lifetime-handoff"),
-      full: true, SigLevel.ALPM_SIG_USE_DEFAULT);
+      full: true, SigLevel.AlpmSigUseDefault);
 
-    using var transaction = _environment.Alpm.BeginTransaction(NoFlags);
+    using var transaction = _environment.Alpm.BeginTransaction();
     var view = transaction.AddPackage(pkg);
 
     Assert.Equal("audit-lifetime-handoff", view.Name);

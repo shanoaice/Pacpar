@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Pacpar.Alpm.Tests.Unit;
 
@@ -36,7 +35,7 @@ public sealed unsafe class LogMessageFormatterTests
   {
     var received = Capture("log %s #%d %.0f", "中文 / ünïcødé", 42, 1000.0);
 
-    Assert.Equal(new string?[] { "log 中文 / ünïcødé #42 1000" }, received);
+    Assert.Equal(new[] { "log 中文 / ünïcødé #42 1000" }, received);
   }
 
   [Fact]

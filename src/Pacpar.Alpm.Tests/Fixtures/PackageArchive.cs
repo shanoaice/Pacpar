@@ -44,7 +44,7 @@ internal static class PackageArchive
 
     var path = Path.Combine(directory, $"{name}-{Version}-{arch}.pkg.tar");
 
-    using (var stream = System.IO.File.Create(path))
+    using (var stream = File.Create(path))
     using (var writer = new TarWriter(stream, TarEntryFormat.Pax))
     {
       writer.WriteEntry(TextEntry(".PKGINFO", info.ToString()));

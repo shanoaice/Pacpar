@@ -1,4 +1,3 @@
-using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
 namespace Pacpar.Alpm.Tests.Unit;
@@ -58,7 +57,7 @@ public sealed class ErrorContractTests : IDisposable
   public void GetPackageCache_Throws_WhenLibalpmReportsAnError()
   {
     // A freshly registered sync database has no loaded package cache yet: libalpm sets an errno.
-    var sync = Alpm.RegisterSyncDatabase("core", (SigLevel)0);
+    var sync = Alpm.RegisterSyncDatabase("core", 0);
 
     Assert.ThrowsAny<Exception>(() =>
     {

@@ -1,5 +1,6 @@
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
+
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
@@ -12,8 +13,8 @@ namespace Pacpar.Alpm.Tests.Unit;
 public sealed class TransactionLifecycleTests
 {
   /// <summary>No flags: every check on, database locked, filesystem written.</summary>
-  private const TransactionFlags NoFlags = (TransactionFlags)0;
-  private const TransactionFlags Lockless = TransactionFlags.ALPM_TRANS_FLAG_NOLOCK;
+  private const TransactionFlags NoFlags = 0;
+  private const TransactionFlags Lockless = TransactionFlags.AlpmTransFlagNolock;
 
   [Fact]
   public void BeginTransaction_JoinsTheActiveTransaction_WhenTheFlagsMatch()
@@ -45,7 +46,7 @@ public sealed class TransactionLifecycleTests
   {
     using var environment = new IsolatedAlpmEnvironment();
     var alpm = environment.Alpm;
-    using var active = alpm.BeginTransaction(NoFlags);
+    using var active = alpm.BeginTransaction();
 
     var exception = Assert.Throws<InvalidOperationException>(() => alpm.BeginTransaction(Lockless));
 
@@ -92,6 +93,6 @@ public sealed class TransactionLifecycleTests
     var alpm = environment.Alpm;
     alpm.Dispose();
 
-    Assert.Throws<ObjectDisposedException>(() => alpm.BeginTransaction(NoFlags));
+    Assert.Throws<ObjectDisposedException>(() => alpm.BeginTransaction());
   }
 }

@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using Pacpar.Alpm.Bindings;
 

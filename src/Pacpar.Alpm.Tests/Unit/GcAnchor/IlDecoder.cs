@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Reflection.Emit;
 
 namespace Pacpar.Alpm.Tests.Unit.GcAnchor;
@@ -84,7 +85,7 @@ internal static class IlDecoder
   private static Dictionary<int, (OpCode Op, int Size)> BuildTable()
   {
     var table = new Dictionary<int, (OpCode, int)>(512);
-    foreach (var field in typeof(OpCodes).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+    foreach (var field in typeof(OpCodes).GetFields(BindingFlags.Public | BindingFlags.Static))
     {
       if (field.FieldType != typeof(OpCode)) continue;
       var op = (OpCode)field.GetValue(null)!;
