@@ -21,6 +21,10 @@
     <PackageReference Include="ZLinq" Version="1.5.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Exceptions\" />
+  </ItemGroup>
+
   <PropertyGroup>
     <BuildDependsOn>
     GenerateBindings;$(BuildDependsOn)

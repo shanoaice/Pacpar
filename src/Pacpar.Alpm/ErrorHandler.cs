@@ -5,7 +5,7 @@ namespace Pacpar.Alpm;
 /// <summary>
 /// Turns libalpm errnos into exceptions.
 /// </summary>
-public static class ErrorHandler
+internal static class ErrorHandler
 {
   /// <summary>
   /// The exception describing <paramref name="errno"/>, or <c>null</c> if and only if it is

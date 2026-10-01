@@ -4,6 +4,81 @@ using Pacpar.Alpm.List;
 namespace Pacpar.Alpm;
 
 /// <summary>
+/// The base type for every error libalpm reports.
+/// </summary>
+/// <remarks>
+/// C# has no <c>Result&lt;T, E&gt;</c> and a type cannot be both a BCL exception and this library's
+/// exception (single inheritance), so libalpm errors get one catchable base carrying the raw errno
+/// and libalpm's own message. <see cref="Errno"/> is always set: branch on it, not on the type,
+/// when the distinction matters.
+/// <para>
+/// The one deliberate exception to "everything derives from this": <c>ALPM_ERR_MEMORY</c> surfaces
+/// as <see cref="OutOfMemoryException"/>, because allocation failure is a runtime condition that
+/// should not be swallowed by a catch-all.
+/// </para>
+/// </remarks>
+public class AlpmException : Exception
+{
+  /// <summary>
+  /// Creates the exception for <paramref name="errno"/>.
+  /// </summary>
+  /// <param name="errno">The raw libalpm error code.</param>
+  /// <param name="strError">libalpm's message; defaults to <c>alpm_strerror(errno)</c> when omitted.</param>
+  /// <param name="context">Optional operation description, e.g. "Failed to add package: foo".</param>
+  /// <param name="inner">Optional inner exception.</param>
+  public AlpmException(_alpm_errno_t errno, string? strError = null, string? context = null, Exception? inner = null)
+    : base(BuildMessage(errno, strError ?? ErrorHandler.StrError(errno), context), inner)
+  {
+    Errno = errno;
+    StrError = strError ?? ErrorHandler.StrError(errno);
+  }
+
+  /// <summary>The raw libalpm errno.</summary>
+  public _alpm_errno_t Errno { get; }
+
+  /// <summary>libalpm's own description of <see cref="Errno"/> (<c>alpm_strerror</c>), if any.</summary>
+  public string? StrError { get; }
+
+  private static string BuildMessage(_alpm_errno_t errno, string? strError, string? context)
+  {
+    var detail = string.IsNullOrEmpty(strError) ? errno.ToString() : $"{errno}: {strError}";
+
+    return string.IsNullOrEmpty(context) ? detail : $"{context} ({detail})";
+  }
+}
+
+/// <summary>An error from libalpm's database handling (<c>ALPM_ERR_DB_*</c>).</summary>
+public class AlpmDatabaseException(_alpm_errno_t errno, string? strError = null, string? context = null)
+  : AlpmException(errno, strError, context);
+
+/// <summary>
+/// An error concerning a package (<c>ALPM_ERR_PKG_*</c>).
+/// </summary>
+/// <remarks>
+/// <see cref="AlpmPackageException.Package"/> is set when the failing call already knew the package it was operating on;
+/// the errno-driven factory cannot fill it in. It is typed as the shared read-only surface, because a
+/// failing call may have been operating on either kind of package.
+/// </remarks>
+public class AlpmPackageException(
+  _alpm_errno_t errno,
+  string? strError = null,
+  PackageBase? package = null,
+  string? context = null)
+  : AlpmException(errno, strError, context)
+{
+  /// <summary>The package the failed call was operating on, when known.</summary>
+  public PackageBase? Package { get; } = package;
+}
+
+/// <summary>A signature or keyring error (<c>ALPM_ERR_SIG_*</c>, missing signature support).</summary>
+public class AlpmSignatureException(_alpm_errno_t errno, string? strError = null, string? context = null)
+  : AlpmException(errno, strError, context);
+
+/// <summary>A download or retrieval error (<c>ALPM_ERR_RETRIEVE*</c>, libcurl, external downloader).</summary>
+public class AlpmRetrieveException(_alpm_errno_t errno, string? strError = null, string? context = null)
+  : AlpmException(errno, strError, context);
+
+/// <summary>
 /// An error from libalpm's transaction handling: the <c>ALPM_ERR_TRANS_*</c> values, and the
 /// payload-carrying errnos <c>alpm_trans_prepare</c>/<c>alpm_trans_commit</c> report.
 /// </summary>
@@ -152,5 +227,45 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
         AlpmNativeList.Free(data, null);
         return new AlpmTransactionException(errno, context: context);
     }
+  }
+}
+
+/// <summary>
+/// Thrown when an operation attempts to access a borrowed view, database, or resource
+/// whose underlying unmanaged memory has been invalidated or deallocated.
+/// </summary>
+/// <remarks>
+/// Derives from <see cref="InvalidOperationException"/>: the object itself is intact, but the
+/// operation is not valid in its current (released) state.
+/// </remarks>
+public sealed class AlpmLifetimeException : InvalidOperationException
+{
+  /// <summary>Creates the exception for the invalidated resource <paramref name="target"/>.</summary>
+  /// <param name="target">The resource that was invalidated, e.g. <c>"the local database"</c>.</param>
+  /// <param name="invalidatedBy">
+  /// The operation that released it, e.g. <c>"Database.Unregister()"</c>; <c>null</c> when unknown.
+  /// </param>
+  public AlpmLifetimeException(string target, string? invalidatedBy)
+    : base(BuildMessage(target, invalidatedBy))
+  {
+    Target = target;
+    InvalidatedBy = invalidatedBy;
+  }
+
+  /// <summary>The target resource that was invalidated (e.g. 'the local database', 'the sync database core').</summary>
+  public string Target { get; }
+
+  /// <summary>The operation that caused the invalidation (e.g. 'Database.Unregister()', 'Transaction.Commit()').</summary>
+  public string? InvalidatedBy { get; }
+
+  private static string BuildMessage(string target, string? invalidatedBy)
+  {
+    var reason = invalidatedBy is null
+      ? $"{target} is no longer valid"
+      : $"{target} was released by {invalidatedBy}";
+
+    return $"{reason}, so this object points into unmanaged memory that has been deallocated. "
+           + "A borrowed resource or view remains valid only while its owning context is active: "
+           + "use it within the active scope, or call ToSnapshot() before releasing the owner.";
   }
 }
