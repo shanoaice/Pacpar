@@ -538,4 +538,52 @@ public sealed unsafe class ManagedSnapshotTests
       NativeMemory.Free((void*)(nint)data);
     }
   }
+
+  [Fact]
+  public void QuestionAnswer_WritesBackToNativeAndThrowsWhenDisarmed()
+  {
+    using var env = new IsolatedAlpmEnvironment();
+    var pkgDir = Path.Combine(Path.GetTempPath(), "pacpar-disarm-" + Guid.NewGuid().ToString("n"));
+    Directory.CreateDirectory(pkgDir);
+
+    try
+    {
+      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "disarm-pkg"), full: false, SigLevel.ALPM_SIG_USE_DEFAULT);
+      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+
+      try
+      {
+        native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
+        native->install_ignorepkg.install = 0;
+        native->install_ignorepkg.pkg = pkg.BackingStruct;
+
+        var question = Assert.IsType<AlpmQuestion.InstallIgnoredPackage>(
+          AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig));
+
+        Assert.False(question.Install);
+
+        // Setting answer updates both managed property and native memory
+        question.Install = true;
+        Assert.True(question.Install);
+        Assert.Equal(1, native->install_ignorepkg.install);
+
+        // Disarming freezes the answer and prevents further mutations
+        question.Disarm();
+        Assert.True(question.Install);
+
+        Assert.Throws<InvalidOperationException>(() => question.Install = false);
+      }
+      finally
+      {
+        NativeMemory.Free((void*)(nint)native);
+      }
+    }
+    finally
+    {
+      if (Directory.Exists(pkgDir))
+      {
+        Directory.Delete(pkgDir, recursive: true);
+      }
+    }
+  }
 }

@@ -56,6 +56,8 @@ public sealed class ManagedEnumsTests
       typeof(AlpmQuestion.RemovePkgs).GetProperty(nameof(AlpmQuestion.RemovePkgs.Packages))!.PropertyType);
     Assert.Equal(typeof(IReadOnlyList<PackageSnapshot>),
       typeof(AlpmQuestion.SelectProvider).GetProperty(nameof(AlpmQuestion.SelectProvider.Providers))!.PropertyType);
+    Assert.Equal(typeof(int),
+      typeof(AlpmQuestion.SelectProvider).GetProperty(nameof(AlpmQuestion.SelectProvider.UseIndex))!.PropertyType);
   }
 
   /// <summary>Both enums must cover exactly the same numeric values.</summary>

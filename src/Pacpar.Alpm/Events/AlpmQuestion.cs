@@ -28,9 +28,13 @@ namespace Pacpar.Alpm;
 /// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-public abstract class AlpmQuestion
+public abstract unsafe class AlpmQuestion(_alpm_question_t* question)
 {
-  internal static unsafe AlpmQuestion FromUnion(_alpm_question_t* backingStruct, AlpmBindingConfig binding)
+  protected _alpm_question_t* BackingStruct = question;
+
+  protected bool Disarmed = false;
+
+  internal static AlpmQuestion FromUnion(_alpm_question_t* backingStruct, AlpmBindingConfig binding)
   {
     return backingStruct->type_ switch
     {
@@ -51,7 +55,7 @@ public abstract class AlpmQuestion
   /// call, so it is traversed and copied here rather than viewed. Similarly, this is why a lifetime
   /// parameter is not needed.
   /// </summary>
-  private static unsafe PackageSnapshot[] SnapshotPackageList(_alpm_list_t* packages,
+  private static PackageSnapshot[] SnapshotPackageList(_alpm_list_t* packages,
     bool snapshotFiles = false)
   {
     var snapshots = AlpmList<PackageView>.Borrow(packages, &PackageView.Factory, null)
@@ -61,22 +65,48 @@ public abstract class AlpmQuestion
     return snapshots;
   }
 
-  private static unsafe PackageSnapshot SnapshotPackage(_alpm_pkg_t* package, bool snapshotFiles = false)
+  private static PackageSnapshot SnapshotPackage(_alpm_pkg_t* package, bool snapshotFiles = false)
   {
     return new PackageView(package, null).ToSnapshot(snapshotFiles);
+  }
+
+  internal void ThrowIfDisarmed()
+  {
+    if (Disarmed)
+    {
+      throw new InvalidOperationException(
+        "Callback frame has already completed. Questions must be answered synchronously.");
+    }
+  }
+
+  internal void Disarm()
+  {
+    Disarmed = true;
+    BackingStruct = null;
   }
 
   /// <summary>Question asked when attempting to install a package marked in IgnorePkg.</summary>
   public class InstallIgnoredPackage : AlpmQuestion
   {
-    internal unsafe InstallIgnoredPackage(_alpm_question_t* question, AlpmBindingConfig binding)
+    private bool _install;
+
+    internal InstallIgnoredPackage(_alpm_question_t* question, AlpmBindingConfig binding) : base(question)
     {
-      Install = question->install_ignorepkg.install != 0;
+      _install = question->install_ignorepkg.install != 0;
       Package = SnapshotPackage(question->install_ignorepkg.pkg, binding.QuestionPayloadIncludeFiles);
     }
 
-    /// <summary>Gets whether to install the ignored package.</summary>
-    public bool Install { get; }
+    /// <summary>Gets or sets whether to install the ignored package.</summary>
+    public bool Install
+    {
+      get => _install;
+      set
+      {
+        ThrowIfDisarmed();
+        BackingStruct->install_ignorepkg.install = value ? 1 : 0;
+        _install = value;
+      }
+    }
 
     /// <summary>Gets the ignored package proposed for installation, copied out of libalpm.</summary>
     public PackageSnapshot Package { get; }
@@ -85,16 +115,27 @@ public abstract class AlpmQuestion
   /// <summary>Question asked when an existing package is to be replaced by another package.</summary>
   public class ReplacePackage : AlpmQuestion
   {
-    internal unsafe ReplacePackage(_alpm_question_t* question, AlpmBindingConfig binding)
+    private bool _replace;
+
+    internal ReplacePackage(_alpm_question_t* question, AlpmBindingConfig binding) : base(question)
     {
-      Replace = question->replace.replace != 0;
+      _replace = question->replace.replace != 0;
       OldPackage = SnapshotPackage(question->replace.oldpkg, binding.QuestionPayloadIncludeFiles);
       NewPackage = SnapshotPackage(question->replace.newpkg, binding.QuestionPayloadIncludeFiles);
       NewDatabase = NativeString.FromNative((nint)NativeMethods.alpm_db_get_name(question->replace.newdb)) ?? "";
     }
 
-    /// <summary>Gets whether the package should be replaced.</summary>
-    public bool Replace { get; }
+    /// <summary>Gets or sets whether the package should be replaced.</summary>
+    public bool Replace
+    {
+      get => _replace;
+      set
+      {
+        ThrowIfDisarmed();
+        BackingStruct->replace.replace = value ? 1 : 0;
+        _replace = value;
+      }
+    }
 
     /// <summary>Gets the existing package to be replaced, copied out of libalpm.</summary>
     public PackageSnapshot OldPackage { get; }
@@ -109,11 +150,13 @@ public abstract class AlpmQuestion
   /// <summary>Question asked when two packages conflict during transaction preparation.</summary>
   public class ConflictPkg : AlpmQuestion
   {
-    internal unsafe ConflictPkg(_alpm_question_t* question, AlpmBindingConfig binding)
+    private bool _remove;
+
+    internal ConflictPkg(_alpm_question_t* question, AlpmBindingConfig binding) : base(question)
     {
       var conflict = question->conflict.conflict;
 
-      Remove = question->conflict.remove != 0;
+      _remove = question->conflict.remove != 0;
       Package1 = SnapshotPackage(conflict->package1, binding.QuestionPayloadIncludeFiles);
       Package2 = SnapshotPackage(conflict->package2, binding.QuestionPayloadIncludeFiles);
       Name = NativeString.FromNative((nint)conflict->reason->name) ?? "";
@@ -121,8 +164,17 @@ public abstract class AlpmQuestion
       Description = NativeString.FromNative((nint)conflict->reason->desc) ?? "";
     }
 
-    /// <summary>Gets whether the conflicting package should be removed.</summary>
-    public bool Remove { get; }
+    /// <summary>Gets or sets whether the conflicting package should be removed.</summary>
+    public bool Remove
+    {
+      get => _remove;
+      set
+      {
+        ThrowIfDisarmed();
+        BackingStruct->conflict.remove = value ? 1 : 0;
+        _remove = value;
+      }
+    }
 
     /// <summary>Gets the first conflicting package, copied out of libalpm.</summary>
     public PackageSnapshot Package1 { get; }
@@ -143,30 +195,56 @@ public abstract class AlpmQuestion
   /// <summary>Question asked when a downloaded package file is found to be corrupted.</summary>
   public class CorruptedPkg : AlpmQuestion
   {
-    internal unsafe CorruptedPkg(_alpm_question_t* question)
+    private bool _remove;
+
+    internal CorruptedPkg(_alpm_question_t* question) : base(question)
     {
-      Remove = question->corrupted.remove != 0;
+      _remove = question->corrupted.remove != 0;
       FilePath = NativeString.FromNative((nint)question->corrupted.filepath) ?? "";
+      Reason = ErrorHandler.StrError(question->corrupted.reason) ?? "";
     }
 
-    /// <summary>Gets whether the corrupted package file should be removed.</summary>
-    public bool Remove { get; }
+    /// <summary>Gets or sets whether the corrupted package file should be removed.</summary>
+    public bool Remove
+    {
+      get => _remove;
+      set
+      {
+        ThrowIfDisarmed();
+        BackingStruct->corrupted.remove = value ? 1 : 0;
+        _remove = value;
+      }
+    }
 
     /// <summary>Gets the filesystem path to the corrupted package file.</summary>
     public string FilePath { get; }
+
+    /// <summary>Gets the description of why the package file is considered corrupted.</summary>
+    public string Reason { get; }
   }
 
   /// <summary>Question asked when unresolvable dependencies require removing packages.</summary>
   public class RemovePkgs : AlpmQuestion
   {
-    internal unsafe RemovePkgs(_alpm_question_t* question, AlpmBindingConfig binding)
+    private bool _skip;
+
+    internal RemovePkgs(_alpm_question_t* question, AlpmBindingConfig binding) : base(question)
     {
-      Skip = question->remove_pkgs.skip != 0;
+      _skip = question->remove_pkgs.skip != 0;
       Packages = SnapshotPackageList(question->remove_pkgs.packages, binding.QuestionPayloadIncludeFiles);
     }
 
-    /// <summary>Gets whether to skip removing the packages.</summary>
-    public bool Skip { get; }
+    /// <summary>Gets or sets whether to skip removing the packages.</summary>
+    public bool Skip
+    {
+      get => _skip;
+      set
+      {
+        ThrowIfDisarmed();
+        BackingStruct->remove_pkgs.skip = value ? 1 : 0;
+        _skip = value;
+      }
+    }
 
     /// <summary>Gets the packages proposed for removal, copied out of libalpm.</summary>
     public IReadOnlyList<PackageSnapshot> Packages { get; }
@@ -175,17 +253,28 @@ public abstract class AlpmQuestion
   /// <summary>Question asked when multiple providers satisfy a dependency and a selection is required.</summary>
   public class SelectProvider : AlpmQuestion
   {
-    internal unsafe SelectProvider(_alpm_question_t* question, AlpmBindingConfig binding)
+    private int _useIndex;
+
+    internal SelectProvider(_alpm_question_t* question, AlpmBindingConfig binding) : base(question)
     {
-      UseIndex = question->select_provider.use_index != 0;
+      _useIndex = question->select_provider.use_index;
       Providers = SnapshotPackageList(question->select_provider.providers, binding.QuestionPayloadIncludeFiles);
       Name = NativeString.FromNative((nint)question->select_provider.depend->name) ?? "";
       Version = NativeString.FromNative((nint)question->select_provider.depend->version) ?? "";
       Description = NativeString.FromNative((nint)question->select_provider.depend->desc) ?? "";
     }
 
-    /// <summary>Gets whether the provider selection is based on index rather than name.</summary>
-    public bool UseIndex { get; }
+    /// <summary>Gets or sets the 0-based index of the chosen provider from <see cref="Providers"/>.</summary>
+    public int UseIndex
+    {
+      get => _useIndex;
+      set
+      {
+        ThrowIfDisarmed();
+        BackingStruct->select_provider.use_index = value;
+        _useIndex = value;
+      }
+    }
 
     /// <summary>Gets the candidate packages providing the dependency, copied out of libalpm.</summary>
     public IReadOnlyList<PackageSnapshot> Providers { get; }
@@ -203,15 +292,26 @@ public abstract class AlpmQuestion
   /// <summary>Question asked when an unknown PGP key needs to be imported into the keyring.</summary>
   public class ImportKey : AlpmQuestion
   {
-    internal unsafe ImportKey(_alpm_question_t* question)
+    private bool _import;
+
+    internal ImportKey(_alpm_question_t* question) : base(question)
     {
-      Import = question->import_key.import != 0;
+      _import = question->import_key.import != 0;
       Uid = NativeString.FromNative((nint)question->import_key.uid) ?? "";
       Fingerprint = NativeString.FromNative((nint)question->import_key.fingerprint) ?? "";
     }
 
-    /// <summary>Gets whether to import the key.</summary>
-    public bool Import { get; }
+    /// <summary>Gets or sets whether to import the key.</summary>
+    public bool Import
+    {
+      get => _import;
+      set
+      {
+        ThrowIfDisarmed();
+        BackingStruct->import_key.import = value ? 1 : 0;
+        _import = value;
+      }
+    }
 
     /// <summary>Gets the user ID or identity associated with the key.</summary>
     public string Uid { get; }

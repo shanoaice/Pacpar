@@ -93,7 +93,7 @@ public enum FetchResult
 /// has returned successfully.
 /// </para>
 /// </remarks>
-public sealed partial class Callback
+public sealed class Callback
 {
   // The ALPM context, guarded behind a SafeHandle so it is not disposed while
   // callbacks are still active.
@@ -176,15 +176,16 @@ public sealed partial class Callback
       var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
       if (!success || callback == null) return;
       callback._invokeDepth++;
+      var question = AlpmQuestion.FromUnion(questionT, callback._binding);
       try
       {
         SafeInvoke(
-          () => callback.QuestionHandler?.Invoke(
-            AlpmQuestion.FromUnion(questionT, callback._binding)), callback.HandlerException);
+          () => callback.QuestionHandler?.Invoke(question), callback.HandlerException);
       }
       finally
       {
         callback._invokeDepth--;
+        question.Disarm();
       }
     }
     catch
