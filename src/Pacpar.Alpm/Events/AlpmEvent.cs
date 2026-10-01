@@ -111,15 +111,17 @@ public abstract class AlpmEvent
   {
     internal unsafe PackageOperationStart(_alpm_event_t* native, Lifetime? lifetime)
     {
-      NewPackage = new PackageView(native->package_operation.newpkg, lifetime);
-      OldPackage = new PackageView(native->package_operation.oldpkg, lifetime);
+      var newpkg = native->package_operation.newpkg;
+      var oldpkg = native->package_operation.oldpkg;
+      NewPackage = newpkg == null ? null : new PackageView(newpkg, lifetime);
+      OldPackage = oldpkg == null ? null : new PackageView(oldpkg, lifetime);
       Operation = (PackageOperation)(uint)native->package_operation.operation;
     }
 
-    /// <summary>Gets the package being installed or upgraded to, or an invalid package view if this operation is a package removal.</summary>
-    public PackageView NewPackage { get; }
-    /// <summary>Gets the package being upgraded from or removed, or an invalid package view if this operation is a new package installation.</summary>
-    public PackageView OldPackage { get; }
+    /// <summary>Gets the package being installed or upgraded to, or <c>null</c> if this operation is a package removal.</summary>
+    public PackageView? NewPackage { get; }
+    /// <summary>Gets the package being upgraded from or removed, or <c>null</c> if this operation is a package installation.</summary>
+    public PackageView? OldPackage { get; }
     /// <summary>Gets the type of package operation being performed.</summary>
     public PackageOperation Operation { get; }
   }
@@ -129,15 +131,17 @@ public abstract class AlpmEvent
   {
     internal unsafe PackageOperationDone(_alpm_event_t* native, Lifetime? lifetime)
     {
-      NewPackage = new PackageView(native->package_operation.newpkg, lifetime);
-      OldPackage = new PackageView(native->package_operation.oldpkg, lifetime);
+      var newpkg = native->package_operation.newpkg;
+      var oldpkg = native->package_operation.oldpkg;
+      NewPackage = newpkg == null ? null : new PackageView(newpkg, lifetime);
+      OldPackage = oldpkg == null ? null : new PackageView(oldpkg, lifetime);
       Operation = (PackageOperation)(uint)native->package_operation.operation;
     }
 
-    /// <summary>Gets the package being installed or upgraded to, or an invalid package view if this operation is a package removal.</summary>
-    public PackageView NewPackage { get; }
-    /// <summary>Gets the package being upgraded from or removed, or an invalid package view if this operation is a new package installation.</summary>
-    public PackageView OldPackage { get; }
+    /// <summary>Gets the package being installed or upgraded to, or <c>null</c> if this operation is a package removal.</summary>
+    public PackageView? NewPackage { get; }
+    /// <summary>Gets the package being upgraded from or removed, or <c>null</c> if this operation is a package installation.</summary>
+    public PackageView? OldPackage { get; }
     /// <summary>Gets the type of package operation that completed.</summary>
     public PackageOperation Operation { get; }
   }
@@ -225,18 +229,20 @@ public abstract class AlpmEvent
   {
     internal unsafe PacnewCreated(_alpm_event_t* native, Lifetime? lifetime)
     {
+      var oldpkg = native->pacnew_created.oldpkg;
+      var newpkg = native->pacnew_created.newpkg;
       FromNoUpgrade = native->pacnew_created.from_noupgrade != 0;
-      OldPackage = new PackageView(native->pacnew_created.oldpkg, lifetime);
-      NewPackage = new PackageView(native->pacnew_created.newpkg, lifetime);
+      OldPackage = oldpkg == null ? null : new PackageView(oldpkg, lifetime);
+      NewPackage = newpkg == null ? null : new PackageView(newpkg, lifetime);
       File = NativeString.FromNative((nint)native->pacnew_created.file) ?? "";
     }
 
     /// <summary>Gets whether the .pacnew file was generated due to a NoUpgrade directive.</summary>
     public bool FromNoUpgrade { get; }
     /// <summary>Gets the existing installed package view, if available.</summary>
-    public PackageView OldPackage { get; }
+    public PackageView? OldPackage { get; }
     /// <summary>Gets the new package view providing the updated file, if available.</summary>
-    public PackageView NewPackage { get; }
+    public PackageView? NewPackage { get; }
     /// <summary>Gets the filesystem path to the file.</summary>
     public string File { get; }
   }
@@ -246,12 +252,13 @@ public abstract class AlpmEvent
   {
     internal unsafe PacsaveCreated(_alpm_event_t* native, Lifetime? lifetime)
     {
-      OldPackage = new PackageView(native->pacsave_created.oldpkg, lifetime);
+      var oldpkg = native->pacsave_created.oldpkg;
+      OldPackage = oldpkg == null ? null : new PackageView(oldpkg, lifetime);
       File = NativeString.FromNative((nint)native->pacsave_created.file) ?? "";
     }
 
-    /// <summary>Gets the package being removed that owned the file.</summary>
-    public PackageView OldPackage { get; }
+    /// <summary>Gets the package being removed that owned the file, if available.</summary>
+    public PackageView? OldPackage { get; }
     /// <summary>Gets the filesystem path to the file.</summary>
     public string File { get; }
   }
