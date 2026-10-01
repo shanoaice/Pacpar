@@ -2,7 +2,7 @@ using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm.Options;
 
-internal sealed unsafe class NoExtractOptionCollection(SafeAlpmHandle handle, Lifetime lifetime)
+internal sealed unsafe class NoExtract(SafeAlpmHandle handle, Lifetime lifetime)
   : AlpmStringOptionList(handle, lifetime)
 {
   private protected override _alpm_list_t* GetList(SafeAlpmHandle h) => NativeMethods.alpm_option_get_noextracts(h);

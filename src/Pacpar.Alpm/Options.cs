@@ -55,7 +55,7 @@ public class AlpmOptions
     ThrowIfError(setter(_handle, buffer.Ptr));
   }
 
-  public ICollection<string> Architectures => new Options.Architecture(_handle, _lifetime);
+  public ICollection<string> Architectures => new Architecture(_handle, _lifetime);
 
   public ICollection<Depend> AssumeInstalled => new AssumeInstalled(_handle, _lifetime);
 
@@ -69,7 +69,7 @@ public class AlpmOptions
 
   public ICollection<string> IgnorePackages => new IgnorePackages(_handle, _lifetime);
 
-  public ICollection<string> NoExtract => new NoExtractOptionCollection(_handle, _lifetime);
+  public ICollection<string> NoExtract => new NoExtract(_handle, _lifetime);
 
   public ICollection<string> NoUpgrade => new NoUpgrade(_handle, _lifetime);
 
