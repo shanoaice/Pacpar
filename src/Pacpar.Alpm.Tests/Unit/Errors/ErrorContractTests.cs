@@ -89,4 +89,12 @@ public sealed class ErrorContractTests : IDisposable
     Assert.NotNull(Alpm.Options.DatabasePath);
     Assert.NotNull(Alpm.Options.Lockfile);
   }
+
+  [Fact]
+  public void LogFileAndGpgDirectory_ThrowArgumentNullException_WhenNullAssigned()
+  {
+    Assert.Throws<ArgumentNullException>(() => Alpm.Options.LogFile = null!);
+    Assert.Throws<ArgumentNullException>(() => Alpm.Options.GpgDirectory = null!);
+    Assert.Throws<ArgumentNullException>(() => Alpm.Options.DatabaseExtension = null!);
+  }
 }

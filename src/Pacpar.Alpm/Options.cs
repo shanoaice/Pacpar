@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Options;
 
@@ -46,8 +47,9 @@ public class AlpmOptions
   /// cannot point at a <c>[DllImport]</c> method (CS8786).
   /// </para>
   /// </remarks>
-  private unsafe void SetStringOption(string? value, delegate* managed<SafeAlpmHandle, byte*, int> setter)
+  private unsafe void SetStringOption(string value, delegate* managed<SafeAlpmHandle, byte*, int> setter)
   {
+    ArgumentNullException.ThrowIfNull(value);
     Span<byte> scratch = stackalloc byte[256];
     using var buffer = new Utf8Buffer(value, scratch);
     ThrowIfError(setter(_handle, buffer.Ptr));
@@ -180,6 +182,11 @@ public class AlpmOptions
   /// <summary>
   /// The logfile path, or <c>null</c> when libalpm has none configured (its default).
   /// </summary>
+  /// <remarks>
+  /// Once configured, libalpm does not support unsetting the logfile back to <c>null</c>.
+  /// Attempting to assign <c>null</c> throws an <see cref="ArgumentNullException"/>.
+  /// </remarks>
+  [DisallowNull]
   public unsafe string? LogFile
   {
     get
@@ -219,6 +226,11 @@ public class AlpmOptions
   /// <summary>
   /// libalpm's GnuPG home directory, or <c>null</c> when it has none configured (its default).
   /// </summary>
+  /// <remarks>
+  /// Once configured, libalpm does not support unsetting the GnuPG home directory back to <c>null</c>.
+  /// Attempting to assign <c>null</c> throws an <see cref="ArgumentNullException"/>.
+  /// </remarks>
+  [DisallowNull]
   public unsafe string? GpgDirectory
   {
     get
