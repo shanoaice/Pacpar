@@ -9,7 +9,7 @@ This document outlines the architectural decisions, design choices, and proposed
 1. **Functional-First Architecture**:
    - Separate **specification (description)** from **execution (interpretation)**.
    - Represent processes (transactions, queries, configurations) as pure, immutable data structures where possible.
-   - Use Discriminated Unions and `Result<'T, 'Error>` (Railway-Oriented Programming) instead of throwing exceptions for predictable error paths.
+   - Use Discriminated Unions and `Result<'T, 'Error>` (Railway-Oriented Programming) for expected ALPM operation failures. Use `option` or empty collections for normal query misses, and exceptions for contract violations and runtime faults.
 
 2. **Zero-Overhead & High Performance**:
    - `libalpm` queries (such as scanning package caches or file lists) can involve thousands of packages and hundreds of thousands of files.
@@ -367,5 +367,95 @@ module DownloadTracker =
 ```
 This enables decoupled UI rendering loops (e.g., 30-60 FPS) to simply query `sessionState` without blocking or synchronizing with download worker threads.
 
+---
 
+## 8. Error Handling Boundary
 
+The F# API separates three outcomes that must not be collapsed into one error channel:
+
+- A completed lookup with no match is a normal result: `Database.find` returns `None`, and cache or search operations return an empty sequence.
+- An expected ALPM operation failure is an error value: loading a missing package returns `Error PackageNotFound`, and preparing a transaction can return typed dependency, conflict, or validation failures.
+- Caller misuse and runtime faults throw: invalid arguments, use after disposal, stale lifetime tokens, invalid transaction state, out-of-memory conditions, a native failure without an error code, and unexpected managed exceptions are not business outcomes.
+
+`Pacpar.Alpm` provides an internal, failure-returning core to this project through `InternalsVisibleTo`. That core preserves the native contract at one place: it reads the handle error immediately after the call, distinguishes empty values from failures, and consumes payload-bearing transaction lists with the correct element destructor. It returns typed managed failure values to F#; F# maps them to operation-specific public discriminated unions. The public F# surface therefore exposes neither raw pointers nor generated `_alpm_errno_t` values.
+
+The existing C# facade remains exception-based and delegates to the same core. It is not necessary for F# to catch those exceptions on ordinary expected failure paths. Unknown but valid libalpm errnos map to a generic ALPM operation failure so a newer libalpm remains representable; `ALPM_ERR_MEMORY` remains a thrown out-of-memory condition. See [ADR 0001](../../docs/adr/0001-fsharp-error-boundary.md) and [ADR 0002](../../docs/adr/0002-stable-failure-codes-for-fsharp.md) for the trade-offs.
+
+## 9. C# Support for the F# Boundary
+
+### 9.1 Ownership of the bridge
+
+The C# project owns everything that depends on native return conventions and native memory. The F# project owns only the public language model and the translation from the internal bridge values to its discriminated unions. `Pacpar.Alpm` must not reference `FSharp.Core`, return `FSharpResult`, or make F# types part of the C# API.
+
+The bridge is a narrow internal surface, not a second public wrapper. `Pacpar.Alpm.FSharp` receives access through `InternalsVisibleTo`, and the F# project references `Pacpar.Alpm` directly. No F# method should call `NativeMethods`, inspect a pointer, or decide which native destructor is safe.
+
+### 9.2 Internal result and failure values
+
+The bridge uses the classic `TryX` shape. The Boolean means that the ALPM operation completed without an expected ALPM failure; it does not mean that an optional lookup produced a non-null value. On success `failure` is `null`; on expected failure `value` is left at its default and `failure` is populated.
+
+```csharp
+namespace Pacpar.Alpm.Internal;
+
+internal static class SessionCore
+{
+  internal static bool TryCreate(
+    string root,
+    string dbpath,
+    out Alpm value,
+    out AlpmFailure? failure);
+}
+
+internal static class PackageCore
+{
+  internal static bool TryLoad(
+    Alpm session,
+    string filename,
+    bool full,
+    SigLevel level,
+    out LoadedPackage value,
+    out AlpmFailure? failure);
+}
+
+internal abstract record AlpmFailure
+{
+  public AlpmFailureCode Code { get; init; }
+  public uint NativeCode { get; init; }
+  public string Description { get; init; }
+  public string? Context { get; init; }
+}
+```
+
+Void operations use `bool TryX(..., out AlpmFailure? failure)`. Lookup operations that can legitimately find nothing use the same Boolean-success contract and a nullable `out` value: `true` plus `value == null` is a completed query miss, while `false` is an ALPM operation failure. Removal operations additionally return `out bool removed`, because "not present" is a successful negative answer rather than an error.
+
+`AlpmFailure` is supplemented by typed payload records for the transaction cases that already have managed snapshots: missing dependencies, conflicting dependencies, file conflicts, and invalid package names. Other operations can use a generic native failure record. `AlpmFailureCode` is a stable semantic enum; `NativeCode` preserves the numeric libalpm value for diagnostics and forward compatibility. `ALPM_ERR_MEMORY` is not returned as an ordinary failure from the bridge: it is surfaced as `OutOfMemoryException` at the boundary.
+
+The C# exception factory consumes the same `AlpmFailure` values to construct the existing public `AlpmException` hierarchy. This is important for compatibility: `AlpmTransactionException.TakeFailure` must become a thin adapter over a failure-payload builder, not a second interpretation of the output list. The builder remains unsafe and private to C# because it must select the correct element destructor for the errno.
+
+### 9.3 Native signal map
+
+The bridge should make each native convention explicit. The following are all of the ROP-eligible groups currently exposed by C#; normal getters and read-only package properties do not need a result wrapper.
+
+| C# operation group | Native signal | F# meaning | Bridge shape |
+| --- | --- | --- | --- |
+| create `Alpm` | initialization out-errno and null handle | `Result<AlpmSession, SessionError>` | `TryCreate(..., out value, out failure)` |
+| `LoadPackage`, `GetSignature` | return code plus handle errno | `Result<_, PackageError>` | `TryX(..., out value, out failure)` |
+| sync database registration/unregistration | pointer/return code plus handle errno | `Result<_, DatabaseError>` | `TryX(..., out value, out failure)` |
+| `GetPackage` / `GetGroup` | null pointer as a lookup miss | `PackageView option` / `Group option` | no failure channel |
+| package/group caches and server lists | null plus ok errno means empty; null plus errno means failure | `Result<seq<_>, QueryError>` | `TryX(..., out value, out failure)` |
+| `Database.Validate` | validity answer plus errno when invalid | `Result<unit, DatabaseError>` | `TryX(..., out failure)` |
+| scalar option setters and option-list add/remove | return code plus handle errno; remove also has a not-present answer | `Result<unit, ConfigurationError>` | `TryX(..., out failure)` and `TryRemove(..., out removed, out failure)` |
+| callback registration/unregistration | return code plus handle errno | `Result<unit, CallbackError>` | `TrySet...(..., out failure)` |
+| transaction begin/add/remove/system-upgrade/interrupt/prepare/commit | return code plus handle errno; prepare/commit also own a failure list | `Result<_, TransactionError>` | `TryX(..., out value, out failure)` with typed payload |
+
+Disposed objects, stale views, invalid transaction state, argument validation, a native failure that reports no errno, and cleanup/release failures remain exceptions. They are programming, runtime, or unrecoverable resource conditions, not part of the F# railway.
+
+### 9.4 C# refactor sequence
+
+1. Add the F# project reference and `InternalsVisibleTo` entry. Keep the public C# API surface unchanged.
+2. Add `AlpmFailureCode`, `AlpmFailure` payload records, the `TryX` bridge contract, and the failure builder. Add a mapping test for every generated errno, including the unknown-code fallback.
+3. Split every fallible C# operation in the table above into a failure-returning core and a throwing facade. The facade must call the core and translate `AlpmFailure` through one exception factory; no facade should independently re-read or re-classify errno.
+4. Move transaction payload consumption out of `AlpmTransactionException` into the core failure builder. Preserve the existing managed payload properties and destructor regression tests through the facade.
+5. Add the F# interop translation for all ROP-eligible groups in one module, then expose operation-specific error unions above it. Keep query misses in `option`/empty collections and preserve `removed = false` as a successful answer.
+6. Add F# tests for `Result`/`option` boundaries and C# tests proving that every facade and core pair reports the same failure. Include option-list removal semantics and callback registration failures in the contract tests. Run host tests with `dotnet test --filter "FullyQualifiedName!~Integration"`.
+
+Callbacks themselves remain an exception-safe execution boundary: managed handler exceptions are already caught before they can cross the FFI boundary. Only callback registration and unregistration are ROP-eligible because those are normal configuration operations that libalpm can reject.
