@@ -1,2 +1,4 @@
 _site
-api
+obj
+api/**
+!api/toc.yml
