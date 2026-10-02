@@ -25,15 +25,19 @@ public class AlpmOptions
   }
 
   /// <summary>
-  /// Throws for a non-zero libalpm return value, using the handle's current <c>errno</c>.
+  /// Throws for a non-zero libalpm return value, reading the handle's errno right here.
   /// </summary>
-  private void ThrowIfError(int err)
+  /// <param name="err">The value the option setter returned; zero means success.</param>
+  /// <param name="operation">
+  /// The member that issued the call, so the failure names the option it was setting. Callers pass
+  /// nothing; the compiler fills it in.
+  /// </param>
+  private void ThrowIfError(int err, [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
   {
     if (err != 0)
     {
-      var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
       GC.KeepAlive(this);
-      throw ex;
+      throw NativeCall.Failure(_handle, $"set {operation ?? "option"}");
     }
   }
   /// <summary>
@@ -47,12 +51,13 @@ public class AlpmOptions
   /// cannot point at a <c>[DllImport]</c> method (CS8786).
   /// </para>
   /// </remarks>
-  private unsafe void SetStringOption(string value, delegate* managed<SafeAlpmHandle, byte*, int> setter)
+  private unsafe void SetStringOption(string value, delegate* managed<SafeAlpmHandle, byte*, int> setter,
+    [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
   {
     ArgumentNullException.ThrowIfNull(value);
     Span<byte> scratch = stackalloc byte[256];
     using var buffer = new Utf8Buffer(value, scratch);
-    ThrowIfError(setter(_handle, buffer.Ptr));
+    ThrowIfError(setter(_handle, buffer.Ptr), operation);
   }
 
   public ICollection<string> Architectures => new Architecture(_handle, _lifetime);

@@ -43,6 +43,12 @@ internal static class ErrorHandler
   public static Exception ToException(int errno) => ToException((_alpm_errno_t)errno);
 
   /// <summary>
+  /// The exception for a failure observed at a call site, with the operation recorded in its message.
+  /// </summary>
+  internal static Exception ToException(int errno, string? context)
+    => Create((_alpm_errno_t)errno, context);
+
+  /// <summary>
   /// Returns libalpm's textual description of <paramref name="errno"/>, or a fallback error string if unknown.
   /// </summary>
   internal static string? StrError(_alpm_errno_t errno) => StrErrorCore(errno);
@@ -62,7 +68,7 @@ internal static class ErrorHandler
     return NativeString.FromNative((nint)NativeMethods.alpm_strerror(errno));
   }
 
-  private static Exception Create(_alpm_errno_t errno)
+  private static Exception Create(_alpm_errno_t errno, string? context = null)
   {
     var strError = StrError(errno);
 
@@ -71,12 +77,12 @@ internal static class ErrorHandler
       // The one BCL type kept on purpose: an allocation failure is not a library-domain error and
       // must not be caught by a broad `catch (AlpmException)`.
       AlpmErrorCategory.Memory => new OutOfMemoryException(strError),
-      AlpmErrorCategory.Database => new AlpmDatabaseException((int)errno, strError),
-      AlpmErrorCategory.Package => new AlpmPackageException((int)errno, strError),
-      AlpmErrorCategory.Transaction => new AlpmTransactionException((int)errno, strError),
-      AlpmErrorCategory.Signature => new AlpmSignatureException((int)errno, strError),
-      AlpmErrorCategory.Retrieve => new AlpmRetrieveException((int)errno, strError),
-      _ => new AlpmException((int)errno, strError)
+      AlpmErrorCategory.Database => new AlpmDatabaseException((int)errno, strError, context),
+      AlpmErrorCategory.Package => new AlpmPackageException((int)errno, strError, context: context),
+      AlpmErrorCategory.Transaction => new AlpmTransactionException((int)errno, strError, context),
+      AlpmErrorCategory.Signature => new AlpmSignatureException((int)errno, strError, context),
+      AlpmErrorCategory.Retrieve => new AlpmRetrieveException((int)errno, strError, context),
+      _ => new AlpmException((int)errno, strError, context)
     };
   }
 

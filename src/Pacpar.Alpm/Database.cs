@@ -86,14 +86,17 @@ public unsafe class Database
   /// </summary>
   /// <remarks>
   /// A <c>null</c> native cache with an ok errno is a legitimately empty cache and yields an empty
-  /// view; any other errno is thrown. The view is borrowed and never frees the cache (see
+  /// view; a non-ok errno means loading the cache failed and is thrown. That rule is sound here and
+  /// only here, because <c>alpm_db_get_pkgcache</c> clears <c>pm_errno</c> in its first statement -
+  /// see <see cref="ThrowIfTheLastCallFailed"/>. The view is borrowed and never frees the cache (see
   /// <see cref="AlpmList{T}"/>).
   /// </remarks>
   public AlpmList<PackageView> GetPackageCache()
   {
     ThrowIfInvalidated();
+    var handlePtr = RawHandle;
     var pkgCache = NativeMethods.alpm_db_get_pkgcache(BackingStruct);
-    ThrowIfErrnoSet();
+    ThrowIfTheLastCallFailed(handlePtr, "load package cache");
     return AlpmList<PackageView>.Borrow(pkgCache, &PackageView.Factory, Lifetime);
   }
 
@@ -105,7 +108,6 @@ public unsafe class Database
   {
     ThrowIfInvalidated();
     var servers = NativeMethods.alpm_db_get_servers(BackingStruct);
-    ThrowIfErrnoSet();
     return new AlpmStringList(servers, Lifetime);
   }
 
@@ -117,7 +119,6 @@ public unsafe class Database
   {
     ThrowIfInvalidated();
     var servers = NativeMethods.alpm_db_get_cache_servers(BackingStruct);
-    ThrowIfErrnoSet();
     return new AlpmStringList(servers, Lifetime);
   }
 
@@ -142,9 +143,30 @@ public unsafe class Database
   public AlpmList<Group> GetGroupCache()
   {
     ThrowIfInvalidated();
+    var handlePtr = RawHandle;
     var groupCache = NativeMethods.alpm_db_get_groupcache(BackingStruct);
-    ThrowIfErrnoSet();
+    ThrowIfTheLastCallFailed(handlePtr, "load group cache");
     return AlpmList<Group>.Borrow(groupCache, &Group.Factory, Lifetime);
+  }
+
+  /// <summary>
+  /// Throws when the call that just returned left an error on the handle.
+  /// </summary>
+  /// <param name="handlePtr">The handle, captured before the call being checked.</param>
+  /// <param name="operation">What failed, e.g. <c>"load package cache"</c>.</param>
+  /// <remarks>
+  /// This is only valid after an entry point that resets <c>pm_errno</c> at entry, because only then
+  /// is a non-ok value guaranteed to come from that call. <c>alpm_db_get_pkgcache</c> and
+  /// <c>alpm_db_get_groupcache</c> both do; the two server getters deliberately do not, which is why
+  /// <see cref="GetServers"/> and <see cref="GetCacheServers"/> cannot use this and must treat a null
+  /// list as "none configured" whatever the handle's errno happens to say. Anything that reports
+  /// failure through its return value goes through <see cref="NativeCall"/> instead.
+  /// </remarks>
+  private void ThrowIfTheLastCallFailed(_alpm_handle_t* handlePtr, string operation)
+  {
+    var errno = NativeMethods.alpm_errno(handlePtr);
+    GC.KeepAlive(this);
+    if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException((int)errno, operation);
   }
 
   /// <summary>
@@ -177,12 +199,14 @@ public unsafe class Database
   {
     ThrowIfInvalidated();
 
+    // Captured before the call: on the failure path the errno read has to be the next native
+    // interaction, so it cannot be the property access that fetches the handle.
+    var handlePtr = RawHandle;
     var err = NativeMethods.alpm_db_unregister(BackingStruct);
     if (err != 0)
     {
-      var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(RawHandle));
       GC.KeepAlive(this);
-      throw ex;
+      throw NativeCall.Failure(handlePtr, "unregister database");
     }
     Lifetime.Invalidate("Database.Unregister()");
     Lifetime.Parent?.ForgetHandle(BackingStruct);
@@ -218,29 +242,12 @@ public unsafe class Database
   public void Validate()
   {
     ThrowIfInvalidated();
+    var handlePtr = RawHandle;
     if (IsValid) return;
 
-    var errno = NativeMethods.alpm_errno(RawHandle);
     GC.KeepAlive(this);
-    throw errno == _alpm_errno_t.ALPM_ERR_OK
-      ? new InvalidOperationException("The database is invalid but libalpm did not set an error code.")
-      : ErrorHandler.ToException(errno);
+    throw NativeCall.Failure(handlePtr, "validate database");
   }
-  /// <summary>
-  /// Throws when libalpm set the handle errno.
-  /// </summary>
-  /// <remarks>
-  /// Used after a native call whose <c>null</c> return is legitimate when there is no error (an
-  /// empty list, for instance): <c>null</c> plus an ok errno means "empty", <c>null</c> plus an
-  /// errno means "failed".
-  /// </remarks>
-  private void ThrowIfErrnoSet()
-  {
-    var errno = NativeMethods.alpm_errno(RawHandle);
-    GC.KeepAlive(this);
-    if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
-  }
-
   /// <summary>
   /// Throws <see cref="AlpmLifetimeException"/> when this database was released; the guard every
   /// public accessor runs before dereferencing <c>backingStruct</c>.

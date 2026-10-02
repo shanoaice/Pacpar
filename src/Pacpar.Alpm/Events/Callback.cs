@@ -305,13 +305,12 @@ public sealed class Callback
     }
   }
 
-  private void ThrowIfError(int err)
+  private void ThrowIfError(int err, [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
   {
     if (err != 0)
     {
-      var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
       GC.KeepAlive(this);
-      throw ex;
+      throw NativeCall.Failure(_handle, $"set {operation ?? "callback"}");
     }
   }
 

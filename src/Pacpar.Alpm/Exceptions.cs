@@ -236,6 +236,33 @@ public class AlpmTransactionException(int errno, string? strError = null, string
 }
 
 /// <summary>
+/// libalpm reported a failure without setting an error code on the handle.
+/// </summary>
+/// <remarks>
+/// libalpm has failure paths that never touch <c>pm_errno</c>, so "the call failed and there is no
+/// errno" is a real outcome rather than a wrapper defect. It used to surface as an
+/// <see cref="ArgumentOutOfRangeException"/> thrown while building an exception from
+/// <c>ALPM_ERR_OK</c>; it has its own type now. <see cref="AlpmException.Errno"/> is <c>0</c> here,
+/// meaning "libalpm set no code" - the raw truth rather than a guess.
+/// </remarks>
+public sealed class AlpmNativeFailureException : AlpmException
+{
+  /// <summary>Creates the exception for the operation that failed.</summary>
+  /// <param name="operation">What failed, e.g. <c>"unregister database"</c>.</param>
+  /// <param name="strError">Overrides the default explanation.</param>
+  /// <param name="inner">Optional inner exception.</param>
+  public AlpmNativeFailureException(string operation, string? strError = null, Exception? inner = null)
+    : base(0, strError ?? "libalpm reported a failure without setting an error code.",
+      context: operation, inner: inner)
+  {
+    Operation = operation;
+  }
+
+  /// <summary>The operation that failed, e.g. <c>"unregister database"</c>.</summary>
+  public string Operation { get; }
+}
+
+/// <summary>
 /// Thrown when an operation attempts to access a borrowed view, database, or resource
 /// whose underlying unmanaged memory has been invalidated or deallocated.
 /// </summary>

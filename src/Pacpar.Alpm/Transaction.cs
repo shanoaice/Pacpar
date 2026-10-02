@@ -106,7 +106,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_init(_library.Handle, (int)flags);
     if (err != 0)
     {
-      throw _library.GetRequiredCurrentError();
+      throw NativeCall.Failure(_library.Handle, "start transaction");
     }
   }
 
@@ -224,7 +224,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_sync_sysupgrade(_library.Handle, enableDowngrade ? 1 : 0);
     if (err != 0)
     {
-      throw _library.GetRequiredCurrentError();
+      throw NativeCall.Failure(_library.Handle, "compute system upgrade");
     }
   }
 
@@ -237,7 +237,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_interrupt(_library.Handle);
     if (err != 0)
     {
-      throw _library.GetRequiredCurrentError();
+      throw NativeCall.Failure(_library.Handle, "interrupt transaction");
     }
   }
 

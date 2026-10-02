@@ -112,9 +112,8 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
       var err = AddNative(_handle, itemPtr);
       if (err != 0)
       {
-        var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
         GC.KeepAlive(this);
-        throw ex;
+        throw NativeCall.Failure(_handle, "add option entry");
       }
     }
     finally
@@ -160,9 +159,8 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
       var err = RemoveNative(_handle, itemPtr);
       if (err < 0)
       {
-        var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(_handle));
         GC.KeepAlive(this);
-        throw ex;
+        throw NativeCall.Failure(_handle, "remove option entry");
       }
       return err > 0;
     }

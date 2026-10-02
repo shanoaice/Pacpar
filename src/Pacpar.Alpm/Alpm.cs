@@ -190,31 +190,6 @@ public class Alpm : IDisposable
   }
 
   /// <summary>
-  /// The current error as an exception; never <c>null</c>.
-  /// </summary>
-  /// <remarks>
-  /// Use this at sites that have already observed a native failure: a failing libalpm call that did
-  /// not set an errno is a contract violation and must still surface, instead of becoming
-  /// <c>null</c> and then a <see cref="NullReferenceException"/> at the throw site.
-  /// </remarks>
-  internal Exception GetRequiredCurrentError()
-    => GetCurrentError() ?? new InvalidOperationException(
-      "libalpm reported a failure without setting an error code.");
-
-  /// <summary>
-  /// Throws when the handle's current errno reports an error.
-  /// </summary>
-  /// <remarks>
-  /// Used right after a native call that signals failure through the handle errno, and whose return
-  /// value can also be a <c>null</c> pointer that is legitimate when there is no error.
-  /// </remarks>
-  private void ThrowIfCurrentError()
-  {
-    var errno = NativeMethods.alpm_errno(Handle);
-    if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
-  }
-
-  /// <summary>
   /// Loads a package archive from disk.
   /// </summary>
   /// <param name="filename">The path to the package archive file.</param>
@@ -238,7 +213,7 @@ public class Alpm : IDisposable
       if (err != 0)
       {
         // Note: alpm_pkg_load sets the handle errno on failure.
-        throw GetRequiredCurrentError();
+        throw NativeCall.Failure(Handle, "load package");
       }
 
       var rawPkg = *pkgOutPtr;
@@ -309,7 +284,6 @@ public class Alpm : IDisposable
   {
     ThrowIfDisposed();
     var databasePtr = NativeMethods.alpm_get_localdb(Handle);
-    ThrowIfCurrentError();
     _localDatabase ??= _lifetime.CreateChild("the local database");
     return new Database(databasePtr, _localDatabase);
   }
@@ -322,7 +296,6 @@ public class Alpm : IDisposable
   {
     ThrowIfDisposed();
     var syncDatabases = NativeMethods.alpm_get_syncdbs(Handle);
-    ThrowIfCurrentError();
     return AlpmList<Database>.Borrow(syncDatabases, &Database.Factory, _lifetime);
   }
 
@@ -338,7 +311,11 @@ public class Alpm : IDisposable
     Span<byte> scratch = stackalloc byte[64];
     using var treeNameBuf = new Utf8Buffer(treename, scratch);
     var database = NativeMethods.alpm_register_syncdb(Handle, treeNameBuf.Ptr, (int)level);
-    ThrowIfCurrentError();
+    if (database is null)
+    {
+      // The null pointer is the failure signal; the errno read is the next thing that happens.
+      throw NativeCall.Failure(Handle, "register sync database");
+    }
     var token = _lifetime.GetLifetimeTokenForHandle(database, $"the sync database {treename}");
     return new Database(database, token);
   }
@@ -350,7 +327,7 @@ public class Alpm : IDisposable
   {
     ThrowIfDisposed();
     var err = NativeMethods.alpm_unregister_all_syncdbs(Handle);
-    if (err != 0) throw GetRequiredCurrentError();
+    if (err != 0) throw NativeCall.Failure(Handle, "unregister all sync databases");
 
     _lifetime.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
   }

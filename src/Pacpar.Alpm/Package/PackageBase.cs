@@ -593,14 +593,16 @@ public abstract unsafe class PackageBase
 
     if (!_signatureLoaded)
     {
+      // Captured before the call: on the failure path the errno read must be the next native
+      // interaction, and this property is itself a native call (alpm_pkg_get_handle).
+      var handlePtr = LibraryHandle;
       byte* buffer = null;
       nuint len;
       var result = NativeMethods.alpm_pkg_get_sig(BackingStruct, &buffer, &len);
       if (result != 0)
       {
-        var ex = ErrorHandler.ToException(NativeMethods.alpm_errno(LibraryHandle));
         GC.KeepAlive(this);
-        throw ex;
+        throw NativeCall.Failure(handlePtr, "read package signature");
       }
       if (buffer != null)
       {
