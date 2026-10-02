@@ -136,4 +136,25 @@ public sealed class LifetimeInvalidationTests : IDisposable
     Assert.NotNull(reissued);
     Assert.Equal("audit-lifetime-first", reissued!.Name);
   }
+
+  [Fact]
+  public void Enumerator_AdvancedPastInvalidation_ThrowsInsteadOfWalkingFreedNodes()
+  {
+    Install("audit-lifetime-enumerator");
+
+    // Taken after the commit, so the cache view carries a live token.
+    var cache = _environment.Alpm.GetLocalDatabase().GetPackageCache();
+
+    var enumerator = cache.GetEnumerator();
+    Assert.True(enumerator.MoveNext());
+
+    // Materialize one element, so the enumerator now holds a native node to advance from.
+    Assert.False(string.IsNullOrEmpty(enumerator.Current.Name));
+
+    _environment.Alpm.Dispose();
+
+    // Advancing dereferences the freed node's next pointer. Only Current re-validated the token, so
+    // without a check in MoveNext this would end the loop silently instead of throwing.
+    Assert.Throws<AlpmLifetimeException>(() => enumerator.MoveNext());
+  }
 }

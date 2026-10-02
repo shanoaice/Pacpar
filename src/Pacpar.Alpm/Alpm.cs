@@ -5,6 +5,19 @@ using Pacpar.Alpm.List;
 namespace Pacpar.Alpm;
 
 // ReSharper disable once ClassNeverInstantiated.Global
+/// <summary>
+/// A live session with libalpm: the root object that owns the native handle and is the entry point
+/// for databases and transactions.
+/// </summary>
+/// <remarks>
+/// libalpm is not thread-safe, so a session, the databases and transactions that hang off it, and
+/// every view they issue belong to one thread at a time. This is the one place the contract is
+/// stated; the rest of the library assumes it. Concurrent work belongs on other threads that hand
+/// results back to the session's thread, and anything that must cross a thread boundary is copied
+/// out with <see cref="PackageBase.ToSnapshot"/> first. The two places where the thread model is
+/// spelled out again are where libalpm crosses back into consumer code: <see cref="Callback"/>
+/// handlers and the questions raised through <see cref="Callback.QuestionHandler"/>.
+/// </remarks>
 public class Alpm : IDisposable
 {
   // opaque handle to libalpm wrapped in a SafeHandle
@@ -75,8 +88,8 @@ public class Alpm : IDisposable
   /// <remarks>
   /// libalpm's own options live in <see cref="Options"/>; this object only carries choices this
   /// wrapper makes on the consumer's behalf, such as <see cref="AlpmBindingConfig.QuestionPayloadIncludeFiles"/>.
-  /// The handle's callback thunks read it per invocation, so it must not be mutated from another
-  /// thread while a transaction is running (libalpm handles are single-threaded to begin with).
+  /// The handle's callback thunks read it per invocation, so mutate it only while no native call is
+  /// in flight.
   /// </remarks>
   public AlpmBindingConfig BindingConfig { get; }
 

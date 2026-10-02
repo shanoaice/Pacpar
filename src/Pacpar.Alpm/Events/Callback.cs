@@ -87,6 +87,16 @@ public enum FetchResult
 /// dereference crashes in libalpm's download and dispatch loops. Mutating a handler after the owning
 /// <see cref="Alpm"/> handle has been disposed throws <see cref="ObjectDisposedException"/>.
 /// <para>
+/// Handlers run synchronously on the thread libalpm invokes them from - the thread already running
+/// the transaction, never a thread chosen by this library - and they block libalpm for as long as
+/// they run.
+/// </para>
+/// <para>
+/// <see cref="QuestionHandler"/> is stricter still: libalpm reads the answer as soon as the callback
+/// returns, so a question must be answered inline, before returning. Answering from a continuation,
+/// a task, or another thread leaves libalpm reading an answer that has not been written yet.
+/// </para>
+/// <para>
 /// Every handler invocation is routed through <c>SafeInvoke</c>, which swallows handler exceptions
 /// at the FFI boundary and reports them through <see cref="HandlerException"/> when that observer is
 /// set. The ctx handle is owned by <see cref="Alpm"/>, which releases it only once <c>alpm_release</c>
