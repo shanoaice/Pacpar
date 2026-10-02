@@ -14,7 +14,12 @@
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
 
   <ItemGroup>
+    <!-- ADR 0006 keeps the binding layer internal to this assembly. In-repo tooling that has to
+         reach the raw entry points (the test suite's binding-pairing audit, and the marshalling
+         benchmarks that measure libalpm calls directly) is granted friend access explicitly; an
+         external consumer is not. -->
     <InternalsVisibleTo Include="Pacpar.Alpm.Tests" />
+    <InternalsVisibleTo Include="Pacpar.Benchmarks" />
   </ItemGroup>
 
   <ItemGroup>

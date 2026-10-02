@@ -134,7 +134,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_prepare(_library.Handle, &errData);
     if (err != 0)
     {
-      var ex = AlpmTransactionException.TakeFailure(_library.Errno, errData, "Failed to prepare transaction");
+      var ex = AlpmTransactionException.TakeFailure((_alpm_errno_t)_library.Errno, errData, "Failed to prepare transaction");
       GC.KeepAlive(_library);
       GC.KeepAlive(this);
       throw ex;
@@ -259,7 +259,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_commit(_library.Handle, &messages);
     if (err != 0)
     {
-      var ex = AlpmTransactionException.TakeFailure(_library.Errno, messages, "Failed to commit transaction");
+      var ex = AlpmTransactionException.TakeFailure((_alpm_errno_t)_library.Errno, messages, "Failed to commit transaction");
       GC.KeepAlive(_library);
       GC.KeepAlive(this);
       throw ex;

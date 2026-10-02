@@ -29,7 +29,7 @@ public sealed class AlpmErrorStateTests
     Assert.NotNull(exception);
     Assert.IsNotType<NullReferenceException>(exception);
     Assert.NotNull(alpm.GetCurrentError());
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND, alpm.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND, alpm.Errno);
     Assert.Contains("could not find or read package", alpm.GetCurrentErrorString());
   }
 
@@ -39,7 +39,7 @@ public sealed class AlpmErrorStateTests
     using var environment = new IsolatedAlpmEnvironment();
 
     Assert.False(environment.Alpm.Handle.IsInvalid);
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_OK, environment.Alpm.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_OK, environment.Alpm.Errno);
     Assert.Null(environment.Alpm.GetCurrentError());
   }
 

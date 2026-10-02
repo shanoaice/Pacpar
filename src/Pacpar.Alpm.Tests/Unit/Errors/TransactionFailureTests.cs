@@ -74,7 +74,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
 
     var failure = Assert.Throws<AlpmTransactionException.MissingDependencies>(() => transaction.Prepare());
 
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS, failure.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS, failure.Errno);
     Assert.Contains("Failed to prepare transaction", failure.Message);
 
     var missing = Assert.Single(failure.Dependencies);
@@ -96,7 +96,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
 
     var failure = Assert.Throws<AlpmTransactionException.ConflictingDependencies>(() => transaction.Prepare());
 
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS, failure.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS, failure.Errno);
 
     var conflict = Assert.Single(failure.Conflicts);
     Assert.Equal(["audit-left", "audit-right"],
@@ -114,7 +114,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
 
     var failure = Assert.Throws<AlpmTransactionException.InvalidPackageArchitecture>(() => transaction.Prepare());
 
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH, failure.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH, failure.Errno);
 
     // libalpm names the offending packages itself as pkgname-pkgver-pkgarch - not the file they were
     // loaded from.
@@ -152,7 +152,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
 
     var failure = Assert.Throws<AlpmTransactionException.ConflictingFiles>(() => transaction.Commit());
 
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_FILE_CONFLICTS, failure.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_FILE_CONFLICTS, failure.Errno);
     Assert.Contains("Failed to commit transaction", failure.Message);
 
     var conflict = Assert.Single(failure.Conflicts);
@@ -192,7 +192,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     var failure = Assert.Throws<AlpmTransactionException>(() => transaction.Commit());
 
     Assert.Equal(typeof(AlpmTransactionException), failure.GetType());
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_TRANS_NOT_PREPARED, failure.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_TRANS_NOT_PREPARED, failure.Errno);
     Assert.Contains("Failed to commit transaction", failure.Message);
   }
 
@@ -209,7 +209,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     var failure = AlpmTransactionException.TakeFailure(_alpm_errno_t.ALPM_ERR_TRANS_NULL, list);
 
     Assert.Equal(typeof(AlpmTransactionException), failure.GetType());
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_TRANS_NULL, failure.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_TRANS_NULL, failure.Errno);
   }
 
   [Fact]

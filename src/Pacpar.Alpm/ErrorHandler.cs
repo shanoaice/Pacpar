@@ -21,6 +21,12 @@ internal static class ErrorHandler
     => errno == _alpm_errno_t.ALPM_ERR_OK ? null : Create(errno);
 
   /// <summary>
+  /// The <see cref="int"/> overload: the public error vocabulary is a plain number since ADR 0006,
+  /// and call sites that already carry one should not have to name the generated enum.
+  /// </summary>
+  public static Exception? GetException(int errno) => GetException((_alpm_errno_t)errno);
+
+  /// <summary>
   /// The exception describing a non-OK <paramref name="errno"/>; never <c>null</c>.
   /// </summary>
   /// <remarks>Prefer this over <c>GetException(...)!</c> at throw sites.</remarks>
@@ -33,10 +39,22 @@ internal static class ErrorHandler
         "ALPM_ERR_OK is not an error; there is no exception to report.")
       : Create(errno);
 
+  /// <summary>The <see cref="int"/> overload of <see cref="ToException(_alpm_errno_t)"/>.</summary>
+  public static Exception ToException(int errno) => ToException((_alpm_errno_t)errno);
+
   /// <summary>
   /// Returns libalpm's textual description of <paramref name="errno"/>, or a fallback error string if unknown.
   /// </summary>
   internal static string? StrError(_alpm_errno_t errno) => StrErrorCore(errno);
+
+  /// <summary>The <see cref="int"/> overload of <see cref="StrError(_alpm_errno_t)"/>.</summary>
+  internal static string? StrError(int errno) => StrErrorCore((_alpm_errno_t)errno);
+
+  /// <summary>
+  /// The <c>ALPM_ERR_*</c> name for a raw code, for use in messages. Unknown codes fall back to the
+  /// number, which is all that can be said about them.
+  /// </summary>
+  internal static string NameOf(int errno) => ((_alpm_errno_t)errno).ToString();
 
   private static unsafe string? StrErrorCore(_alpm_errno_t errno)
   {
@@ -53,12 +71,12 @@ internal static class ErrorHandler
       // The one BCL type kept on purpose: an allocation failure is not a library-domain error and
       // must not be caught by a broad `catch (AlpmException)`.
       AlpmErrorCategory.Memory => new OutOfMemoryException(strError),
-      AlpmErrorCategory.Database => new AlpmDatabaseException(errno, strError),
-      AlpmErrorCategory.Package => new AlpmPackageException(errno, strError),
-      AlpmErrorCategory.Transaction => new AlpmTransactionException(errno, strError),
-      AlpmErrorCategory.Signature => new AlpmSignatureException(errno, strError),
-      AlpmErrorCategory.Retrieve => new AlpmRetrieveException(errno, strError),
-      _ => new AlpmException(errno, strError)
+      AlpmErrorCategory.Database => new AlpmDatabaseException((int)errno, strError),
+      AlpmErrorCategory.Package => new AlpmPackageException((int)errno, strError),
+      AlpmErrorCategory.Transaction => new AlpmTransactionException((int)errno, strError),
+      AlpmErrorCategory.Signature => new AlpmSignatureException((int)errno, strError),
+      AlpmErrorCategory.Retrieve => new AlpmRetrieveException((int)errno, strError),
+      _ => new AlpmException((int)errno, strError)
     };
   }
 

@@ -62,7 +62,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         .csharp_dll_name("libalpm")
         // .csharp_generate_const_filter(|x| x.starts_with("alpm_")) // use csharp_generate_const_filter if you want to generate const
         .csharp_class_name("NativeMethods")
-        .csharp_class_accessibility("public")
+        // ADR 0006: the generated binding layer ships as an implementation detail, not as a public
+        // escape hatch into libalpm. Consumers that need raw access declare their own P/Invoke.
+        .csharp_class_accessibility("internal")
         .csharp_namespace("Pacpar.Alpm.Bindings")
         .always_included_types([
             "_alpm_backup_t",

@@ -151,14 +151,19 @@ public class Alpm : IDisposable
   /// <c>alpm_initialize</c> is a different value: libalpm writes it only when initialization fails,
   /// so using it here reported <c>ALPM_ERR_OK</c> for the entire lifetime of a healthy handle.
   /// </remarks>
-  public _alpm_errno_t Errno
+  /// <remarks>
+  /// The value is libalpm's own numbering; consult <c>alpm.h</c>. It carries no stability promise of
+  /// its own - match on the exception hierarchy, and use this only to distinguish or report a case
+  /// the hierarchy deliberately collapses. The generated binding enum is internal since ADR 0006.
+  /// </remarks>
+  public int Errno
   {
     get
     {
       ThrowIfDisposed();
       // No keep-alive: the SafeHandle marshaller refcounts the handle across the call, so
       // alpm_release cannot run underneath it even when this Alpm is already unreachable.
-      return NativeMethods.alpm_errno(Handle);
+      return (int)NativeMethods.alpm_errno(Handle);
     }
   }
 
@@ -169,7 +174,7 @@ public class Alpm : IDisposable
   public unsafe string? GetCurrentErrorString()
   {
     ThrowIfDisposed();
-    var str = NativeString.FromNative((nint)NativeMethods.alpm_strerror(Errno));
+    var str = NativeString.FromNative((nint)NativeMethods.alpm_strerror((_alpm_errno_t)Errno));
     GC.KeepAlive(this);
     return str;
   }
@@ -205,7 +210,7 @@ public class Alpm : IDisposable
   /// </remarks>
   private void ThrowIfCurrentError()
   {
-    var errno = Errno;
+    var errno = NativeMethods.alpm_errno(Handle);
     if (errno != _alpm_errno_t.ALPM_ERR_OK) throw ErrorHandler.ToException(errno);
   }
 

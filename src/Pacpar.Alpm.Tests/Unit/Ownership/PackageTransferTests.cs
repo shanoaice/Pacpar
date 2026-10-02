@@ -146,7 +146,7 @@ public sealed class PackageTransferTests : IDisposable
 
     var failure = Assert.Throws<AlpmPackageException>(() => transaction.AddPackage(installed));
 
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_WRONG_ARGS, failure.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_WRONG_ARGS, failure.Errno);
     Assert.Same(installed, failure.Package);
     Assert.Empty(transaction.GetAddedPackages());
 

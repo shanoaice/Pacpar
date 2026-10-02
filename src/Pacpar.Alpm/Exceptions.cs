@@ -22,33 +22,38 @@ public class AlpmException : Exception
   /// <summary>
   /// Creates the exception for <paramref name="errno"/>.
   /// </summary>
-  /// <param name="errno">The raw libalpm error code.</param>
+  /// <param name="errno">The raw libalpm error code; consult <c>alpm.h</c> for its meaning.</param>
   /// <param name="strError">libalpm's message; defaults to <c>alpm_strerror(errno)</c> when omitted.</param>
   /// <param name="context">Optional operation description, e.g. "Failed to add package: foo".</param>
   /// <param name="inner">Optional inner exception.</param>
-  public AlpmException(_alpm_errno_t errno, string? strError = null, string? context = null, Exception? inner = null)
+  public AlpmException(int errno, string? strError = null, string? context = null, Exception? inner = null)
     : base(BuildMessage(errno, strError ?? ErrorHandler.StrError(errno), context), inner)
   {
     Errno = errno;
     StrError = strError ?? ErrorHandler.StrError(errno);
   }
 
-  /// <summary>The raw libalpm errno.</summary>
-  public _alpm_errno_t Errno { get; }
+  /// <summary>
+  /// The raw libalpm errno. It is libalpm's own numbering and carries no stability promise of its
+  /// own; match on the exception type, and use this only for diagnostics or to distinguish a case the
+  /// hierarchy deliberately collapses.
+  /// </summary>
+  public int Errno { get; }
 
   /// <summary>libalpm's own description of <see cref="Errno"/> (<c>alpm_strerror</c>), if any.</summary>
   public string? StrError { get; }
 
-  private static string BuildMessage(_alpm_errno_t errno, string? strError, string? context)
+  private static string BuildMessage(int errno, string? strError, string? context)
   {
-    var detail = string.IsNullOrEmpty(strError) ? errno.ToString() : $"{errno}: {strError}";
+    var name = ErrorHandler.NameOf(errno);
+    var detail = string.IsNullOrEmpty(strError) ? name : $"{name}: {strError}";
 
     return string.IsNullOrEmpty(context) ? detail : $"{context} ({detail})";
   }
 }
 
 /// <summary>An error from libalpm's database handling (<c>ALPM_ERR_DB_*</c>).</summary>
-public class AlpmDatabaseException(_alpm_errno_t errno, string? strError = null, string? context = null)
+public class AlpmDatabaseException(int errno, string? strError = null, string? context = null)
   : AlpmException(errno, strError, context);
 
 /// <summary>
@@ -60,7 +65,7 @@ public class AlpmDatabaseException(_alpm_errno_t errno, string? strError = null,
 /// failing call may have been operating on either kind of package.
 /// </remarks>
 public class AlpmPackageException(
-  _alpm_errno_t errno,
+  int errno,
   string? strError = null,
   PackageBase? package = null,
   string? context = null)
@@ -71,11 +76,11 @@ public class AlpmPackageException(
 }
 
 /// <summary>A signature or keyring error (<c>ALPM_ERR_SIG_*</c>, missing signature support).</summary>
-public class AlpmSignatureException(_alpm_errno_t errno, string? strError = null, string? context = null)
+public class AlpmSignatureException(int errno, string? strError = null, string? context = null)
   : AlpmException(errno, strError, context);
 
 /// <summary>A download or retrieval error (<c>ALPM_ERR_RETRIEVE*</c>, libcurl, external downloader).</summary>
-public class AlpmRetrieveException(_alpm_errno_t errno, string? strError = null, string? context = null)
+public class AlpmRetrieveException(int errno, string? strError = null, string? context = null)
   : AlpmException(errno, strError, context);
 
 /// <summary>
@@ -99,14 +104,14 @@ public class AlpmRetrieveException(_alpm_errno_t errno, string? strError = null,
 /// }
 /// </code>
 /// </remarks>
-public class AlpmTransactionException(_alpm_errno_t errno, string? strError = null, string? context = null)
+public class AlpmTransactionException(int errno, string? strError = null, string? context = null)
   : AlpmException(errno, strError, context)
 {
   /// <summary>
   /// Dependencies the transaction could not satisfy (<c>ALPM_ERR_UNSATISFIED_DEPS</c>).
   /// </summary>
   public sealed class MissingDependencies(IReadOnlyList<DepMissing> dependencies, string? context = null)
-    : AlpmTransactionException(_alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS, context: context)
+    : AlpmTransactionException((int)_alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS, context: context)
   {
     /// <summary>The unsatisfied dependencies, snapshotted out of libalpm's list.</summary>
     public IReadOnlyList<DepMissing> Dependencies { get; } = dependencies;
@@ -116,7 +121,7 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
   /// Dependencies that conflict with each other (<c>ALPM_ERR_CONFLICTING_DEPS</c>).
   /// </summary>
   public sealed class ConflictingDependencies(IReadOnlyList<Conflict> conflicts, string? context = null)
-    : AlpmTransactionException(_alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS, context: context)
+    : AlpmTransactionException((int)_alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS, context: context)
   {
     /// <summary>The conflicting pairs, snapshotted out of libalpm's list.</summary>
     public IReadOnlyList<Conflict> Conflicts { get; } = conflicts;
@@ -127,7 +132,7 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
   /// (<c>ALPM_ERR_FILE_CONFLICTS</c>).
   /// </summary>
   public sealed class ConflictingFiles(IReadOnlyList<FileConflict> conflicts, string? context = null)
-    : AlpmTransactionException(_alpm_errno_t.ALPM_ERR_FILE_CONFLICTS, context: context)
+    : AlpmTransactionException((int)_alpm_errno_t.ALPM_ERR_FILE_CONFLICTS, context: context)
   {
     /// <summary>The file conflicts, snapshotted out of libalpm's list.</summary>
     public IReadOnlyList<FileConflict> Conflicts { get; } = conflicts;
@@ -144,7 +149,7 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
   /// map them back to the path it passed to <c>alpm_pkg_load</c>.
   /// </remarks>
   public sealed class InvalidPackageArchitecture(IReadOnlyList<string> packages, string? context = null)
-    : AlpmTransactionException(_alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH, context: context)
+    : AlpmTransactionException((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH, context: context)
   {
     /// <summary>The rejected packages, as libalpm named them.</summary>
     public IReadOnlyList<string> Packages { get; } = packages;
@@ -152,7 +157,7 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
 
   /// <summary>Packages libalpm rejected as invalid (<c>ALPM_ERR_PKG_INVALID</c>).</summary>
   public sealed class InvalidPackage(IReadOnlyList<string> packages, string? context = null)
-    : AlpmTransactionException(_alpm_errno_t.ALPM_ERR_PKG_INVALID, context: context)
+    : AlpmTransactionException((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID, context: context)
   {
     /// <summary>The rejected packages, as libalpm named them.</summary>
     public IReadOnlyList<string> Packages { get; } = packages;
@@ -162,7 +167,7 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
   /// Packages whose checksum did not match (<c>ALPM_ERR_PKG_INVALID_CHECKSUM</c>).
   /// </summary>
   public sealed class InvalidPackageChecksum(IReadOnlyList<string> packages, string? context = null)
-    : AlpmTransactionException(_alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM, context: context)
+    : AlpmTransactionException((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM, context: context)
   {
     /// <summary>The rejected packages, as libalpm named them.</summary>
     public IReadOnlyList<string> Packages { get; } = packages;
@@ -172,7 +177,7 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
   /// Packages whose signature did not verify (<c>ALPM_ERR_PKG_INVALID_SIG</c>).
   /// </summary>
   public sealed class InvalidPackageSignature(IReadOnlyList<string> packages, string? context = null)
-    : AlpmTransactionException(_alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG, context: context)
+    : AlpmTransactionException((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG, context: context)
   {
     /// <summary>The rejected packages, as libalpm named them.</summary>
     public IReadOnlyList<string> Packages { get; } = packages;
@@ -225,7 +230,7 @@ public class AlpmTransactionException(_alpm_errno_t errno, string? strError = nu
         // libalpm is about to discard anyway beats aborting the process on a wrong free. The caller
         // still gets a usable exception, carrying the errno and libalpm's own message.
         AlpmNativeList.Free(data, null);
-        return new AlpmTransactionException(errno, context: context);
+        return new AlpmTransactionException((int)errno, context: context);
     }
   }
 }

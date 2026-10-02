@@ -13,18 +13,18 @@ public sealed class ErrorHandlerTests
   }
 
   [Theory]
-  [InlineData(_alpm_errno_t.ALPM_ERR_MEMORY, typeof(OutOfMemoryException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_BADPERMS, typeof(AlpmException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_SYSTEM, typeof(AlpmException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_DB_NOT_FOUND, typeof(AlpmDatabaseException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_DB_INVALID, typeof(AlpmDatabaseException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND, typeof(AlpmPackageException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_TRANS_NOT_NULL, typeof(AlpmTransactionException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_SIG_MISSING, typeof(AlpmSignatureException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_MISSING_CAPABILITY_SIGNATURES, typeof(AlpmSignatureException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_RETRIEVE, typeof(AlpmRetrieveException))]
-  [InlineData(_alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE, typeof(AlpmRetrieveException))]
-  public void GetException_ReturnsExpectedExceptionType(_alpm_errno_t errno, Type expectedType)
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_MEMORY, typeof(OutOfMemoryException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_BADPERMS, typeof(AlpmException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_SYSTEM, typeof(AlpmException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_DB_NOT_FOUND, typeof(AlpmDatabaseException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_DB_INVALID, typeof(AlpmDatabaseException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND, typeof(AlpmPackageException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_TRANS_NOT_NULL, typeof(AlpmTransactionException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_SIG_MISSING, typeof(AlpmSignatureException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_MISSING_CAPABILITY_SIGNATURES, typeof(AlpmSignatureException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_RETRIEVE, typeof(AlpmRetrieveException))]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE, typeof(AlpmRetrieveException))]
+  public void GetException_ReturnsExpectedExceptionType(int errno, Type expectedType)
   {
     var exception = ErrorHandler.GetException(errno);
 
@@ -33,10 +33,10 @@ public sealed class ErrorHandlerTests
   }
 
   [Theory]
-  [InlineData(_alpm_errno_t.ALPM_ERR_NOT_A_FILE)]
-  [InlineData(_alpm_errno_t.ALPM_ERR_NOT_A_DIR)]
-  [InlineData(_alpm_errno_t.ALPM_ERR_WRONG_ARGS)]
-  public void GetException_DoesNotDisguiseNativeErrorsAsArgumentErrors(_alpm_errno_t errno)
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_NOT_A_FILE)]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_NOT_A_DIR)]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_WRONG_ARGS)]
+  public void GetException_DoesNotDisguiseNativeErrorsAsArgumentErrors(int errno)
   {
     // Report §E-6: a native condition is not caller misuse. Reporting it as an ArgumentException
     // made it indistinguishable from real parameter validation, which does carry a ParamName.
@@ -49,10 +49,10 @@ public sealed class ErrorHandlerTests
   public void AlpmException_CarriesErrnoStrErrorAndContext()
   {
     var exception = new AlpmPackageException(
-      _alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND,
+      (int)_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND,
       context: "Failed to add package: foo");
 
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND, exception.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND, exception.Errno);
     Assert.False(string.IsNullOrEmpty(exception.StrError));
     Assert.Contains("Failed to add package: foo", exception.Message);
     Assert.Contains("ALPM_ERR_PKG_NOT_FOUND", exception.Message);
@@ -81,7 +81,7 @@ public sealed class ErrorHandlerTests
 
     var exception = Assert.IsType<AlpmException>(ErrorHandler.GetException(errno));
 
-    Assert.Equal(errno, exception.Errno);
+    Assert.Equal((int)errno, exception.Errno);
     Assert.Contains(((int)errno).ToString(), exception.Message);
     Assert.False(string.IsNullOrEmpty(exception.StrError));
   }

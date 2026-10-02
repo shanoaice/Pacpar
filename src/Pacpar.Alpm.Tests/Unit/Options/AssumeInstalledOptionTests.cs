@@ -226,7 +226,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
     var exception = Assert.Throws<AlpmException>(
       () => collection.Add(HandBuilt("foobar", "1.0", null, DepMod.GreaterOrEqual)));
 
-    Assert.Equal(_alpm_errno_t.ALPM_ERR_WRONG_ARGS, exception.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_WRONG_ARGS, exception.Errno);
     Assert.Empty(collection);
   }
 }

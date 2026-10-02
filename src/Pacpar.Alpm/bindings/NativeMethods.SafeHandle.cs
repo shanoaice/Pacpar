@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 
 namespace Pacpar.Alpm.Bindings;
 
-public static unsafe partial class NativeMethods
+internal static unsafe partial class NativeMethods
 {
   [LibraryImport(__DllName, EntryPoint = "alpm_errno")]
   internal static partial _alpm_errno_t alpm_errno(SafeAlpmHandle handle);

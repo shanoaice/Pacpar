@@ -3,7 +3,8 @@ using System.Reflection;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item I: no hand-written public member may take or return a raw native pointer.
+/// Report item I: no public member may take or return a raw native pointer, and the generated binding
+/// layer must not be reachable from the public surface at all.
 /// </summary>
 /// <remarks>
 /// The public API used to expose constructors such as <c>Database(byte*)</c> and factories such as
@@ -15,8 +16,10 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// through <see cref="SafeAlpmHandle"/>, a type-parameterised <c>SafeHandle</c> that owns the
 /// native handle and is what the <c>[LibraryImport]</c> entry points accept.
 /// <para>
-/// The generated <c>Pacpar.Alpm.Bindings</c> namespace is excluded: it is bindgen output whose
-/// whole purpose is to mirror the C signatures, pointers included.
+/// Since ADR 0006 the generated <c>Pacpar.Alpm.Bindings</c> namespace is <c>internal</c>, so the
+/// pointer check no longer skips it - every exported type is inspected. A second test pins the
+/// namespace itself as unexported, so a libalpm upgrade plus a csbindgen regeneration cannot quietly
+/// widen the public surface back into an escape hatch.
 /// </para>
 /// </remarks>
 public sealed class PublicApiSurfaceTests
@@ -26,10 +29,8 @@ public sealed class PublicApiSurfaceTests
   {
     var offenders = new List<string>();
 
-    foreach (var type in typeof(Alpm).Assembly.GetExportedTypes())
+    foreach (var type in ExportedTypes)
     {
-      if (type.Namespace?.StartsWith("Pacpar.Alpm.Bindings", StringComparison.Ordinal) == true) continue;
-
       foreach (var member in type.GetMembers(
                  BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
       {
@@ -52,4 +53,22 @@ public sealed class PublicApiSurfaceTests
 
     Assert.Empty(offenders);
   }
+
+  /// <summary>
+  /// ADR 0006: the generated bindings are an implementation detail. Nothing in
+  /// <c>Pacpar.Alpm.Bindings</c> may be exported - no enum, struct, fixed buffer or helper class.
+  /// </summary>
+  [Fact]
+  public void PublicApi_DoesNotExportTheGeneratedBindingNamespace()
+  {
+    var leaked = ExportedTypes
+      .Where(type => type.Namespace?.StartsWith("Pacpar.Alpm.Bindings", StringComparison.Ordinal) == true)
+      .Select(type => type.FullName!)
+      .OrderBy(name => name, StringComparer.Ordinal)
+      .ToArray();
+
+    Assert.Empty(leaked);
+  }
+
+  private static IEnumerable<Type> ExportedTypes => typeof(Alpm).Assembly.GetExportedTypes();
 }

@@ -28,11 +28,19 @@ namespace Pacpar.Alpm;
 /// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-public abstract unsafe class AlpmQuestion(_alpm_question_t* question)
+public abstract unsafe class AlpmQuestion
 {
-  protected _alpm_question_t* BackingStruct = question;
+  // The primary constructor is deliberately not used here: it would be `protected` (the type is
+  // abstract), and a protected member cannot name the now-internal binding type. `private protected`
+  // keeps the frame constructible by this assembly's subclasses only, which is all of them.
+  private protected _alpm_question_t* BackingStruct;
 
   protected bool Disarmed;
+
+  private protected AlpmQuestion(_alpm_question_t* question)
+  {
+    BackingStruct = question;
+  }
 
   internal static AlpmQuestion FromUnion(_alpm_question_t* backingStruct, AlpmBindingConfig binding)
   {
