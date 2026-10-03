@@ -11,5 +11,5 @@
 ## Documentation Overview
 
 - [Getting Started](getting-started.md): Installation, initialization, querying packages, and managing transactions.
-- [Architecture & Lifetime Tokens](lifetime-tokens.md): Detailed architectural design reference covering borrowed views, lifetime token trees, and unmanaged memory safety.
+- [Lifetime and GC Safety](lifetime-and-gc-safety.md): Maintainer reference covering borrowed views, lifetime domains, guard enforcement, and unmanaged memory safety.
 - [API Reference](xref:Pacpar.Alpm): Generated class- and member-level documentation for all public types.

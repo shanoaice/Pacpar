@@ -70,4 +70,4 @@ using (var alpm = new Alpm("/", "/var/lib/pacman"))
 Console.WriteLine($"Retained Linux version: {snapshot.Version}");
 ```
 
-For in-depth details on how borrowed views and lifetime safety are guaranteed, see the [Architecture & Lifetime Tokens Reference](lifetime-tokens.md).
+For in-depth details on how borrowed views and lifetime safety are guaranteed, see the [Lifetime and GC Safety Reference](lifetime-and-gc-safety.md).
