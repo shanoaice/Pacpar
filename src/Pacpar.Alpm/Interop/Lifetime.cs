@@ -13,7 +13,8 @@ namespace Pacpar.Alpm;
 /// beneath it);</description></item>
 /// <item><description>each sync database, the local database, and each transaction, as child domains
 /// of that session;</description></item>
-/// <item><description>each file-loaded package, as a root domain of its own.</description></item>
+/// <item><description>each file-loaded package, as a child of the session that loaded it - the
+/// session owns it until a hand-over or <see cref="Alpm.Dispose()"/> releases it.</description></item>
 /// </list>
 /// <para>
 /// A domain owns a monotonically increasing <see cref="Generation"/>. Invalidating it means
@@ -50,6 +51,17 @@ internal sealed class Lifetime
   // Native pointer -> child domain registry, used by root domains only. It deduplicates domains per
   // native database pointer: two wrappers for the same _alpm_db_t* must share one domain, or
   // invalidating one would leave the other's views alive.
+  //
+  // Unsynchronized, and that is deliberate rather than an oversight. Nothing here is reachable from a
+  // finalizer thread: the only finalizer in the library is SafeAlpmHandle, and its ReleaseHandle
+  // calls Invalidate - which touches the counter, never this dictionary. Everything else that
+  // touches it (GetLifetimeTokenForHandle, ForgetHandle, InvalidateHandles) is reached only from a
+  // libalpm-interacting call, and those belong to one thread by the contract stated on Alpm.
+  //
+  // A lock would not buy safety. Under concurrent use the first thing to break is libalpm's own
+  // state - the handle, its database list - which no lock here can protect. Guarding the dictionary
+  // while alpm_db_unregister ran unguarded would turn corruption into a crash and change nothing
+  // else, so the invariant is documented instead of enforced: one session, one thread.
   private Dictionary<nint, Lifetime>? _handles;
 
   /// <summary>Creates the root domain for <paramref name="owner"/>, held strongly to anchor it.</summary>
@@ -123,6 +135,7 @@ internal sealed class Lifetime
   /// The domain for <paramref name="handle"/>, created as a child of this one on first use, so every
   /// wrapper for the same native pointer shares one domain and one invalidation retires them all.
   /// </summary>
+  /// <remarks>Must run on the session's thread; see the note on the registry field.</remarks>
   internal unsafe Lifetime GetLifetimeTokenForHandle(void* handle, string target)
   {
     _handles ??= [];
@@ -138,6 +151,7 @@ internal sealed class Lifetime
   /// Drops the registry entry for <paramref name="handle"/> after its resource was released, so a
   /// later allocation at the same address does not inherit a bumped domain.
   /// </summary>
+  /// <remarks>Must run on the session's thread; see the note on the registry field.</remarks>
   internal unsafe void ForgetHandle(void* handle) => _handles?.Remove((nint)handle);
 
   /// <summary>
@@ -150,6 +164,7 @@ internal sealed class Lifetime
   /// and does not need to: <see cref="Invalidate"/> on the root already retires every child stamp
   /// through the root comparison.
   /// </remarks>
+  /// <remarks>Must run on the session's thread; see the note on the registry field.</remarks>
   internal void InvalidateHandles(string invalidatedBy)
   {
     Invalidate(invalidatedBy);
