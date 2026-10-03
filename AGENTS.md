@@ -52,3 +52,9 @@ Architecture Decision Records have two stages.
 **Maintainer reference** is the finished form. Once the work an ADR describes is implemented and stable, revise and compact or merge the ADRs covering it into the appropriate DocFX chapters under `docfx/`, so that a future maintainer reads one coherent account instead of a trail of interim decisions. The corresponding `docs/adr/` entries are then superseded or removed.
 
 `GLOSSARY.md` is the single source of vocabulary for the domain. Update it as terms are settled rather than at the end, and keep it free of implementation detail.
+
+## Output Style
+
+- 中文：尽量遵循受控中文技术写作的风格，使用：适当长度的句子、主动语态、结论先行、适当分句，避免生硬翻译腔或者过于凝练的词汇，禁用空泛词。
+- English: Follow ASD-STE100 where possible. Active voice, one instruction per sentence. Use less than 20 words per sentence.
+- Keep code/commands/API unchanged. Suggest if they are too verbose, but never actively change them. Clarity first; never sacrifice accuracy.
