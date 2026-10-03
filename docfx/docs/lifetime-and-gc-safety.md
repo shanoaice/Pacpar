@@ -27,7 +27,7 @@ Only a few managed types own native memory. Everything else borrows from one of 
 | `Alpm` | owner | the `alpm_handle_t` inside a `SafeAlpmHandle` | `Dispose`, or the handle's finalizer |
 | `Database` | owner | an `alpm_db_t*` owned by a session or by the database registry | `libalpm`, on unregister or handle release |
 | `Transaction` | owner | the active `alpm_trans_t` on the handle | `Dispose` (`alpm_trans_release`) |
-| `LoadedPackage` | owner | an `alpm_pkg_t*` loaded from a file | `Dispose`, or the hand-over to a transaction |
+| `LoadedPackage` | owner | an `alpm_pkg_t*` loaded from a file | `Dispose`, the hand-over to a transaction, or the sweep in `Alpm.Dispose()` |
 | `PackageView`, `FileList`, `Group`, `AlpmList<T>` | view | a native pointer plus a stamp | never; they only borrow |
 
 A view never owns memory. A view must therefore know when its borrow has become invalid, and that is
@@ -181,13 +181,49 @@ memory during construction.
 6. A session belongs to one thread. The domain registry relies on that, and adding a lock to it would
    protect the registry while leaving `libalpm`'s own state unprotected.
 
-## 8. Known gaps
+## 8. Known gaps and accepted trades
 
-Two items are open, and both are recorded in the outstanding-items report:
+One gap is open. One trade was accepted, and it is written down here so that it is not re-litigated
+from memory.
 
-- A `LoadedPackage` that is collected without `Dispose` leaks its native package. The session keeps a
-  registry and a lock to sweep it. A finalizable package owner will replace both.
-- Callback payloads carry the session stamp rather than the stamp of the resource that owns each
-  package. That is safe because a commit retires the session, but it is coarse.
+- **Open.** Callback payloads carry the session stamp rather than the stamp of the resource that owns
+  each package. That is safe because a commit retires the session, but it is coarse.
+
+### 8.1 A dropped `LoadedPackage` is an accepted leak
+
+A `LoadedPackage` that the garbage collector collects without `Dispose` keeps its native package
+until the session ends. Three paths reclaim it, in the order a caller should prefer them.
+
+1. `LoadedPackage.Dispose()`, normally through `using`. This is the only path that retires the
+   package at a point the caller chose.
+2. The hand-over to a transaction. `alpm_trans_release` frees what it was given.
+3. `Alpm.Dispose()`, which sweeps the session's registry of file-loaded packages **before** it
+   releases the handle.
+
+The leak is therefore bounded by the session, not by the process, and it costs one package per
+dropped wrapper. Loading a package from a file is a file read, an archive parse and a `.PKGINFO`
+parse; sessions are short and the operation is rare, so the size of the leak does not justify the
+cost of removing it. A batch release method was considered and declined: it trades "leaks until the
+session ends" for "leaks until you remember to call it", which is the same class of mistake as
+forgetting `Dispose`.
+
+**Why there is no finalizer.** Three reasons, any one of which is enough.
+
+1. **The Framework Design Guidelines forbid a public type with a finalizer**, and `LoadedPackage` is
+   `public sealed`. The finalizer would have to sit on a non-public `SafeHandle` that the public
+   type holds, which is the shape the guideline prescribes - and the next two reasons are why that
+   shape is not free here.
+2. **The anchoring chain does not cover it.** `CreateChild` hands the root's owner to every child
+   domain, so a loaded package's domain anchors the **session**, not the package. A borrow taken
+   from the package - `Depends`, `Files`, `Licenses`, and the eight other members that pass
+   `Lifetime?.Domain` - therefore keeps the session alive and nothing else. Give the package its own
+   finalizer and that borrow can be freed underneath it: the leak becomes a use-after-free. Closing
+   that gap means giving the package domain an owner of its own, which changes the invariant §5 is
+   built on.
+3. **Ordering.** `Alpm.Dispose()` frees loaded packages before `alpm_release`, on the session's
+   thread. A finalizer gives up both properties: the free happens whenever the GC reaches it,
+   possibly after `alpm_release`, and `alpm_pkg_free` documents that it sets `pm_errno` on failure,
+   which suggests it touches the handle. A session that is itself dropped to the GC has no ordering
+   guarantee at all, which is why the contract stays "dispose the session".
 
 The F# facade is a stub, so the error-bridge decisions recorded in the ADRs are not implemented yet.

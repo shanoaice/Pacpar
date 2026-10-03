@@ -13,11 +13,19 @@ namespace Pacpar.Alpm;
 /// instance is inert: <see cref="Dispose"/> does nothing, and reading the package
 /// throws, so the pointer cannot be released twice.
 /// <para>
-/// In accordance with .NET Framework Design Guidelines, this public class is deliberately
-/// non-finalizable. Native lifetime is tracked by the parent <see cref="Alpm"/> session registry
-/// as a safety backstop if <see cref="Dispose"/> is omitted, sweeping any unreleased packages when
-/// <see cref="Alpm.Dispose()"/> is called. Disposing the owning <see cref="Alpm"/> context is
-/// required to ensure all unmanaged memory is released.
+/// This public class is deliberately non-finalizable, in accordance with the .NET Framework Design
+/// Guidelines. A wrapper the garbage collector collects without <see cref="Dispose"/> therefore
+/// keeps its package until the session ends: <see cref="Alpm.Dispose()"/> sweeps the session's
+/// registry of file-loaded packages before it releases the handle, and the hand-over to a
+/// transaction leaves the release to <c>alpm_trans_release</c>. Disposing the owning
+/// <see cref="Alpm"/> is what guarantees that all unmanaged memory goes back.
+/// <para>
+/// That leak is accepted rather than open. Section 8 of the <c>Lifetime and GC Safety</c> chapter
+/// states why no finalizer was added: the guidelines forbid one on a public type, the anchoring
+/// chain anchors the session rather than the package - so a borrow such as
+/// <see cref="PackageBase.Depends"/> would be freed underneath it - and a finalizer cannot promise
+/// to run before <c>alpm_release</c>.
+/// </para>
 /// </para>
 /// </remarks>
 public sealed unsafe class LoadedPackage : PackageBase, IDisposable
