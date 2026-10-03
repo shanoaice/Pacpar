@@ -91,6 +91,50 @@ public sealed class TransactionLifecycleTests
     Assert.False(transaction.Lifetime.IsAlive);
   }
 
+  /// <summary>
+  /// ADR 0008: <see cref="Transaction.Dispose"/> does not throw, so a failed
+  /// <c>alpm_trans_release</c> has to be observable on the transaction - otherwise the caller is
+  /// told the transaction ended while the lock and the handle are still held.
+  /// </summary>
+  [Fact]
+  public void Dispose_RecordsTheFailure_WhenTheNativeReleaseFails()
+  {
+    using var environment = new IsolatedAlpmEnvironment();
+    var alpm = environment.Alpm;
+
+    var transaction = alpm.BeginTransaction(Lockless);
+    Assert.Null(transaction.ReleaseFailure);
+
+    // Release the native transaction behind the wrapper's back, so the release Dispose attempts
+    // fails with -1 on a handle whose trans is already NULL.
+    Assert.Equal(0, NativeMethods.alpm_trans_release(alpm.Handle));
+
+    transaction.Dispose();
+
+    Assert.False(transaction.IsReleased);
+
+    var failure = Assert.IsAssignableFrom<AlpmException>(transaction.ReleaseFailure);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_TRANS_NULL, failure.Errno);
+    Assert.Contains("release transaction", failure.Message);
+  }
+
+  /// <summary>The other half: a release that worked leaves nothing to report.</summary>
+  [Fact]
+  public void Dispose_LeavesNoFailure_WhenTheReleaseSucceeds()
+  {
+    using var environment = new IsolatedAlpmEnvironment();
+    var alpm = environment.Alpm;
+
+    var transaction = alpm.BeginTransaction(Lockless);
+    Assert.False(transaction.IsReleased);
+
+    transaction.Dispose();
+
+    Assert.True(transaction.IsReleased);
+    Assert.Null(transaction.ReleaseFailure);
+    Assert.Null(alpm.CurrentTransaction);
+  }
+
   [Fact]
   public void BeginTransaction_AfterTheHandleWasDisposed_ThrowsObjectDisposed()
   {

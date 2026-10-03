@@ -116,6 +116,45 @@ public class Transaction : IDisposable
   }
 
   /// <summary>
+  /// Whether this transaction has been released: <c>true</c> once <see cref="Dispose()"/> has run to
+  /// the point where nothing of it is left to release.
+  /// </summary>
+  /// <remarks>
+  /// <see cref="Dispose()"/> never throws, so this is how a caller learns whether the release
+  /// actually happened. <c>false</c> after a <see cref="Dispose()"/> means
+  /// <c>alpm_trans_release</c> failed: the transaction and its database lock are still held, and a
+  /// later <c>alpm_release</c> fails with <c>ALPM_ERR_TRANS_NOT_NULL</c> without freeing the handle.
+  /// Read <see cref="ReleaseFailure"/> for why.
+  /// <para>
+  /// It is <c>true</c> when the owning handle was already disposed instead: <see cref="Alpm"/>
+  /// disposes the active transaction before it releases the handle, precisely because
+  /// <c>alpm_release</c> refuses to run while one is initialized.
+  /// </para>
+  /// </remarks>
+  public bool IsReleased => _released;
+
+  /// <summary>
+  /// The failure <see cref="Dispose()"/> observed from <c>alpm_trans_release</c>, or <c>null</c>
+  /// when the release succeeded or was never attempted.
+  /// </summary>
+  /// <remarks>
+  /// A cleanup failure is reported here rather than thrown: throwing out of a <c>finally</c> or a
+  /// <c>using</c> turns a teardown problem into a crash that has nothing to do with the operation
+  /// the caller wrote. The value is an <see cref="AlpmException"/> carrying the errno — an
+  /// <see cref="AlpmNativeFailureException"/> when libalpm reported the failure without setting one
+  /// — or an <see cref="OutOfMemoryException"/> for <c>ALPM_ERR_MEMORY</c>.
+  /// <para>
+  /// The first failure is kept: a later <see cref="Dispose()"/> that retries does not clear it,
+  /// because the state that failure describes is the one still in force.
+  /// </para>
+  /// <para>
+  /// This is not written to the consumer's log callback. That callback is an inbound channel from
+  /// libalpm and may never have been registered; teardown is also when it is least safe to call.
+  /// </para>
+  /// </remarks>
+  public Exception? ReleaseFailure { get; private set; }
+
+  /// <summary>
   /// Prepares the transaction: the dependency, conflict and architecture checks.
   /// </summary>
   /// <remarks>
@@ -321,6 +360,12 @@ public class Transaction : IDisposable
   /// <summary>
   /// Releases the transaction (and its database lock) deterministically.
   /// </summary>
+  /// <remarks>
+  /// A failed <c>alpm_trans_release</c> is recorded, not thrown: throwing from a <c>finally</c> or a
+  /// <c>using</c> would replace the caller's own failure with one about teardown. Ask
+  /// <see cref="IsReleased"/> whether the release happened, and <see cref="ReleaseFailure"/> why it
+  /// did not.
+  /// </remarks>
   public void Dispose()
   {
     if (_released) return;
@@ -329,6 +374,7 @@ public class Transaction : IDisposable
 
     if (_library.Disposed)
     {
+      // The session released this transaction on its way out; see IsReleased.
       _released = true;
       return;
     }
@@ -343,6 +389,15 @@ public class Transaction : IDisposable
     {
       _released = true;
       _library.CurrentTransaction = null;
+      return;
     }
+
+    // Nothing is thrown, so the outcome is what the caller has to go on. The errno is read here, as
+    // the first thing after the failing call, and only then is the owner kept alive.
+    var failure = NativeCall.Failure(_library.Handle, "release transaction");
+    GC.KeepAlive(_library);
+    GC.KeepAlive(this);
+
+    ReleaseFailure ??= failure;
   }
 }
