@@ -205,16 +205,20 @@ public unsafe class Database
   /// On success the database's lifetime token is invalidated and its registry entry dropped, in
   /// that order: every wrapper and view for this database starts throwing
   /// <see cref="AlpmLifetimeException"/>, and a future registration at the same address receives a
-  /// fresh token instead of the dead one. A failed unregister leaves the database - and its token -
-  /// alive.
+  /// fresh token instead of the dead one. The session root is bumped too, because the unregister
+  /// frees this database's node in the handle's sync-database list. A failed unregister leaves the
+  /// database - and its token - alive.
   /// </remarks>
   public void Unregister()
   {
 
-    // Captured before the call: on the failure path the errno read has to be the next native
-    // interaction, so it cannot be the property access that fetches the handle.
-    var handlePtr = RawHandle;
-    var err = NativeMethods.alpm_db_unregister(ValidatedPtr);
+    // Both captured before anything is invalidated. ValidatedPtr runs the stamp guard, so it cannot
+    // be read again after the Invalidate below - it would throw on its own database. The handle has
+    // to come from the same read, because on the failure path the errno read must be the next native
+    // interaction after the call that failed.
+    var dbPtr = ValidatedPtr;
+    var handlePtr = NativeMethods.alpm_db_get_handle(dbPtr);
+    var err = NativeMethods.alpm_db_unregister(dbPtr);
     if (err != 0)
     {
       // Read the errno where the failure is known, and only then anchor: KeepAlive keeps this alive
@@ -223,8 +227,9 @@ public unsafe class Database
       GC.KeepAlive(this);
       throw NativeCall.Failure(rawErrno, "unregister database");
     }
+
     Lifetime.Invalidate("Database.Unregister()");
-    Lifetime.Root.ForgetHandle(ValidatedPtr);
+    Lifetime.Root.ForgetHandle(dbPtr);
     // Removing this database also frees its node in the handle's sync-database list, so a retained
     // list view - which is stamped with the session, not with the database - has to die as well.
     // Bumping the root is the conservative way to say "the handle's own lists moved".

@@ -138,6 +138,39 @@ public sealed class LifetimeInvalidationTests : IDisposable
   }
 
   [Fact]
+  public void SyncDatabaseUnregister_Succeeds_AndRetiresTheRetainedSyncDatabaseList()
+  {
+    var core = _environment.Alpm.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
+    var retained = _environment.Alpm.GetSyncDatabases();
+    Assert.Single(retained.ToArray());
+
+    // Unregister used to throw here, after alpm_db_unregister had already succeeded: the registry
+    // clean-up read the validated pointer after the domain was invalidated, so the root bump below
+    // it never ran and the retained list went on walking a freed node.
+    core.Unregister();
+
+    Assert.Throws<AlpmLifetimeException>(() => core.Name);
+
+    // The list view is stamped with the session, so it dies with the node the unregister freed.
+    var thrown = Assert.Throws<AlpmLifetimeException>(() => retained.ToArray());
+    Assert.Equal("the ALPM handle", thrown.Target);
+    Assert.Equal("Database.Unregister()", thrown.InvalidatedBy);
+  }
+
+  [Fact]
+  public void UnregisterAllSyncDatabases_RetiresTheRetainedSyncDatabaseList()
+  {
+    _ = _environment.Alpm.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
+    _ = _environment.Alpm.RegisterSyncDatabase("extra", SigLevel.AlpmSigUseDefault);
+    var retained = _environment.Alpm.GetSyncDatabases();
+    Assert.Equal(2, retained.ToArray().Length);
+
+    _environment.Alpm.UnregisterAllSyncDatabases();
+
+    Assert.Throws<AlpmLifetimeException>(() => retained.ToArray());
+  }
+
+  [Fact]
   public void Enumerator_AdvancedPastInvalidation_ThrowsInsteadOfWalkingFreedNodes()
   {
     Install("audit-lifetime-enumerator");
