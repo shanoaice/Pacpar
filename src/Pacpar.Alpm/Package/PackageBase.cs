@@ -24,8 +24,11 @@ namespace Pacpar.Alpm;
 /// Scalar metadata libalpm may report as absent is cached behind an explicit boolean flag rather than
 /// <c>field ??=</c>: coalescing only re-runs the native call while the field is null, so an absent value - a
 /// local package has no <see cref="Filename"/>, a sync package no <see cref="Md5Sum"/> - would cross the
-/// interop boundary again on every read. The flag makes the miss happen exactly once.
-/// </para>
+  /// interop boundary again on every read. The flag makes the miss happen exactly once. Caching has
+  /// one consequence worth stating: a member that answers from its cache never evaluates
+  /// <see cref="BackingStruct"/>, so the guarded accessor - and with it the stamp check - would not
+  /// run at all. Every cached member therefore calls <see cref="ThrowIfDisposed"/> itself.
+  /// </para>
 /// <para>
 /// Every read goes through <see cref="ThrowIfDisposed"/>, which also verifies the <see cref="Lifetime"/>
 /// token of the native context that owns <see cref="BackingStruct"/>: reading a package whose database,
@@ -66,8 +69,9 @@ public abstract unsafe class PackageBase
 
   /// <summary>
   /// The lifetime token of the native context that owns <see cref="BackingStruct"/> - the database,
-  /// transaction or handle this package was borrowed from, or this instance itself for a
-  /// <see cref="LoadedPackage"/>. <c>null</c> means the wrapper carries no owning context to check.
+  /// transaction or handle this package was borrowed from, or - for a <see cref="LoadedPackage"/> -
+  /// the domain of the package this instance owns, which the session that loaded it anchors.
+  /// <c>null</c> means the wrapper carries no owning context to check.
   /// </summary>
   /// <remarks>
   /// Not <c>readonly</c> on purpose: a <see cref="LoadedPackage"/> creates its root token in its
@@ -145,6 +149,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (_filenameLoaded) return field;
       field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
       _filenameLoaded = true;
@@ -162,6 +168,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (!_baseLoaded)
       {
         field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
@@ -207,6 +215,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (!_descriptionLoaded)
       {
         field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
@@ -226,6 +236,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (!_urlLoaded)
       {
         field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
@@ -271,6 +283,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (!_packagerLoaded)
       {
         field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
@@ -290,6 +304,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (!_md5SumLoaded)
       {
         field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
@@ -309,6 +325,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (!_sha256SumLoaded)
       {
         field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
@@ -328,6 +346,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (!_archLoaded)
       {
         field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
@@ -472,6 +492,8 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+      ThrowIfDisposed();
       if (_base64SignatureLoaded) return field;
       field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
       _base64SignatureLoaded = true;
@@ -503,6 +525,8 @@ public abstract unsafe class PackageBase
   /// </remarks>
   public ReadOnlyMemory<byte>? GetSignature()
   {
+    // See Name: a cache hit returns before the guarded accessor runs, so check the stamp here.
+    ThrowIfDisposed();
 
     if (!_signatureLoaded)
     {
