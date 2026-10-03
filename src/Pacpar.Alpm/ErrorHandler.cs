@@ -114,14 +114,10 @@ internal static class ErrorHandler
 
       _alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND
         or _alpm_errno_t.ALPM_ERR_PKG_IGNORED
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG
         or _alpm_errno_t.ALPM_ERR_PKG_MISSING_SIG
         or _alpm_errno_t.ALPM_ERR_PKG_OPEN
         or _alpm_errno_t.ALPM_ERR_PKG_CANT_REMOVE
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_NAME
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH => AlpmErrorCategory.Package,
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_NAME => AlpmErrorCategory.Package,
 
       _alpm_errno_t.ALPM_ERR_TRANS_NOT_NULL
         or _alpm_errno_t.ALPM_ERR_TRANS_NULL
@@ -135,7 +131,17 @@ internal static class ErrorHandler
         or _alpm_errno_t.ALPM_ERR_TRANS_HOOK_FAILED
         or _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS
         or _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS
-        or _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS => AlpmErrorCategory.Transaction,
+        or _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS
+        // ADR 0007: these four carry a payload - a list of package names - when
+        // alpm_trans_prepare/commit fail, and AlpmTransactionException.TakeFailure reports them as
+        // the InvalidPackage* subclasses. One errno has one public exception type, so the errno is
+        // classified into the transaction family here too: the generic path (Alpm.GetCurrentError,
+        // NativeCall.Failure) then answers with the base state of the same type. The payload is
+        // absent there, not different, because no list was ever dumped.
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG
+        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH => AlpmErrorCategory.Transaction,
 
       _alpm_errno_t.ALPM_ERR_SIG_MISSING
         or _alpm_errno_t.ALPM_ERR_SIG_INVALID

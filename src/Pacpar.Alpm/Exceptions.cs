@@ -63,6 +63,12 @@ public class AlpmDatabaseException(int errno, string? strError = null, string? c
 /// <see cref="AlpmPackageException.Package"/> is set when the failing call already knew the package it was operating on;
 /// the errno-driven factory cannot fill it in. It is typed as the shared read-only surface, because a
 /// failing call may have been operating on either kind of package.
+/// <para>
+/// Not every <c>ALPM_ERR_PKG_*</c> errno is reported as this type: <c>ALPM_ERR_PKG_INVALID</c>,
+/// <c>_INVALID_CHECKSUM</c>, <c>_INVALID_SIG</c> and <c>_INVALID_ARCH</c> are transaction failures
+/// with a payload, and are reported as <see cref="AlpmTransactionException"/> from every entry point
+/// - see that type's remarks.
+/// </para>
 /// </remarks>
 public class AlpmPackageException(
   int errno,
@@ -103,6 +109,13 @@ public class AlpmRetrieveException(int errno, string? strError = null, string? c
 ///   }
 /// }
 /// </code>
+/// <para>
+/// One errno has one public exception type, so the four payload-carrying <c>ALPM_ERR_PKG_INVALID*</c>
+/// errnos are reported as this type from every entry point, not only from a transaction call: as an
+/// <c>InvalidPackage*</c> case when the failing call dumped a list of package names, and as the base
+/// state when it did not (a caller that only asks <see cref="Alpm.GetCurrentError"/> has no list to
+/// carry). A <c>catch</c> on <see cref="AlpmPackageException"/> does not match them.
+/// </para>
 /// </remarks>
 public class AlpmTransactionException(int errno, string? strError = null, string? context = null)
   : AlpmException(errno, strError, context)

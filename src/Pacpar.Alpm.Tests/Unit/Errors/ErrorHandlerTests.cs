@@ -98,4 +98,49 @@ public sealed class ErrorHandlerTests
       Assert.NotNull(ErrorHandler.ToException(errno));
     }
   }
+
+  /// <summary>
+  /// ADR 0007: the four <c>ALPM_ERR_PKG_INVALID*</c> errnos carry a payload - a list of package
+  /// names - when a transaction call fails, and <see cref="AlpmTransactionException.TakeFailure"/>
+  /// reports them as its <c>InvalidPackage*</c> cases. One errno has one public exception type, so
+  /// the errno factory has to agree with that: it cannot answer
+  /// <see cref="AlpmPackageException"/> for the same errno.
+  /// </summary>
+  /// <remarks>
+  /// Both entry points are pinned because only the transaction side was covered before, and the
+  /// classification test asserts nothing stronger than "not unknown". The generic path has no list
+  /// to carry, so it answers with the base state of the same type rather than with a different type.
+  /// </remarks>
+  [Theory]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID)]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM)]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG)]
+  [InlineData((int)_alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH)]
+  public unsafe void PayloadErrnos_AreReportedAsTransactionErrors_FromBothEntryPoints(int errno)
+  {
+    Assert.Equal(AlpmErrorCategory.Transaction, ErrorHandler.Categorize((_alpm_errno_t)errno));
+
+    var generic = Assert.IsType<AlpmTransactionException>(ErrorHandler.GetException(errno));
+    var transaction = AlpmTransactionException.TakeFailure((_alpm_errno_t)errno, null, "Failed to prepare transaction");
+
+    Assert.IsAssignableFrom<AlpmTransactionException>(transaction);
+    Assert.IsNotAssignableFrom<AlpmPackageException>(transaction);
+
+    Assert.Equal(errno, generic.Errno);
+    Assert.Equal(errno, transaction.Errno);
+
+    // The transaction side is the payload case for this errno - not the base state - and a call
+    // that dumped no list yields an empty payload, not a missing one.
+    var packages = transaction switch
+    {
+      AlpmTransactionException.InvalidPackage invalid => invalid.Packages,
+      AlpmTransactionException.InvalidPackageChecksum checksum => checksum.Packages,
+      AlpmTransactionException.InvalidPackageSignature signature => signature.Packages,
+      AlpmTransactionException.InvalidPackageArchitecture arch => arch.Packages,
+      _ => null
+    };
+
+    Assert.NotNull(packages);
+    Assert.Empty(packages);
+  }
 }
