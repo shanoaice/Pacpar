@@ -22,7 +22,11 @@ public class Alpm : IDisposable
 {
   // opaque handle to libalpm wrapped in a SafeHandle
   private readonly SafeAlpmHandle _handle;
-  // Registry tracking file-loaded packages for session-scoped cleanup
+  // Registry tracking file-loaded packages for session-scoped cleanup. The lock is defensive rather
+  // than a promise: this list belongs to the session's thread like everything else (see the class
+  // remarks), and under concurrent use libalpm's own state would break first. It is cheap - the
+  // sweep and the load/unload paths, never a per-element read - so it stays. The lifetime domains
+  // take the other route and are deliberately unsynchronized; see the registry note on Lifetime.
   private readonly List<nint> _loadedPackages = [];
   private readonly Lock _loadedPackagesLock = new();
 
@@ -307,6 +311,11 @@ public class Alpm : IDisposable
   /// <param name="treename">The name of the database repository (e.g. "core", "extra").</param>
   /// <param name="level">The signature verification requirements for this database.</param>
   /// <returns>The newly registered <see cref="Database"/>.</returns>
+  /// <remarks>
+  /// The registration appends a node to the handle's sync-database list. It never frees an existing
+  /// node, so a list view taken before this call stays safe to walk - but it cannot see the new
+  /// database either, so take a fresh <see cref="GetSyncDatabases"/> afterwards.
+  /// </remarks>
   public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
   {
     ThrowIfDisposed();
@@ -377,6 +386,13 @@ public class Alpm : IDisposable
 
     CurrentTransaction?.Dispose();
 
+    // Retire the whole tree in one step before anything is freed: the sweep below releases the
+    // file-loaded packages and alpm_release below that frees the rest. Bumping the root retires
+    // every child stamp - including the ones for packages we are about to alpm_pkg_free - so no
+    // wrapper can pass its check while its memory is on the way out.
+    _lifetime.Invalidate("Alpm.Dispose()");
+    _localDatabase = null;
+
     // Free any undisposed file-loaded packages from this session
     lock (_loadedPackagesLock)
     {
@@ -386,9 +402,6 @@ public class Alpm : IDisposable
       }
       _loadedPackages.Clear();
     }
-
-    // The handle is gone: retire the whole token tree in one step.
-    _lifetime.Invalidate("Alpm.Dispose()");
 
     // Release the native library handle. SafeAlpmHandle.ReleaseHandle calls alpm_release.
     _handle.Dispose();

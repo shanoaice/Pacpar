@@ -42,16 +42,42 @@ public class Group
   /// <remarks>
   /// libalpm allocates the returned list for the caller ("caller is responsible for
   /// <c>alpm_list_free</c>"), so it is copied into a managed collection and freed here. The
-  /// packages themselves stay owned by the databases, so the materialized members inherit the
-  /// databases' lifetime token from <paramref name="dbs"/>.
+  /// packages themselves stay owned by their databases, and each member is bound to the domain of
+  /// the database that owns it - see <see cref="GroupPackageFactory"/>. That keeps the per-database
+  /// granularity the design promises: unregistering one database retires its own members and, through
+  /// the root, the session-level views, but not the members of a sibling database.
   /// </remarks>
   public unsafe IReadOnlyList<PackageView> FindGroupPackages(AlpmList<Database> dbs)
   {
     Span<byte> scratch = stackalloc byte[64];
     using var nameBuf = new Utf8Buffer(Name, scratch);
     var result = NativeMethods.alpm_find_group_pkgs(dbs.ValidatedNative(), nameBuf.Ptr);
-    var list = AlpmOwnedList<PackageView>.Take(result, &PackageView.Factory, null, dbs.Lifetime?.Domain);
+    var list = AlpmOwnedList<PackageView>.Take(result, &GroupPackageFactory, null, dbs.Lifetime?.Domain);
     GC.KeepAlive(this);
     return list;
+  }
+
+  /// <summary>
+  /// Element factory for <see cref="FindGroupPackages"/>: binds a package to the domain of the
+  /// database that owns it.
+  /// </summary>
+  /// <remarks>
+  /// <c>alpm_find_group_pkgs</c> answers with packages from several databases and does not say which
+  /// one each came from, so the owner is asked for with <c>alpm_pkg_get_db</c> and resolved through
+  /// the session's pointer registry. Without this the members would all carry the session domain,
+  /// which is correct but coarse: it is the last domain to move, so one database being unregistered
+  /// would retire packages that still belong to a live sibling.
+  /// <para>
+  /// A package with no database - one this library loaded from a file - falls back to the session,
+  /// because nothing narrower owns it.
+  /// </para>
+  /// </remarks>
+  internal static unsafe PackageView GroupPackageFactory(void* ptr, Lifetime? sessionDomain)
+  {
+    if (sessionDomain is null) return new PackageView((_alpm_pkg_t*)ptr, null);
+
+    var db = NativeMethods.alpm_pkg_get_db((_alpm_pkg_t*)ptr);
+    return new PackageView((_alpm_pkg_t*)ptr,
+      db is null ? sessionDomain : sessionDomain.Root.GetLifetimeTokenForHandle(db, "a group member's database"));
   }
 }

@@ -333,12 +333,16 @@ public class Transaction : IDisposable
       return;
     }
 
+    // Retire before the free. alpm_trans_release frees the transaction and the file-loaded packages
+    // it owns, and a view must not pass its check while that happens. Invalidate is also correct on
+    // the failure path: alpm_trans_release only fails when the transaction is already gone.
+    Lifetime.Invalidate("Transaction.Dispose()");
+
     var err = NativeMethods.alpm_trans_release(_library.Handle);
     if (err == 0)
     {
       _released = true;
       _library.CurrentTransaction = null;
-      Lifetime.Invalidate("Transaction.Dispose()");
     }
   }
 }

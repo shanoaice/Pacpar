@@ -81,9 +81,14 @@ public sealed class TransactionLifecycleTests
     // Now disposing the transaction fails at the native layer because handle->trans is already null
     transaction.Dispose();
 
-    // The wrapper must keep CurrentTransaction intact because release failed
+    // The wrapper must keep CurrentTransaction intact because release failed.
     Assert.Same(transaction, alpm.CurrentTransaction);
-    Assert.True(transaction.Lifetime.IsAlive);
+
+    // The domain is retired all the same. alpm_trans_release fails only when handle->trans is
+    // already NULL - that is, when the native transaction is already gone - and that is exactly when
+    // every view into it is dangling. Dispose invalidates before it releases, so a free never
+    // happens under a view that still passes its check; the failure path is no exception.
+    Assert.False(transaction.Lifetime.IsAlive);
   }
 
   [Fact]
