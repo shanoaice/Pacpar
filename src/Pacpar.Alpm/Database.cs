@@ -16,33 +16,41 @@ namespace Pacpar.Alpm;
 /// </remarks>
 public unsafe class Database
 {
-  private _alpm_db_t* BackingStruct { get; }
-
   /// <summary>
   /// The only way to obtain the native pointer from outside this class. The guard runs here, so a
   /// sibling cannot read the pointer of a released database.
   /// </summary>
-  internal _alpm_db_t* ValidatedPtr()
+  internal _alpm_db_t* ValidatedPtr
   {
-    ThrowIfInvalidated();
-    return BackingStruct;
+    get
+    {
+      ThrowIfInvalidated();
+      return field;
+    }
+
+    // Assignable from this class's constructor only: a wrapper's pointer is fixed for its lifetime.
+    private init;
   }
 
-  private _alpm_handle_t* RawHandle => NativeMethods.alpm_db_get_handle(BackingStruct);
+  private _alpm_handle_t* RawHandle => NativeMethods.alpm_db_get_handle(ValidatedPtr);
 
   /// <summary>
-  /// The token guarding this database and every view issued from it. Registered in the handle's
+  /// The domain guarding this database and every view issued from it. Registered in the handle's
   /// pointer registry (sync databases) or held by a dedicated <see cref="Alpm"/> field (the local
   /// database, which <c>alpm_unregister_all_syncdbs</c> never releases).
   /// </summary>
   internal readonly Lifetime Lifetime;
 
+  /// <summary>When this wrapper was created, so <see cref="ThrowIfInvalidated"/> can detect a bump.</summary>
+  private readonly LifetimeStamp _stamp;
+
   /// <param name="backingStruct">The libalpm-owned database.</param>
-  /// <param name="lifetime">The database's token; all accessors and issued views guard on it.</param>
+  /// <param name="lifetime">The database's domain; all accessors and issued views guard on it.</param>
   internal Database(_alpm_db_t* backingStruct, Lifetime lifetime)
   {
-    this.BackingStruct = backingStruct;
+    ValidatedPtr = backingStruct;
     Lifetime = lifetime;
+    _stamp = lifetime.Capture();
   }
 
   /// <summary>
@@ -71,8 +79,10 @@ public unsafe class Database
   {
     get
     {
+      // Explicit guard on purpose: `field ??=` short-circuits once the name is cached, so the guarded
+      // accessor would not run on later reads. See the same note on PackageBase.Name.
       ThrowIfInvalidated();
-      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_db_get_name(BackingStruct))!;
+      return field ??= NativeString.FromNative((nint)NativeMethods.alpm_db_get_name(ValidatedPtr))!;
     }
   }
 
@@ -83,10 +93,9 @@ public unsafe class Database
   /// <returns>A <see cref="PackageView"/> for the package, or <c>null</c> if not found.</returns>
   public PackageView? GetPackage(string name)
   {
-    ThrowIfInvalidated();
     Span<byte> scratch = stackalloc byte[64];
     using var nameBuf = new Utf8Buffer(name, scratch);
-    var pkg = NativeMethods.alpm_db_get_pkg(BackingStruct, nameBuf.Ptr);
+    var pkg = NativeMethods.alpm_db_get_pkg(ValidatedPtr, nameBuf.Ptr);
     if ((nint)pkg == IntPtr.Zero) return null;
     return new PackageView(pkg, Lifetime);
   }
@@ -103,9 +112,8 @@ public unsafe class Database
   /// </remarks>
   public AlpmList<PackageView> GetPackageCache()
   {
-    ThrowIfInvalidated();
     var handlePtr = RawHandle;
-    var pkgCache = NativeMethods.alpm_db_get_pkgcache(BackingStruct);
+    var pkgCache = NativeMethods.alpm_db_get_pkgcache(ValidatedPtr);
     ThrowIfTheLastCallFailed(handlePtr, "load package cache");
     return AlpmList<PackageView>.Borrow(pkgCache, &PackageView.Factory, Lifetime);
   }
@@ -116,8 +124,7 @@ public unsafe class Database
   /// <remarks>The list is borrowed from the database and is never freed by the view.</remarks>
   public AlpmStringList GetServers()
   {
-    ThrowIfInvalidated();
-    var servers = NativeMethods.alpm_db_get_servers(BackingStruct);
+    var servers = NativeMethods.alpm_db_get_servers(ValidatedPtr);
     return new AlpmStringList(servers, Lifetime);
   }
 
@@ -127,8 +134,7 @@ public unsafe class Database
   /// <remarks>The list is borrowed from the database and is never freed by the view.</remarks>
   public AlpmStringList GetCacheServers()
   {
-    ThrowIfInvalidated();
-    var servers = NativeMethods.alpm_db_get_cache_servers(BackingStruct);
+    var servers = NativeMethods.alpm_db_get_cache_servers(ValidatedPtr);
     return new AlpmStringList(servers, Lifetime);
   }
 
@@ -139,10 +145,9 @@ public unsafe class Database
   /// <returns>A <see cref="Group"/> matching the specified name, or <c>null</c> if not found.</returns>
   public Group? GetGroup(string name)
   {
-    ThrowIfInvalidated();
     Span<byte> scratch = stackalloc byte[64];
     using var nameBuf = new Utf8Buffer(name, scratch);
-    var group = NativeMethods.alpm_db_get_group(BackingStruct, nameBuf.Ptr);
+    var group = NativeMethods.alpm_db_get_group(ValidatedPtr, nameBuf.Ptr);
     if ((nint)group == IntPtr.Zero) return null;
     return new Group(group, Lifetime);
   }
@@ -152,9 +157,8 @@ public unsafe class Database
   /// </summary>
   public AlpmList<Group> GetGroupCache()
   {
-    ThrowIfInvalidated();
     var handlePtr = RawHandle;
-    var groupCache = NativeMethods.alpm_db_get_groupcache(BackingStruct);
+    var groupCache = NativeMethods.alpm_db_get_groupcache(ValidatedPtr);
     ThrowIfTheLastCallFailed(handlePtr, "load group cache");
     return AlpmList<Group>.Borrow(groupCache, &Group.Factory, Lifetime);
   }
@@ -186,8 +190,7 @@ public unsafe class Database
   {
     get
     {
-      ThrowIfInvalidated();
-      var sig = (SigLevel)NativeMethods.alpm_db_get_siglevel(BackingStruct);
+      var sig = (SigLevel)NativeMethods.alpm_db_get_siglevel(ValidatedPtr);
       GC.KeepAlive(this);
       return sig;
     }
@@ -207,19 +210,25 @@ public unsafe class Database
   /// </remarks>
   public void Unregister()
   {
-    ThrowIfInvalidated();
 
     // Captured before the call: on the failure path the errno read has to be the next native
     // interaction, so it cannot be the property access that fetches the handle.
     var handlePtr = RawHandle;
-    var err = NativeMethods.alpm_db_unregister(BackingStruct);
+    var err = NativeMethods.alpm_db_unregister(ValidatedPtr);
     if (err != 0)
     {
+      // Read the errno where the failure is known, and only then anchor: KeepAlive keeps this alive
+      // up to its own instruction, so it has to come after the last native read on this path.
+      var rawErrno = (int)NativeMethods.alpm_errno(handlePtr);
       GC.KeepAlive(this);
-      throw NativeCall.Failure(handlePtr, "unregister database");
+      throw NativeCall.Failure(rawErrno, "unregister database");
     }
     Lifetime.Invalidate("Database.Unregister()");
-    Lifetime.Parent?.ForgetHandle(BackingStruct);
+    Lifetime.Root.ForgetHandle(ValidatedPtr);
+    // Removing this database also frees its node in the handle's sync-database list, so a retained
+    // list view - which is stamped with the session, not with the database - has to die as well.
+    // Bumping the root is the conservative way to say "the handle's own lists moved".
+    Lifetime.Root.Invalidate("Database.Unregister()");
   }
 
   /// <summary>
@@ -234,8 +243,7 @@ public unsafe class Database
   {
     get
     {
-      ThrowIfInvalidated();
-      var valid = NativeMethods.alpm_db_get_valid(BackingStruct) == 0;
+      var valid = NativeMethods.alpm_db_get_valid(ValidatedPtr) == 0;
       GC.KeepAlive(this);
       return valid;
     }
@@ -251,16 +259,16 @@ public unsafe class Database
   /// </remarks>
   public void Validate()
   {
-    ThrowIfInvalidated();
     var handlePtr = RawHandle;
     if (IsValid) return;
 
+    var rawErrno = (int)NativeMethods.alpm_errno(handlePtr);
     GC.KeepAlive(this);
-    throw NativeCall.Failure(handlePtr, "validate database");
+    throw NativeCall.Failure(rawErrno, "validate database");
   }
   /// <summary>
   /// Throws <see cref="AlpmLifetimeException"/> when this database was released; the guard every
   /// public accessor runs before dereferencing <c>backingStruct</c>.
   /// </summary>
-  private void ThrowIfInvalidated() => Lifetime.ThrowIfStale();
+  private void ThrowIfInvalidated() => _stamp.ThrowIfStale();
 }

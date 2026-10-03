@@ -32,10 +32,14 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   /// </summary>
   private protected readonly Lifetime Lifetime;
 
+  /// <summary>When this collection was created, so its own members can detect a bump of the domain.</summary>
+  private protected readonly LifetimeStamp Stamp;
+
   private protected AlpmOptionList(SafeAlpmHandle handle, Lifetime lifetime)
   {
     _handle = handle;
     Lifetime = lifetime;
+    Stamp = lifetime.Capture();
   }
 
   /// <summary>The native list getter, for example <c>alpm_option_get_ignorepkgs</c>.</summary>
@@ -86,7 +90,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   {
     get
     {
-      Lifetime.ThrowIfStale();
+      Stamp.ThrowIfStale();
       var count = (int)NativeMethods.alpm_list_count(GetList(_handle));
       GC.KeepAlive(this);
       return count;
@@ -95,7 +99,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public AlpmList<T>.Enumerator GetEnumerator()
   {
-    Lifetime.ThrowIfStale();
+    Stamp.ThrowIfStale();
     return View(GetList(_handle)).GetEnumerator();
   }
 
@@ -105,7 +109,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public void Add(T item)
   {
-    Lifetime.ThrowIfStale();
+    Stamp.ThrowIfStale();
     var itemPtr = AcquireForAdd(item, out var owned);
     try
     {
@@ -124,7 +128,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public bool Contains(T item)
   {
-    Lifetime.ThrowIfStale();
+    Stamp.ThrowIfStale();
     var itemPtr = Acquire(item, out var owned);
     try
     {
@@ -144,7 +148,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public bool Remove(T item)
   {
-    Lifetime.ThrowIfStale();
+    Stamp.ThrowIfStale();
     var itemPtr = Acquire(item, out var owned);
     try
     {
@@ -172,7 +176,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
 
   public void Clear()
   {
-    Lifetime.ThrowIfStale();
+    Stamp.ThrowIfStale();
 
     // Snapshot first: the enumerator caches the current native node, so removing while
     // enumerating leaves it pointing at a freed node on the next MoveNext().
@@ -186,7 +190,7 @@ internal abstract unsafe class AlpmOptionList<T> : ICollection<T>
   {
     ArgumentNullException.ThrowIfNull(array);
     ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
-    Lifetime.ThrowIfStale();
+    Stamp.ThrowIfStale();
 
     var count = Count;
     if (array.Length - arrayIndex < count)

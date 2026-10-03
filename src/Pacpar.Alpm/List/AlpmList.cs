@@ -32,17 +32,18 @@ public abstract class AlpmList<T> : IEnumerable<T>
   internal readonly unsafe delegate*<void*, Lifetime?, T> Factory;
 
   /// <summary>
-  /// The lifetime token guarding this view, also forwarded to <see cref="Factory"/> as the element
-  /// token; <c>null</c> only for lists with no owning native context (the empty
+  /// The stamp guarding this view, captured from the domain the list was borrowed from. Elements
+  /// inherit the same domain through <see cref="Factory"/>, so they observe the same generations;
+  /// <c>null</c> only for lists with no owning native context (the empty
   /// <see cref="AlpmStringList"/> and caller-owned <see cref="AlpmOwnedList{T}"/> snapshots).
   /// </summary>
-  internal readonly Lifetime? Lifetime;
+  internal readonly LifetimeStamp? Lifetime;
 
   private protected unsafe AlpmList(_alpm_list_t* list, delegate*<void*, Lifetime?, T> factory, Lifetime? lifetime)
   {
     _native = list;
     Factory = factory;
-    Lifetime = lifetime;
+    Lifetime = lifetime?.Capture();
   }
 
   /// <summary>
@@ -132,7 +133,7 @@ public abstract class AlpmList<T> : IEnumerable<T>
         if (!_started) throw new InvalidOperationException();
         // The guard runs inside TryGetCurrentData, before the only dereference of _current here.
         if (!TryGetCurrentData(out var data)) throw new InvalidOperationException();
-        var item = _list.Factory(data, _list.Lifetime);
+        var item = _list.Factory(data, _list.Lifetime?.Domain);
         GC.KeepAlive(_list);
         return item;
       }
@@ -190,7 +191,7 @@ public abstract class AlpmList<T> : IEnumerable<T>
     var i = 0;
     for (var node = _native; node != null; node = node->next)
     {
-      result[i++] = Factory(node->data, Lifetime);
+      result[i++] = Factory(node->data, Lifetime?.Domain);
     }
 
     return result;

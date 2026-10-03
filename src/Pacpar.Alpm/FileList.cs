@@ -19,14 +19,14 @@ namespace Pacpar.Alpm;
 public unsafe class FileList : IReadOnlyList<PackageFile>
 {
   private readonly _alpm_filelist_t* _backingStruct;
-  private readonly Lifetime? _lifetime;
+  private readonly LifetimeStamp? _lifetime;
 
   /// <param name="backingStruct">The package-owned file list.</param>
-  /// <param name="lifetime">Token of the package that owns the array; <c>null</c> disables the guard.</param>
+  /// <param name="lifetime">Domain of the package that owns the array; <c>null</c> disables the guard.</param>
   internal FileList(_alpm_filelist_t* backingStruct, Lifetime? lifetime)
   {
     _backingStruct = backingStruct;
-    _lifetime = lifetime;
+    _lifetime = lifetime?.Capture();
   }
 
   public int Count

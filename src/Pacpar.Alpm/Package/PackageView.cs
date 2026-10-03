@@ -13,10 +13,10 @@ namespace Pacpar.Alpm;
 public sealed unsafe class PackageView : PackageBase
 {
   /// <param name="backingStruct">The libalpm-owned package. Not dereferenced here.</param>
-  /// <param name="lifetime">Token of the context that owns the package memory, if any.</param>
+  /// <param name="lifetime">Domain of the context that owns the package memory, if any.</param>
   internal PackageView(_alpm_pkg_t* backingStruct, Lifetime? lifetime) : base(backingStruct)
   {
-    Lifetime = lifetime;
+    Lifetime = lifetime?.Capture();
   }
 
   internal static PackageView Factory(void* ptr, Lifetime? lifetime) => new((_alpm_pkg_t*)ptr, lifetime);

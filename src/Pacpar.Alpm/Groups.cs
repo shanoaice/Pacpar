@@ -50,7 +50,7 @@ public class Group
     Span<byte> scratch = stackalloc byte[64];
     using var nameBuf = new Utf8Buffer(Name, scratch);
     var result = NativeMethods.alpm_find_group_pkgs(dbs.ValidatedNative(), nameBuf.Ptr);
-    var list = AlpmOwnedList<PackageView>.Take(result, &PackageView.Factory, null, dbs.Lifetime);
+    var list = AlpmOwnedList<PackageView>.Take(result, &PackageView.Factory, null, dbs.Lifetime?.Domain);
     GC.KeepAlive(this);
     return list;
   }

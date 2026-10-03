@@ -1,13 +1,19 @@
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Pure managed coverage of the lifetime token tree (docfx/docs/lifetime-tokens.md):
-/// root anchoring, parent-chain cascading, first-reason-wins invalidation, the handle
-/// registry's pointer deduplication, and the exception text callers see.
+/// Managed coverage of the lifetime domains and stamps: root anchoring, the two-level check, the
+/// first-reason-wins invalidation, the handle registry's pointer deduplication, and the exception
+/// text callers see.
 /// </summary>
 /// <remarks>
-/// No libalpm handle is needed: tokens are managed objects, and the "pointers" used with the
-/// registry are only ever used as dictionary keys - nothing here dereferences them.
+/// No libalpm handle is needed: a domain is a managed object, and the "pointers" used with the
+/// registry are only dictionary keys - nothing here dereferences them.
+/// <para>
+/// The old token tree returned a live ancestor for every descendant and walked the chain on each
+/// check. The domains replace both with a counter: a stamp records the generations of its own
+/// resource and of the session, so a check is two comparisons and one increment retires every stamp
+/// taken from the domain - including from a finalizer thread.
+/// </para>
 /// </remarks>
 public sealed unsafe class LifetimeTests
 {
@@ -16,12 +22,13 @@ public sealed unsafe class LifetimeTests
   [Fact]
   public void CreateRoot_StartsAliveWithItsTarget()
   {
-    var token = Root();
+    var domain = Root();
 
-    Assert.True(token.IsAlive);
-    Assert.Null(token.Parent);
-    Assert.Equal("the ALPM handle", token.Target);
-    Assert.Null(token.InvalidatedBy);
+    Assert.True(domain.IsAlive);
+    Assert.Same(domain, domain.Root);
+    Assert.Equal(0, domain.Generation);
+    Assert.Equal("the ALPM handle", domain.Target);
+    Assert.Null(domain.InvalidatedBy);
   }
 
   [Fact]
@@ -29,80 +36,105 @@ public sealed unsafe class LifetimeTests
     => Assert.Throws<ArgumentNullException>(() => Lifetime.CreateRoot(null!, "orphan"));
 
   [Fact]
-  public void CreateChild_InheritsTheChain_AndDiesWithItsAncestors()
+  public void CreateChild_BelongsToTheRoot_AndAChildCannotCreateChildren()
   {
     var root = Root();
-    var child = root.CreateChild("the local database");
-    var grandchild = child.CreateChild("a view");
+    var database = root.CreateChild("the local database");
 
-    Assert.Same(root, child.Parent);
-    Assert.Same(child, grandchild.Parent);
-    Assert.True(root.IsAlive && child.IsAlive && grandchild.IsAlive);
+    Assert.Same(root, database.Root);
 
-    // Invalidating an ancestor retires the whole subtree without touching it.
-    child.Invalidate("Database.Unregister()");
-    Assert.False(child.IsAlive);
-    Assert.False(grandchild.IsAlive);
-    // ...but not the other way around: a dead child cannot poison its ancestors.
-    Assert.True(root.IsAlive);
+    // The hierarchy is exactly two levels, because a stamp only records those two. Building a third
+    // would produce a domain that no stamp covers, so it is refused loudly.
+    Assert.Throws<InvalidOperationException>(() => database.CreateChild("a view"));
   }
 
   [Fact]
-  public void ThrowIfStale_ReportsTheNearestDeadToken()
+  public void Stamp_IsSilentWhileTheDomainAndRootAreUnbumped()
+  {
+    var stamp = Root().CreateChild("the local database").Capture();
+
+    stamp.ThrowIfStale(); // must not throw
+  }
+
+  [Fact]
+  public void Stamp_DiesWhenItsOwnResourceIsInvalidated()
   {
     var root = Root();
-    var child = root.CreateChild("the local database");
-    var grandchild = child.CreateChild("a view");
+    var database = root.CreateChild("the local database");
+    var stamp = database.Capture();
 
-    child.Invalidate("Database.Unregister()");
+    database.Invalidate("Database.Unregister()");
 
-    var thrown = Assert.Throws<AlpmLifetimeException>(() => grandchild.ThrowIfStale());
+    var thrown = Assert.Throws<AlpmLifetimeException>(stamp.ThrowIfStale);
     Assert.Equal("the local database", thrown.Target);
     Assert.Equal("Database.Unregister()", thrown.InvalidatedBy);
-    Assert.IsType<AlpmLifetimeException>(thrown);
-    Assert.IsAssignableFrom<InvalidOperationException>(thrown);
+    Assert.False(database.IsAlive);
+    Assert.True(root.IsAlive); // a dead child cannot poison its ancestors
   }
 
   [Fact]
-  public void ThrowIfStale_ReportsTheRootWhenOnlyTheRootDied()
+  public void Stamp_DiesWhenTheSessionIsInvalidated_EvenIfItsOwnResourceIsUntouched()
   {
     var root = Root();
-    var grandchild = root.CreateChild("a view");
+    var database = root.CreateChild("the local database");
+    var stamp = database.Capture();
 
     root.Invalidate("Alpm.Dispose()");
 
-    var thrown = Assert.Throws<AlpmLifetimeException>(() => grandchild.ThrowIfStale());
+    // Nothing was pushed into the database domain: the stamp compares against the root's generation
+    // and finds it changed. That is what lets a finalizer retire everything with one increment.
+    var thrown = Assert.Throws<AlpmLifetimeException>(stamp.ThrowIfStale);
     Assert.Equal("the ALPM handle", thrown.Target);
     Assert.Equal("Alpm.Dispose()", thrown.InvalidatedBy);
+    Assert.False(database.IsAlive);
   }
 
   [Fact]
-  public void ThrowIfStale_IsSilentWhileEveryLinkIsAlive()
+  public void Stamp_IsUnaffectedByASiblingResource()
   {
-    var token = Root().CreateChild("the local database");
+    var root = Root();
+    var core = root.CreateChild("the sync database core");
+    var extra = root.CreateChild("the sync database extra");
+    var extraStamp = extra.Capture();
 
-    token.ThrowIfStale(); // must not throw
-    Assert.True(token.IsAlive);
+    core.Invalidate("Database.Unregister()");
+
+    // Per-resource granularity is preserved: retiring one database leaves its siblings alone.
+    extraStamp.ThrowIfStale();
+    Assert.True(extra.IsAlive);
+  }
+
+  [Fact]
+  public void Stamp_StaysInvalidAcrossFurtherBumps()
+  {
+    var domain = Root().CreateChild("the local database");
+    var stamp = domain.Capture();
+
+    domain.Invalidate("Transaction.Commit()");
+    domain.Invalidate("a later, unrelated reason");
+
+    // Generations are monotonic: once a stamp is behind, it never becomes valid again.
+    Assert.Throws<AlpmLifetimeException>(stamp.ThrowIfStale);
   }
 
   [Fact]
   public void Invalidate_IsIdempotent_AndKeepsTheFirstReason()
   {
-    var token = Root();
+    var domain = Root();
+    var stamp = domain.Capture();
 
-    token.Invalidate("Transaction.Commit()");
-    token.Invalidate("a later, conflicting reason");
+    domain.Invalidate("Transaction.Commit()");
+    domain.Invalidate("a later, conflicting reason");
 
-    Assert.False(token.IsAlive);
-    Assert.Equal("Transaction.Commit()", token.InvalidatedBy);
+    Assert.False(domain.IsAlive);
+    Assert.Equal("Transaction.Commit()", domain.InvalidatedBy);
 
-    // And the first reason is what callers see through ThrowIfStale as well.
-    var thrown = Assert.Throws<AlpmLifetimeException>(() => token.ThrowIfStale());
+    var thrown = Assert.Throws<AlpmLifetimeException>(stamp.ThrowIfStale);
     Assert.Equal("Transaction.Commit()", thrown.InvalidatedBy);
   }
 
   [Fact]
-  public void Registry_ReturnsTheSameTokenForTheSamePointer()
+  public void Registry_ReturnsTheSameDomainForTheSamePointer()
   {
     var owner = Root();
     void* handle = (void*)0x1234; // only ever used as a dictionary key
@@ -110,18 +142,19 @@ public sealed unsafe class LifetimeTests
     var first = owner.GetLifetimeTokenForHandle(handle, "the sync database core");
     var second = owner.GetLifetimeTokenForHandle(handle, "a differently spelled target");
 
-    // Deduplicated: the first registration wins, target text included.
+    // Deduplicated: the first registration wins, target text included. Two wrappers for one native
+    // database must share a domain, or invalidating one would leave the other's views alive.
     Assert.Same(first, second);
     Assert.Equal("the sync database core", first.Target);
+    Assert.Same(owner, first.Root);
 
-    // A different pointer gets its own token, as a child of the registering token.
     var other = owner.GetLifetimeTokenForHandle((void*)0x5678, "the sync database extra");
     Assert.NotSame(first, other);
-    Assert.Same(owner, first.Parent);
+    Assert.Same(owner, other.Root);
   }
 
   [Fact]
-  public void ForgetHandle_LetsTheSameAddressGetAFreshToken()
+  public void ForgetHandle_LetsTheSameAddressGetAFreshDomain()
   {
     var owner = Root();
     void* handle = (void*)0x1234;
@@ -132,44 +165,51 @@ public sealed unsafe class LifetimeTests
 
     var second = owner.GetLifetimeTokenForHandle(handle, "the sync database core");
 
-    // The address was re-issued, so a brand-new live token is handed out instead of the dead one -
+    // The address was re-issued, so a brand-new domain is handed out instead of the retired one -
     // this is what keeps a re-registration from inheriting a stale identity.
     Assert.NotSame(first, second);
     Assert.True(second.IsAlive);
-    second.ThrowIfStale(); // must not throw
+    second.Capture().ThrowIfStale(); // must not throw
   }
 
   [Fact]
-  public void InvalidateHandles_RetiresEveryRegisteredToken_AndClearsTheRegistry()
+  public void InvalidateHandles_RetiresEveryRegisteredDomain_AndClearsTheRegistry()
   {
     var owner = Root();
-    void* first = (void*)0x1234;
-    void* second = (void*)0x5678;
-    var firstToken = owner.GetLifetimeTokenForHandle(first, "the sync database core");
-    var secondToken = owner.GetLifetimeTokenForHandle(second, "the sync database extra");
+    void* core = (void*)0x1234;
+    void* extra = (void*)0x5678;
+    var coreDomain = owner.GetLifetimeTokenForHandle(core, "the sync database core");
+    var extraDomain = owner.GetLifetimeTokenForHandle(extra, "the sync database extra");
+    var coreStamp = coreDomain.Capture();
 
     owner.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
 
-    Assert.False(firstToken.IsAlive);
-    Assert.False(secondToken.IsAlive);
+    // The sync-database list lives on the handle, so the root is bumped too: the list view has to die
+    // with its entries. Every child stamp dies through the root comparison.
+    Assert.False(owner.IsAlive);
+    Assert.False(coreDomain.IsAlive);
+    Assert.False(extraDomain.IsAlive);
 
-    var thrown = Assert.Throws<AlpmLifetimeException>(() => firstToken.ThrowIfStale());
+    var thrown = Assert.Throws<AlpmLifetimeException>(coreStamp.ThrowIfStale);
     Assert.Equal("Alpm.UnregisterAllSyncDatabases()", thrown.InvalidatedBy);
 
-    // The registry was cleared, so a recycled address starts over with a live token.
-    var fresh = owner.GetLifetimeTokenForHandle(first, "the sync database core");
-    Assert.NotSame(firstToken, fresh);
-    Assert.True(fresh.IsAlive);
+    // The registry was cleared, so a recycled address starts over with a live domain.
+    var fresh = owner.GetLifetimeTokenForHandle(core, "the sync database core");
+    Assert.NotSame(coreDomain, fresh);
+    Assert.Equal(0, fresh.Generation);
   }
 
   [Fact]
-  public void InvalidateHandles_OnAnEmptyRegistry_IsANoOp()
+  public void InvalidateHandles_OnAnEmptyRegistry_StillRetiresTheRoot()
   {
-    var token = Root();
+    var owner = Root();
 
-    token.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
+    owner.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
 
-    Assert.True(token.IsAlive);
+    // Deliberate change from the token tree: unregistering every sync database alters the handle's own
+    // list, so the handle-level view dies too instead of surviving a change to the list it wraps.
+    Assert.False(owner.IsAlive);
+    Assert.Equal("Alpm.UnregisterAllSyncDatabases()", owner.InvalidatedBy);
   }
 
   [Fact]

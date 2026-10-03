@@ -80,7 +80,7 @@ public sealed class PackageTransferTests : IDisposable
 
   /// <summary>
   /// Report item M1: a view whose owning transaction was released must never reach libalpm. Before
-  /// the pointer was confined behind <c>ValidatedPtr()</c>, this call handed the stale pointer
+  /// the pointer was confined behind <c>ValidatedPtr</c>, this call handed the stale pointer
   /// straight to <c>alpm_add_pkg</c>, so libalpm parsed freed memory and the diagnostic was a
   /// SIGSEGV inside native code rather than a managed lifetime exception.
   /// </summary>

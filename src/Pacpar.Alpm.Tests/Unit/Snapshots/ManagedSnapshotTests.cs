@@ -325,9 +325,9 @@ public sealed unsafe class ManagedSnapshotTests
       {
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_REPLACE_PKG;
         native->replace.replace = 1;
-        native->replace.oldpkg = oldPkg.ValidatedPtr();
-        native->replace.newpkg = newPkg.ValidatedPtr();
-        native->replace.newdb = db.ValidatedPtr();
+        native->replace.oldpkg = oldPkg.BackingStruct;
+        native->replace.newpkg = newPkg.BackingStruct;
+        native->replace.newdb = db.ValidatedPtr;
 
         var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
 
@@ -369,7 +369,7 @@ public sealed unsafe class ManagedSnapshotTests
       {
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
         native->install_ignorepkg.install = 1;
-        native->install_ignorepkg.pkg = pkg.ValidatedPtr();
+        native->install_ignorepkg.pkg = pkg.BackingStruct;
 
         var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
 
@@ -418,8 +418,8 @@ public sealed unsafe class ManagedSnapshotTests
         dependStruct->version = verBuf;
         dependStruct->desc = descBuf;
 
-        conflictStruct->package1 = pkg1.ValidatedPtr();
-        conflictStruct->package2 = pkg2.ValidatedPtr();
+        conflictStruct->package1 = pkg1.BackingStruct;
+        conflictStruct->package2 = pkg2.BackingStruct;
         conflictStruct->reason = dependStruct;
 
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_CONFLICT_PKG;
@@ -476,7 +476,7 @@ public sealed unsafe class ManagedSnapshotTests
       using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "member-list"),
         full: false, SigLevel.AlpmSigUseDefault);
       var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
-      var members = NativeMethods.alpm_list_add(null, pkg.ValidatedPtr());
+      var members = NativeMethods.alpm_list_add(null, pkg.BackingStruct);
 
       try
       {
@@ -555,7 +555,7 @@ public sealed unsafe class ManagedSnapshotTests
       {
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
         native->install_ignorepkg.install = 0;
-        native->install_ignorepkg.pkg = pkg.ValidatedPtr();
+        native->install_ignorepkg.pkg = pkg.BackingStruct;
 
         var question = Assert.IsType<AlpmQuestion.InstallIgnoredPackage>(
           AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig));

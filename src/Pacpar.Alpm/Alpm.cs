@@ -60,6 +60,8 @@ public class Alpm : IDisposable
 
     _handle = new SafeAlpmHandle(rawHandle);
     _lifetime = Lifetime.CreateRoot(this, "the ALPM handle");
+    // The handle finalizes the session path, so it needs the domain to retire stamps from there.
+    _handle.OwnDomain(_lifetime);
     Options = new AlpmOptions(_handle, _lifetime);
     BindingConfig = new AlpmBindingConfig();
     Callback = new Callback(_handle, _lifetime, BindingConfig);
@@ -386,7 +388,7 @@ public class Alpm : IDisposable
     }
 
     // The handle is gone: retire the whole token tree in one step.
-    _lifetime.Invalidate("Alpm.Dispose()", fromFinalizer: false);
+    _lifetime.Invalidate("Alpm.Dispose()");
 
     // Release the native library handle. SafeAlpmHandle.ReleaseHandle calls alpm_release.
     _handle.Dispose();

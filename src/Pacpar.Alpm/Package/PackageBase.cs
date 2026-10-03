@@ -38,21 +38,30 @@ public abstract unsafe class PackageBase
   // Only this class and its derived types can see the pointer. A sibling in the same assembly
   // (Transaction, for one) cannot read it, so "reach for the pointer without the guard" is not a
   // shape that can be written any more.
-  private protected readonly _alpm_pkg_t* BackingStruct;
-
   private protected PackageBase(_alpm_pkg_t* backingStruct)
   {
     BackingStruct = backingStruct;
   }
 
   /// <summary>
-  /// The only way to obtain the native pointer. The guard runs here, so no call site outside this
-  /// class can skip it.
+  /// The native pointer this wrapper reads.
   /// </summary>
-  internal _alpm_pkg_t* ValidatedPtr()
+  /// <remarks>
+  /// The backing field is compiler-generated (C# 14 <c>field</c>), so it has no name any member could
+  /// read: the only way to the pointer is this accessor, which runs the guard first. That closes the
+  /// gap the previous shape left - a member that read the field directly skipped the guard, and no
+  /// compiler check could catch it.
+  /// </remarks>
+  internal _alpm_pkg_t* BackingStruct
   {
-    ThrowIfDisposed();
-    return BackingStruct;
+    get
+    {
+      ThrowIfDisposed();
+      return field;
+    }
+
+    // Assignable from this class's constructor only: a wrapper's pointer is fixed for its lifetime.
+    private init;
   }
 
   /// <summary>
@@ -64,7 +73,7 @@ public abstract unsafe class PackageBase
   /// Not <c>readonly</c> on purpose: a <see cref="LoadedPackage"/> creates its root token in its
   /// constructor body, because <c>this</c> is not available to a base constructor initializer.
   /// </remarks>
-  private protected Lifetime? Lifetime;
+  private protected LifetimeStamp? Lifetime;
 
   /// <summary>
   /// Set by <see cref="LoadedPackage"/> once it has released the package or handed it to a
@@ -86,7 +95,6 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var handle = NativeMethods.alpm_pkg_get_handle(BackingStruct);
       GC.KeepAlive(this);
       return handle;
@@ -100,6 +108,9 @@ public abstract unsafe class PackageBase
   {
     get
     {
+      // This one keeps an explicit guard: `field ??=` returns the cached name without evaluating its
+      // right-hand side, so on every read after the first the guarded accessor never runs. A member
+      // that can answer from a cache has to check the stamp itself.
       ThrowIfDisposed();
       return field ??= NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_name(BackingStruct))!;
     }
@@ -110,7 +121,6 @@ public abstract unsafe class PackageBase
   /// </summary>
   public bool CheckMd5Sum()
   {
-    ThrowIfDisposed();
     var ok = NativeMethods.alpm_pkg_checkmd5sum(BackingStruct) == 0;
     GC.KeepAlive(this);
     return ok;
@@ -121,13 +131,11 @@ public abstract unsafe class PackageBase
   /// </summary>
   public bool ShouldIgnore()
   {
-    ThrowIfDisposed();
     var ignore = NativeMethods.alpm_pkg_should_ignore(LibraryHandle, BackingStruct) != 0;
     GC.KeepAlive(this);
     return ignore;
   }
 
-  private string? _filename;
   private bool _filenameLoaded;
 
   /// <summary>
@@ -137,18 +145,14 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
-      if (!_filenameLoaded)
-      {
-        _filename = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
-        _filenameLoaded = true;
-      }
+      if (_filenameLoaded) return field;
+      field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_filename(BackingStruct));
+      _filenameLoaded = true;
 
-      return _filename;
+      return field;
     }
   }
 
-  private string? _base;
   private bool _baseLoaded;
 
   /// <summary>
@@ -158,14 +162,13 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       if (!_baseLoaded)
       {
-        _base = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
+        field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base(BackingStruct));
         _baseLoaded = true;
       }
 
-      return _base;
+      return field;
     }
   }
 
@@ -176,7 +179,6 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var version = new PackageVersion(NativeMethods.alpm_pkg_get_version(BackingStruct));
       GC.KeepAlive(this);
       return version;
@@ -190,13 +192,12 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var origin = (PackageOrigin)(uint)NativeMethods.alpm_pkg_get_origin(BackingStruct);
       GC.KeepAlive(this);
       return origin;
     }
   }
-  private string? _description;
+
   private bool _descriptionLoaded;
 
   /// <summary>
@@ -206,18 +207,16 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       if (!_descriptionLoaded)
       {
-        _description = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
+        field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_desc(BackingStruct));
         _descriptionLoaded = true;
       }
 
-      return _description;
+      return field;
     }
   }
 
-  private string? _url;
   private bool _urlLoaded;
 
   /// <summary>
@@ -227,14 +226,13 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       if (!_urlLoaded)
       {
-        _url = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
+        field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_url(BackingStruct));
         _urlLoaded = true;
       }
 
-      return _url;
+      return field;
     }
   }
 
@@ -245,7 +243,6 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var date = DateTimeOffset.FromUnixTimeSeconds(NativeMethods.alpm_pkg_get_builddate(BackingStruct));
       GC.KeepAlive(this);
       return date;
@@ -259,14 +256,12 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var date = NativeMethods.alpm_pkg_get_installdate(BackingStruct);
       GC.KeepAlive(this);
       return date == 0 ? null : DateTimeOffset.FromUnixTimeSeconds(date);
     }
   }
 
-  private string? _packager;
   private bool _packagerLoaded;
 
   /// <summary>
@@ -276,18 +271,16 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       if (!_packagerLoaded)
       {
-        _packager = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
+        field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_packager(BackingStruct));
         _packagerLoaded = true;
       }
 
-      return _packager;
+      return field;
     }
   }
 
-  private string? _md5Sum;
   private bool _md5SumLoaded;
 
   /// <summary>
@@ -297,18 +290,16 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       if (!_md5SumLoaded)
       {
-        _md5Sum = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
+        field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_md5sum(BackingStruct));
         _md5SumLoaded = true;
       }
 
-      return _md5Sum;
+      return field;
     }
   }
 
-  private string? _sha256Sum;
   private bool _sha256SumLoaded;
 
   /// <summary>
@@ -318,18 +309,16 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       if (!_sha256SumLoaded)
       {
-        _sha256Sum = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
+        field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_sha256sum(BackingStruct));
         _sha256SumLoaded = true;
       }
 
-      return _sha256Sum;
+      return field;
     }
   }
 
-  private string? _arch;
   private bool _archLoaded;
 
   /// <summary>
@@ -339,14 +328,13 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       if (!_archLoaded)
       {
-        _arch = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
+        field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_arch(BackingStruct));
         _archLoaded = true;
       }
 
-      return _arch;
+      return field;
     }
   }
 
@@ -357,7 +345,6 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var size = NativeMethods.alpm_pkg_get_size(BackingStruct);
       GC.KeepAlive(this);
       return size.Value;
@@ -371,7 +358,6 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var installedSize = NativeMethods.alpm_pkg_get_isize(BackingStruct);
       GC.KeepAlive(this);
       return installedSize.Value;
@@ -385,7 +371,6 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var reason = (PackageReason)(uint)NativeMethods.alpm_pkg_get_reason(BackingStruct);
       GC.KeepAlive(this);
       return reason;
@@ -399,7 +384,6 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var val = (PackageValidation)NativeMethods.alpm_pkg_get_validation(BackingStruct);
       GC.KeepAlive(this);
       return val;
@@ -408,141 +392,63 @@ public abstract unsafe class PackageBase
   /// <summary>
   /// The licenses governing the distribution and use of this package.
   /// </summary>
-  public AlpmStringList Licenses
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return new AlpmStringList(NativeMethods.alpm_pkg_get_licenses(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmStringList Licenses => new(NativeMethods.alpm_pkg_get_licenses(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The package groups that this package belongs to.
   /// </summary>
-  public AlpmStringList Groups
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return new AlpmStringList(NativeMethods.alpm_pkg_get_groups(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmStringList Groups => new(NativeMethods.alpm_pkg_get_groups(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The list of packages required to run this package.
   /// </summary>
-  public AlpmList<Depend> Depends
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_depends(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmList<Depend> Depends => Depend.ListFactory(NativeMethods.alpm_pkg_get_depends(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The list of optional packages that provide additional functionality.
   /// </summary>
-  public AlpmList<Depend> OptionalDepends
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_optdepends(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmList<Depend> OptionalDepends => Depend.ListFactory(NativeMethods.alpm_pkg_get_optdepends(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The list of dependencies required only to run the test suite when building.
   /// </summary>
-  public AlpmList<Depend> CheckDepends
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_checkdepends(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmList<Depend> CheckDepends => Depend.ListFactory(NativeMethods.alpm_pkg_get_checkdepends(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The list of dependencies required only to build the package from source.
   /// </summary>
-  public AlpmList<Depend> MakeDepends
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_makedepends(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmList<Depend> MakeDepends => Depend.ListFactory(NativeMethods.alpm_pkg_get_makedepends(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The list of packages that conflict with this package.
   /// </summary>
-  public AlpmList<Depend> Conflicts
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_conflicts(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmList<Depend> Conflicts => Depend.ListFactory(NativeMethods.alpm_pkg_get_conflicts(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The virtual provisions or features provided by this package.
   /// </summary>
-  public AlpmList<Depend> Provides
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_provides(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmList<Depend> Provides => Depend.ListFactory(NativeMethods.alpm_pkg_get_provides(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The list of packages that this package replaces.
   /// </summary>
-  public AlpmList<Depend> Replaces
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return Depend.ListFactory(NativeMethods.alpm_pkg_get_replaces(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmList<Depend> Replaces => Depend.ListFactory(NativeMethods.alpm_pkg_get_replaces(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The package's file list, read on demand.
   /// </summary>
-  public FileList Files
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return new FileList(NativeMethods.alpm_pkg_get_files(BackingStruct), Lifetime);
-    }
-  }
+  public FileList Files => new(NativeMethods.alpm_pkg_get_files(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// The list of configuration files marked for backup.
   /// </summary>
-  public AlpmList<Backup> Backup
-  {
-    get
-    {
-      ThrowIfDisposed();
-      return Pacpar.Alpm.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(BackingStruct), Lifetime);
-    }
-  }
+  public AlpmList<Backup> Backup => Pacpar.Alpm.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// Gets the names of packages that depend on this package.
   /// </summary>
   public IReadOnlyList<string> GetRequiredBy()
   {
-    ThrowIfDisposed();
     var list = AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct),
       &MemoryManagement.CFreeExtern);
     GC.KeepAlive(this);
@@ -554,27 +460,23 @@ public abstract unsafe class PackageBase
   /// </summary>
   public IReadOnlyList<string> GetOptionalFor()
   {
-    ThrowIfDisposed();
     var list = AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct),
       &MemoryManagement.CFreeExtern);
     GC.KeepAlive(this);
     return list;
   }
-  private string? _base64Signature;
+
   private bool _base64SignatureLoaded;
 
   public string? Base64Signature
   {
     get
     {
-      ThrowIfDisposed();
-      if (!_base64SignatureLoaded)
-      {
-        _base64Signature = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
-        _base64SignatureLoaded = true;
-      }
+      if (_base64SignatureLoaded) return field;
+      field = NativeString.FromNative((nint)NativeMethods.alpm_pkg_get_base64_sig(BackingStruct));
+      _base64SignatureLoaded = true;
 
-      return _base64Signature;
+      return field;
     }
   }
 
@@ -582,7 +484,6 @@ public abstract unsafe class PackageBase
   {
     get
     {
-      ThrowIfDisposed();
       var has = NativeMethods.alpm_pkg_has_scriptlet(BackingStruct) != 0;
       GC.KeepAlive(this);
       return has;
@@ -602,7 +503,6 @@ public abstract unsafe class PackageBase
   /// </remarks>
   public ReadOnlyMemory<byte>? GetSignature()
   {
-    ThrowIfDisposed();
 
     if (!_signatureLoaded)
     {
@@ -614,8 +514,11 @@ public abstract unsafe class PackageBase
       var result = NativeMethods.alpm_pkg_get_sig(BackingStruct, &buffer, &len);
       if (result != 0)
       {
+        // Errno first, anchor second: KeepAlive keeps this alive only up to its own instruction, so
+        // it has to come after the last native read on this path.
+        var rawErrno = (int)NativeMethods.alpm_errno(handlePtr);
         GC.KeepAlive(this);
-        throw NativeCall.Failure(handlePtr, "read package signature");
+        throw NativeCall.Failure(rawErrno, "read package signature");
       }
       if (buffer != null)
       {

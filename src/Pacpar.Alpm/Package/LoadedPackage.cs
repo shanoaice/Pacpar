@@ -31,7 +31,7 @@ public sealed unsafe class LoadedPackage : PackageBase, IDisposable
     _alpm = alpm ?? throw new ArgumentNullException(nameof(alpm));
     _rawPackage = (nint)backingStruct;
     _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
-    Lifetime = _lifetime;
+    Lifetime = _lifetime.Capture();
   }
 
   /// <summary>Whether this instance still owns the package (it stops owning it on dispose or hand-over).</summary>
@@ -60,12 +60,10 @@ public sealed unsafe class LoadedPackage : PackageBase, IDisposable
   {
     ThrowIfNotOwned();
     var pkg = (_alpm_pkg_t*)Interlocked.Exchange(ref _rawPackage, 0);
-    if (pkg != null)
-    {
-      Disposed = true;
-      _alpm.UnregisterLoadedPackage(pkg, freeNative: false);
-      _lifetime.Invalidate("the hand-over to a transaction");
-    }
+    if (pkg == null) return;
+    Disposed = true;
+    _alpm.UnregisterLoadedPackage(pkg, freeNative: false);
+    _lifetime.Invalidate("the hand-over to a transaction");
   }
 
   public void Dispose()
@@ -73,10 +71,8 @@ public sealed unsafe class LoadedPackage : PackageBase, IDisposable
     if (Disposed) return;
     Disposed = true;
     var pkg = (_alpm_pkg_t*)Interlocked.Exchange(ref _rawPackage, 0);
-    if (pkg != null)
-    {
-      _lifetime.Invalidate("LoadedPackage.Dispose()");
-      _alpm.UnregisterLoadedPackage(pkg, freeNative: true);
-    }
+    if (pkg == null) return;
+    _lifetime.Invalidate("LoadedPackage.Dispose()");
+    _alpm.UnregisterLoadedPackage(pkg, freeNative: true);
   }
 }
