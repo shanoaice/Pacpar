@@ -26,7 +26,9 @@ namespace Pacpar.Alpm.List;
 /// </remarks>
 public abstract class AlpmList<T> : IEnumerable<T>
 {
-  internal readonly unsafe _alpm_list_t* Native;
+  // Visible to this class and to AlpmBorrowedList/AlpmOwnedList only; everything outside goes
+  // through ValidatedNative().
+  private protected readonly unsafe _alpm_list_t* _native;
   internal readonly unsafe delegate*<void*, Lifetime?, T> Factory;
 
   /// <summary>
@@ -38,9 +40,19 @@ public abstract class AlpmList<T> : IEnumerable<T>
 
   private protected unsafe AlpmList(_alpm_list_t* list, delegate*<void*, Lifetime?, T> factory, Lifetime? lifetime)
   {
-    Native = list;
+    _native = list;
     Factory = factory;
     Lifetime = lifetime;
+  }
+
+  /// <summary>
+  /// The only way to obtain the native list pointer. The guard runs here, so a call site cannot
+  /// hand libalpm a list whose owning context was already released.
+  /// </summary>
+  internal unsafe _alpm_list_t* ValidatedNative()
+  {
+    Lifetime?.ThrowIfStale();
+    return _native;
   }
 
   /// <summary>
@@ -74,14 +86,53 @@ public abstract class AlpmList<T> : IEnumerable<T>
       _disposed = false;
     }
 
+    /// <summary>
+    /// Advances to the next node.
+    /// </summary>
+    /// <remarks>
+    /// The validation and the dereference of the stored node pointer happen in this one method, so
+    /// no call site can advance past the guard. A view that only checked on the first step would
+    /// read freed memory here: advancing reads the previously visited node's <c>next</c>, which is
+    /// exactly the case a same-thread <c>foreach</c> body can trigger by releasing the owner.
+    /// Measured cost is ~8.5ns per element (ADR 0010).
+    /// </remarks>
+    private _alpm_list_t* Advance()
+    {
+      _list.Lifetime?.ThrowIfStale();
+      return _current is null ? null : _current->next;
+    }
+
+    /// <summary>
+    /// Reads the current node's data pointer. Validation comes first, for the same reason as
+    /// <see cref="Advance"/>.
+    /// </summary>
+    /// <returns>
+    /// <see langword="false"/> when there is no current node. A <see langword="true"/> result with a
+    /// null data pointer is legitimate - a libalpm list may carry null payloads - so the two cases
+    /// must not be collapsed into one.
+    /// </returns>
+    private bool TryGetCurrentData(out void* data)
+    {
+      _list.Lifetime?.ThrowIfStale();
+      if (_current is null)
+      {
+        data = null;
+        return false;
+      }
+
+      data = _current->data;
+      return true;
+    }
+
     public T Current
     {
       get
       {
         if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-        if (!_started || _current == null) throw new InvalidOperationException();
-        _list.Lifetime?.ThrowIfStale();
-        var item = _list.Factory(_current->data, _list.Lifetime);
+        if (!_started) throw new InvalidOperationException();
+        // The guard runs inside TryGetCurrentData, before the only dereference of _current here.
+        if (!TryGetCurrentData(out var data)) throw new InvalidOperationException();
+        var item = _list.Factory(data, _list.Lifetime);
         GC.KeepAlive(_list);
         return item;
       }
@@ -91,22 +142,11 @@ public abstract class AlpmList<T> : IEnumerable<T>
     {
       if (_disposed) throw new ObjectDisposedException(GetType().FullName);
 
-      // Re-validate on every step, not just in Current: advancing dereferences the previously
-      // visited node, so a token that died mid-enumeration would otherwise be read as freed
-      // memory before Current ever ran. Measured cost is ~8.5ns per element.
-      _list.Lifetime?.ThrowIfStale();
-
-      if (!_started)
-      {
-        _current = _list.Native;
-        _started = true;
-      }
-      else if (_current != null)
-      {
-        _current = _current->next;
-      }
-
-      return _current != null;
+      // The first step reads the head through the list's own accessor; every later step goes through
+      // Advance(), which validates before it follows the stored node pointer.
+      _current = _started ? Advance() : _list.ValidatedNative();
+      _started = true;
+      return _current != null; // comparing the pointer value needs no validation
     }
 
     public void Reset()
@@ -143,12 +183,12 @@ public abstract class AlpmList<T> : IEnumerable<T>
     // The token check comes before the null test on purpose: a released owner must make every read
     // throw, and an empty-but-stale view answering with [] would quietly contradict that.
     Lifetime?.ThrowIfStale();
-    if (Native == null) return [];
+    if (_native == null) return [];
 
-    var count = (int)NativeMethods.alpm_list_count(Native);
+    var count = (int)NativeMethods.alpm_list_count(_native);
     var result = new T[count];
     var i = 0;
-    for (var node = Native; node != null; node = node->next)
+    for (var node = _native; node != null; node = node->next)
     {
       result[i++] = Factory(node->data, Lifetime);
     }
@@ -224,7 +264,7 @@ internal sealed class AlpmOwnedList<T> : AlpmList<T>, IDisposable
   {
     if (_disposed) return;
 
-    AlpmNativeList.Free(Native, _innerFree);
+    AlpmNativeList.Free(_native, _innerFree);
     _disposed = true;
   }
 }

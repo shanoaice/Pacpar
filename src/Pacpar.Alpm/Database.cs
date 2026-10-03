@@ -16,7 +16,17 @@ namespace Pacpar.Alpm;
 /// </remarks>
 public unsafe class Database
 {
-  internal _alpm_db_t* BackingStruct { get; }
+  private _alpm_db_t* BackingStruct { get; }
+
+  /// <summary>
+  /// The only way to obtain the native pointer from outside this class. The guard runs here, so a
+  /// sibling cannot read the pointer of a released database.
+  /// </summary>
+  internal _alpm_db_t* ValidatedPtr()
+  {
+    ThrowIfInvalidated();
+    return BackingStruct;
+  }
 
   private _alpm_handle_t* RawHandle => NativeMethods.alpm_db_get_handle(BackingStruct);
 

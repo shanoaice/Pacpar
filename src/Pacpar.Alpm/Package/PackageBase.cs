@@ -35,11 +35,24 @@ namespace Pacpar.Alpm;
 /// </remarks>
 public abstract unsafe class PackageBase
 {
-  internal readonly _alpm_pkg_t* BackingStruct;
+  // Only this class and its derived types can see the pointer. A sibling in the same assembly
+  // (Transaction, for one) cannot read it, so "reach for the pointer without the guard" is not a
+  // shape that can be written any more.
+  private protected readonly _alpm_pkg_t* BackingStruct;
 
   private protected PackageBase(_alpm_pkg_t* backingStruct)
   {
     BackingStruct = backingStruct;
+  }
+
+  /// <summary>
+  /// The only way to obtain the native pointer. The guard runs here, so no call site outside this
+  /// class can skip it.
+  /// </summary>
+  internal _alpm_pkg_t* ValidatedPtr()
+  {
+    ThrowIfDisposed();
+    return BackingStruct;
   }
 
   /// <summary>

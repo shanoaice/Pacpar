@@ -70,7 +70,7 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
 
     Assert.False(_environment.Alpm.BindingConfig.QuestionPayloadIncludeFiles);
 
-    var question = QuestionFor(_environment.Alpm, pkg.BackingStruct);
+    var question = QuestionFor(_environment.Alpm, pkg.ValidatedPtr());
 
     Assert.Equal("payload-default", question.Package.Name);
     Assert.Null(question.Package.Files);
@@ -83,7 +83,7 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
 
     _environment.Alpm.BindingConfig.QuestionPayloadIncludeFiles = true;
 
-    var files = QuestionFor(_environment.Alpm, pkg.BackingStruct).Package.Files;
+    var files = QuestionFor(_environment.Alpm, pkg.ValidatedPtr()).Package.Files;
 
     Assert.NotNull(files);
     Assert.Contains(files, file => file.Name == "usr/bin/probe");
@@ -96,7 +96,7 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
 
     using (var pkg = Load("payload-detached", file: "usr/bin/probe"))
     {
-      question = QuestionFor(_environment.Alpm, pkg.BackingStruct);
+      question = QuestionFor(_environment.Alpm, pkg.ValidatedPtr());
       Assert.Equal("payload-detached", question.Package.Name);
     }
 
@@ -118,8 +118,8 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
 
     _environment.Alpm.BindingConfig.QuestionPayloadIncludeFiles = true;
 
-    Assert.NotNull(QuestionFor(_environment.Alpm, configured.BackingStruct).Package.Files);
-    Assert.Null(QuestionFor(other.Alpm, untouched.BackingStruct).Package.Files);
+    Assert.NotNull(QuestionFor(_environment.Alpm, configured.ValidatedPtr()).Package.Files);
+    Assert.Null(QuestionFor(other.Alpm, untouched.ValidatedPtr()).Package.Files);
   }
 
   private LoadedPackage Load(string name, string file)

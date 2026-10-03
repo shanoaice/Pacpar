@@ -185,7 +185,7 @@ public class Transaction : IDisposable
     // The pointer is now the transaction's to free; the wrapper must never release it again. Read the
     // views off it first, because the hand-over retires the wrapper for reads too. The view carries
     // the transaction's token: the package lives exactly as long as the transaction owns it.
-    var view = new PackageView(pkg.BackingStruct, Lifetime);
+    var view = new PackageView(pkg.ValidatedPtr(), Lifetime);
     pkg.Disown();
     return view;
   }
@@ -193,7 +193,7 @@ public class Transaction : IDisposable
   /// <summary>Adds <paramref name="pkg"/> to the transaction, without deciding who owns it.</summary>
   private unsafe void AddCore(PackageBase pkg)
   {
-    var err = NativeMethods.alpm_add_pkg(_library.Handle, pkg.BackingStruct);
+    var err = NativeMethods.alpm_add_pkg(_library.Handle, pkg.ValidatedPtr());
     if (err != 0)
     {
       throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to add package: {pkg.Name}");
@@ -207,7 +207,7 @@ public class Transaction : IDisposable
   public unsafe void RemovePackage(PackageView pkg)
   {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_remove_pkg(_library.Handle, pkg.BackingStruct);
+    var err = NativeMethods.alpm_remove_pkg(_library.Handle, pkg.ValidatedPtr());
     if (err != 0)
     {
       throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to remove package: {pkg.Name}");
