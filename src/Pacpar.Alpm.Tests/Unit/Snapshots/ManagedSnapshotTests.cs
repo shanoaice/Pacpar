@@ -289,6 +289,11 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
+      // Zero first. This test writes type/position/total, but HookRunStart also copies the name and
+      // desc pointers, which would otherwise be uninitialized memory: a zeroed page reads as null and
+      // yields empty strings, while a recycled page made the assertions fail intermittently on a wild
+      // pointer. libalpm always fills the whole union; the test has to say what the other fields are.
+      *native = default;
       native->type_ = _alpm_event_type_t.ALPM_EVENT_HOOK_RUN_START;
       native->hook_run.position = 2;
       native->hook_run.total = 5;

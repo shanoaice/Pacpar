@@ -461,6 +461,80 @@ internal static class GcAnchorAudit
       _ => null,
     };
 
+  /// <summary>
+  /// The throw-expression rule: no call inside a <c>throw</c> expression may reach native memory.
+  /// </summary>
+  /// <remarks>
+  /// A <c>GC.KeepAlive(owner)</c> keeps the owner alive only up to its own instruction. When the
+  /// native read happens inside the exception-construction expression, an anchor written before that
+  /// expression does not cover it, and the whole expression is one sequencing problem that the
+  /// per-call-site audit cannot see: the read lives in another method, whose obligation is recorded
+  /// as "delegated to the caller" without anyone checking that the caller discharged it.
+  /// <para>
+  /// A call is treated as reaching native memory when it targets a binding entry point, or when any
+  /// of its parameters is a pointer. The second half matters because the trap appeared through a
+  /// helper (<c>NativeCall.Failure(_alpm_handle_t*, string)</c>), not through a direct binding call -
+  /// "no <c>NativeMethods.</c> call in a throw" would have missed it. That overload is gone now; this
+  /// rule keeps the shape from coming back.
+  /// </para>
+  /// </remarks>
+  public static IReadOnlyList<string> FindPointerCallsInsideThrowExpressions(IEnumerable<Type> types)
+  {
+    var offenders = new List<string>();
+    foreach (var type in types)
+    {
+      foreach (var method in GetScannableMethods(type))
+      {
+        var graph = IlControlFlowGraph.Build(method);
+        if (graph == null) continue;
+
+        var instructions = graph.Instructions;
+        var module = method.Module;
+
+        for (int i = 0; i < instructions.Count; i++)
+        {
+          if (instructions[i].OpCode != OpCodes.Throw) continue;
+
+          // Walk back over the expression that produced the thrown value: it starts out needing the
+          // one value the throw consumes, and ends when every value it uses is accounted for.
+          int need = 1;
+          for (int j = i - 1; j >= 0 && need > 0; j--)
+          {
+            var current = instructions[j];
+            if (current.IsBranch) break;
+
+            var pop = StackPop(module, current);
+            var push = StackPush(module, current);
+            if (pop == null || push == null) break;
+
+            if (current.IsCall && CallReachesNativeMemory(module, current))
+            {
+              offenders.Add($"{type.Name}.{method.Name}(IL_{current.Offset:x4})");
+            }
+
+            need = need - push.Value + pop.Value;
+          }
+        }
+      }
+    }
+
+    return offenders;
+  }
+
+  /// <summary>Whether a call can read native memory: a binding entry point, or any pointer parameter.</summary>
+  private static bool CallReachesNativeMemory(Module module, IlInstruction ins)
+  {
+    if (ins.MethodToken == 0) return false;
+    if (Resolve(module, ins.MethodToken) is not MethodBase target) return false;
+
+    if (target.DeclaringType?.FullName?.StartsWith("Pacpar.Alpm.Bindings.NativeMethods", StringComparison.Ordinal) == true)
+    {
+      return true;
+    }
+
+    return target.GetParameters().Any(p => p.ParameterType.IsPointer);
+  }
+
   /// <summary>Values an instruction leaves on the evaluation stack, or null when unresolvable.</summary>
   private static int? StackPush(Module module, IlInstruction ins) =>
     ins.OpCode.StackBehaviourPush switch

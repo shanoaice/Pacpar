@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm.Tests.Unit.GcAnchor;
 
@@ -29,12 +30,14 @@ public sealed class GcAnchorAuditTests
 
   private static AnchorAuditResult Audit()
   {
-    var types = typeof(Alpm).Assembly.GetTypes()
+    return GcAnchorAudit.Run(LibraryTypes(), ReadAllowlist());
+  }
+
+  private static IEnumerable<Type> LibraryTypes() =>
+    typeof(Alpm).Assembly.GetTypes()
       .Where(t => t.Namespace?.StartsWith("Pacpar.Alpm.Bindings", StringComparison.Ordinal) != true)
       .Where(t => !(t.IsAbstract && t.IsSealed))          // static classes have no owner to anchor
       .Where(t => !typeof(SafeHandle).IsAssignableFrom(t)); // ReleaseHandle owns the handle already
-    return GcAnchorAudit.Run(types, ReadAllowlist());
-  }
 
   private static string ReadAllowlist([CallerFilePath] string callerPath = "")
   {
@@ -88,4 +91,46 @@ public sealed class GcAnchorAuditTests
       "These gc-anchor-allowlist.txt entries no longer match any hazard site and must be removed:\n"
       + string.Join('\n', result.StaleAllowlistEntries.Select(e => $"  - {e}")));
   }
+
+  /// <summary>
+  /// A <c>throw</c> expression must not reach native memory at all.
+  /// </summary>
+  /// <remarks>
+  /// <c>GC.KeepAlive(owner)</c> keeps the owner alive only up to its own instruction, so an anchor
+  /// written before an exception-construction expression does not cover a native read inside it. The
+  /// per-call-site audit cannot see this: that read sits in another method, whose obligation is
+  /// recorded as delegated to the caller without anyone checking the caller discharged it. Read the
+  /// errno at the failure site, anchor, then throw a value that reads nothing.
+  /// </remarks>
+  [Fact]
+  public void NoThrowExpressionReachesNativeMemory()
+  {
+    var offenders = GcAnchorAudit.FindPointerCallsInsideThrowExpressions(LibraryTypes());
+
+    Assert.True(offenders.Count == 0,
+      "These throw expressions call something that takes a native pointer (or is a binding entry "
+      + "point). Read the native value before the throw, call GC.KeepAlive(owner) after that read, "
+      + "and throw the value you already have:\n" + string.Join('\n', offenders.Select(o => "  - " + o)));
+  }
+
+  /// <summary>
+  /// The positive control for the rule above: it must report the shape it forbids, or it would pass
+  /// for the wrong reason once the library happens to contain no throw expressions at all.
+  /// </summary>
+  [Fact]
+  public void TheThrowExpressionRuleReportsTheShapeItForbids()
+  {
+    var offenders = GcAnchorAudit.FindPointerCallsInsideThrowExpressions([typeof(ThrowExpressionProbe)]);
+
+    Assert.NotEmpty(offenders);
+  }
+}
+
+/// <summary>A deliberate violation, used only to prove the throw-expression rule reports it.</summary>
+internal static unsafe class ThrowExpressionProbe
+{
+  private static Exception Failure(_alpm_handle_t* handle) =>
+    new InvalidOperationException(((nint)handle).ToString("x"));
+
+  public static void Probe(_alpm_handle_t* handle) => throw Failure(handle);
 }
