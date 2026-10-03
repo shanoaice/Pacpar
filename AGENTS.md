@@ -2,59 +2,42 @@
 
 ## Project Structure
 
-- `docfx/` contains .NET DocFX project that generates documentation website
-- `src/` contains all subprojects
-  - `src/Pacpar.Alpm` is the wrapper for `libalpm`
-    - `src/Pacpar.Alpm/libalpm-sys-cs` is a helper Rust project that bridges csbindgen to generate the `NativeMethods.libalpm.g.cs` file. Nothing should be edited except `build.rs`, when bindgen configuration needs to be changed.
-  - `src/Pacpar.Alpm.FSharp` is a F# wrapper around the `Pacpar.Alpm` library to make it more ergonomic for F# users.
-  - `src/Pacpar.CLI` is the commandline interface.
-  - `src/Pacpar.Benchmarks` is benchmarks, including fortified experiments suitable for reference to developers, and real-world scenarios intended to demonstrate to consumers.
-- `Pacpar.slnx` the new SLNX format solution file. If you need to specify the .NET solution to any tools, use this instead of searching for SLN file.
+- `docfx/` — DocFX sources for the documentation website.
+- `src/Pacpar.Alpm` — `libalpm` wrapper. `libalpm-sys-cs/` is a Rust csbindgen helper that generates `NativeMethods.libalpm.g.cs`; edit only its `build.rs`.
+- `src/Pacpar.Alpm.FSharp` — F# wrapper that makes `Pacpar.Alpm` ergonomic for F# users.
+- `src/Pacpar.CLI` — command-line interface.
+- `src/Pacpar.Benchmarks` — BenchmarkDotNet benchmarks: fortified experiments for developers, real-world scenarios for consumers.
+- `Pacpar.slnx` — the solution file. Pass this to every tool that asks for one.
 
-## C# code analysis
+## C# Code Analysis
 
-For C# code analysis, prefer SharpLensMcp tools over native tools:
+Prefer SharpLensMcp tools over native ones:
 
-- Use `roslyn:search_symbols` instead of Grep for finding symbols
-- Use `roslyn:get_method_source` instead of Read for viewing methods
-- Use `roslyn:find_references` for semantic (not text) references
+- `roslyn:search_symbols` instead of Grep
+- `roslyn:get_method_source` instead of Read
+- `roslyn:find_references` for semantic references
 
-## Agent Working Standards
+## Intermediate Outputs
 
-Coding agents produces considerable intermediate products when they write non-production mini tests to verify their thought. Some workflow also requires coding agents to produce markdown reports for humans to scrutinze side-by-side with code in the editor, or for information exchange between independent agents.
+- `.dsh-scratch/` — verification code, smoke tests, micro-benchmarks. Never commit.
+- `.dsh-refs/` — repositories cloned or downloaded for reference.
+- `reports/` — the only folder for markdown work reports. Exception: when a human asks for a maintainer technical document, place the finished form in the matching DocFX chapter instead.
+- Write explanations and reports in readable prose, not terse agent shorthand.
 
-- `.dsh-scratch/` folder is the only folder where works not intended to be commited to the repository should go, for example feature verification code, tiny smoke tests, ephemeral micro-benchmarks, etc.
-- `.dsh-refs/` folder is for repositories agents need to clone or download from the internet for reference
-- `reports/` folder is the only folder where markdown work-reports should go, unless human explicitly ask for a report to be produced as a technical document for maintainers, in which the final form (as directed) of the document could be placed in appropiate chapters in the DocFX project.
+## Testing
 
-Apart from where the intermediate items should reside, there are also some working standards agents must adopt:
-
-1. When making coding decision explaniation or reports not specifically intended for agent exchange, use a more natural language. Avoid being overly concise, otherwise it can be difficult for human reviewer to comprehend.
-2. When writing benchmarks, use BenchmarkDotNet framework so that reports are standardized and reproducible. You MAY NOT use simple stopwatches in .NET since there are too many uncontrolled variable and will make results inaccurate.
-## Testing Standards
-
-- **Integration tests require isolated container environment**: DO NOT run integration tests directly on the host machine. NEVER set `PACPAR_ALPM_TEST_ENV=container` on the host environment, as integration tests manipulate package databases and filesystem trees and may inadvertently damage or break the host system.
-- **Filter out integration tests on the host**: Always filter out integration tests when running `dotnet test` on the host:
-  ```bash
-  dotnet test --filter "FullyQualifiedName!~Integration"
-  ```
-  Or under Release configuration:
-  ```bash
-  dotnet test --filter "FullyQualifiedName!~Integration" -c Release
-  ```
+- Integration tests manipulate package databases and filesystem trees. Run them only in an isolated container. Never set `PACPAR_ALPM_TEST_ENV=container` on the host.
+- On the host, always exclude them: `dotnet test --filter "FullyQualifiedName!~Integration"` (append `-c Release` for Release).
+- Use BenchmarkDotNet for all benchmarks. Stopwatch timing is not acceptable.
 
 ## Documentation Lifecycle
 
-Architecture Decision Records have two stages.
-
-**Intermediate ADRs** live in `docs/adr/`, one decision per file, numbered sequentially. Write them while a design is still being settled or implemented. They are working documents: they may overlap, be superseded, or contradict a sibling that is still in flight, and they should be cross-referenced by number rather than rewritten into finished prose.
-
-**Maintainer reference** is the finished form. Once the work an ADR describes is implemented and stable, revise and compact or merge the ADRs covering it into the appropriate DocFX chapters under `docfx/`, so that a future maintainer reads one coherent account instead of a trail of interim decisions. The corresponding `docs/adr/` entries are then superseded or removed.
-
-`GLOSSARY.md` is the single source of vocabulary for the domain. Update it as terms are settled rather than at the end, and keep it free of implementation detail.
+- `docs/adr/` holds intermediate ADRs: one decision per file, numbered sequentially. They may overlap or contradict in-flight siblings; cross-reference them by number rather than rewriting them.
+- When the work stabilizes, revise, compact, and merge the related ADRs into the matching `docfx/` chapter, then supersede or remove the originals. A maintainer should read one coherent account.
+- `GLOSSARY.md` is the single source of domain vocabulary. Keep it free of implementation detail and update it as terms settle, not at the end.
 
 ## Output Style
 
-- 中文：尽量遵循受控中文技术写作的风格，使用：适当长度的句子、主动语态、结论先行、适当分句，避免生硬翻译腔或者过于凝练的词汇，禁用空泛词。
+- 中文：尽量遵循受控中文技术写作的风格，使用适当长度的句子、主动语态、结论先行、适当分句，避免生硬翻译腔或过于凝练的词汇，禁用空泛词。
 - English: Follow ASD-STE100 where possible. Active voice, one instruction per sentence. Use less than 20 words per sentence.
-- Keep code/commands/API unchanged. Suggest if they are too verbose, but never actively change them. Clarity first; never sacrifice accuracy.
+- 代码、命令和 API 名称一律保持原样。觉得冗长时只提建议，不要自行改动。清晰优先，不为简洁牺牲准确性。
