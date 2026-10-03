@@ -46,7 +46,9 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   /// </summary>
   private static AlpmQuestion.InstallIgnoredPackage QuestionFor(AlpmHandle alpm, _alpm_pkg_t* package)
   {
-    var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+    // Allocated zeroed: only the fields of the branch under test are written, and a payload that
+    // copies a field this test never touched must read a null pointer, not a recycled page.
+    var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
 
     try
     {

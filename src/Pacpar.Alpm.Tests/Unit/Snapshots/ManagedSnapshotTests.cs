@@ -15,6 +15,13 @@ namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 /// Every test writes the source structure itself and then overwrites it, which makes the failure
 /// deterministic: a view reads the new bytes, a snapshot still answers with the old ones. Nothing
 /// here depends on freed memory happening to stay readable, and no libalpm handle is needed.
+/// <para>
+/// Every native structure allocated here is allocated <b>zeroed</b>. A test writes only the fields
+/// the case is about, but the payload it builds may copy more: <c>HookRunStart</c> copies
+/// <c>name</c> and <c>desc</c> too, and an uninitialized page made that read a wild pointer and
+/// fail intermittently. A zeroed page reads as a null pointer, which every factory already handles -
+/// so a field this test did not write has a defined value instead of a latent flake.
+/// </para>
 /// </remarks>
 public sealed unsafe class ManagedSnapshotTests
 {
@@ -106,7 +113,7 @@ public sealed unsafe class ManagedSnapshotTests
   {
     var name = NativeString.ToNative("etc/pacman.conf");
     var hash = NativeString.ToNative("deadbeef");
-    var native = (_alpm_backup_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_backup_t));
+    var native = (_alpm_backup_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_backup_t));
 
     try
     {
@@ -134,7 +141,7 @@ public sealed unsafe class ManagedSnapshotTests
   public void File_CopiesNameModeAndSize()
   {
     var name = NativeString.ToNative("usr/bin/probe");
-    var native = (_alpm_file_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_file_t));
+    var native = (_alpm_file_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_file_t));
 
     try
     {
@@ -169,7 +176,7 @@ public sealed unsafe class ManagedSnapshotTests
   {
     string[] names = ["a", "bb", "ccc"];
     var buffers = new byte*[names.Length];
-    var entries = (_alpm_file_t*)NativeMemory.Alloc((nuint)(sizeof(_alpm_file_t) * names.Length));
+    var entries = (_alpm_file_t*)NativeMemory.AllocZeroed((nuint)(sizeof(_alpm_file_t) * names.Length));
     var fileList = new _alpm_filelist_t();
 
     try
@@ -257,7 +264,7 @@ public sealed unsafe class ManagedSnapshotTests
   public void EventPayload_CopiesItsFieldsOutOfTheCallbackUnion()
   {
     var line = NativeString.ToNative(":: running post-transaction hooks...");
-    var native = (_alpm_event_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_event_t));
+    var native = (_alpm_event_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_event_t));
 
     try
     {
@@ -285,15 +292,12 @@ public sealed unsafe class ManagedSnapshotTests
   [Fact]
   public void EventPayload_CopiesScalarFieldsOutOfTheCallbackUnion()
   {
-    var native = (_alpm_event_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_event_t));
+    var native = (_alpm_event_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_event_t));
 
     try
     {
-      // Zero first. This test writes type/position/total, but HookRunStart also copies the name and
-      // desc pointers, which would otherwise be uninitialized memory: a zeroed page reads as null and
-      // yields empty strings, while a recycled page made the assertions fail intermittently on a wild
-      // pointer. libalpm always fills the whole union; the test has to say what the other fields are.
-      *native = default;
+      // This test writes type/position/total only; the zeroed allocation (see the class remarks) is
+      // what gives the name and desc pointers HookRunStart also copies a defined value.
       native->type_ = _alpm_event_type_t.ALPM_EVENT_HOOK_RUN_START;
       native->hook_run.position = 2;
       native->hook_run.total = 5;
@@ -325,7 +329,7 @@ public sealed unsafe class ManagedSnapshotTests
       using var newPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-new"), full: false, SigLevel.AlpmSigUseDefault);
       var db = env.Alpm.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
 
-      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+      var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
       try
       {
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_REPLACE_PKG;
@@ -369,7 +373,7 @@ public sealed unsafe class ManagedSnapshotTests
     {
       using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "ignored-pkg"), full: false, SigLevel.AlpmSigUseDefault);
 
-      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+      var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
       try
       {
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
@@ -410,12 +414,12 @@ public sealed unsafe class ManagedSnapshotTests
       using var pkg1 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-one"), full: false, SigLevel.AlpmSigUseDefault);
       using var pkg2 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-two"), full: false, SigLevel.AlpmSigUseDefault);
 
-      var conflictStruct = (_alpm_conflict_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_conflict_t));
-      var dependStruct = (_alpm_depend_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_depend_t));
+      var conflictStruct = (_alpm_conflict_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_conflict_t));
+      var dependStruct = (_alpm_depend_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_depend_t));
       var nameBuf = NativeString.ToNative("dep-name");
       var verBuf = NativeString.ToNative("1.0");
       var descBuf = NativeString.ToNative("dep-desc");
-      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+      var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
 
       try
       {
@@ -480,7 +484,7 @@ public sealed unsafe class ManagedSnapshotTests
     {
       using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "member-list"),
         full: false, SigLevel.AlpmSigUseDefault);
-      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+      var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
       var members = NativeMethods.alpm_list_add(null, pkg.BackingStruct);
 
       try
@@ -520,7 +524,7 @@ public sealed unsafe class ManagedSnapshotTests
   [Fact]
   public void DownloadPayload_CopiesItsFieldsOutOfTheCallbackData()
   {
-    var data = (_alpm_download_event_completed_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_download_event_completed_t));
+    var data = (_alpm_download_event_completed_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_download_event_completed_t));
 
     try
     {
@@ -554,7 +558,7 @@ public sealed unsafe class ManagedSnapshotTests
     try
     {
       using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "disarm-pkg"), full: false, SigLevel.AlpmSigUseDefault);
-      var native = (_alpm_question_t*)NativeMemory.Alloc((nuint)sizeof(_alpm_question_t));
+      var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
 
       try
       {
