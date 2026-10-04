@@ -37,7 +37,7 @@ public class AlpmOptions
     if (err != 0)
     {
       GC.KeepAlive(this);
-      throw NativeCall.Failure(_handle, $"set {operation ?? "option"}");
+      throw NativeCall.Failure(_handle, $"set {operation ?? "option"}").ToException();
     }
   }
   /// <summary>

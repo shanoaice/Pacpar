@@ -87,90 +87,166 @@ internal static class ErrorHandler
   }
 
   /// <summary>
+  /// The exception for a failure this library already described, reusing its message instead of
+  /// asking libalpm for it a second time.
+  /// </summary>
+  /// <param name="errno">The raw libalpm code.</param>
+  /// <param name="message">libalpm's description of it, or <c>null</c> to read one.</param>
+  /// <param name="context">Optional operation description.</param>
+  /// <remarks>
+  /// The entry point for <see cref="AlpmFailure.ToException"/>: the failure already read
+  /// <c>alpm_strerror</c>, and a second read would be a native call on the throw path.
+  /// </remarks>
+  internal static Exception Create(int errno, string? message, string? context)
+  {
+    message ??= StrError(errno);
+
+    return Categorize((_alpm_errno_t)errno) switch
+    {
+      AlpmErrorCategory.Memory => new OutOfMemoryException(message),
+      AlpmErrorCategory.Database => new AlpmDatabaseException(errno, message, context),
+      AlpmErrorCategory.Package => new AlpmPackageException(errno, message, context: context),
+      AlpmErrorCategory.Transaction => new AlpmTransactionException(errno, message, context),
+      AlpmErrorCategory.Signature => new AlpmSignatureException(errno, message, context),
+      AlpmErrorCategory.Retrieve => new AlpmRetrieveException(errno, message, context),
+      _ => new AlpmException(errno, message, context)
+    };
+  }
+
+  /// <summary>
+  /// The stable semantic code for an errno, or <see cref="AlpmFailureCode.UnknownNative"/> for a
+  /// valid code this mapping does not know.
+  /// </summary>
+  /// <remarks>
+  /// Every errno known to the bindings must be listed here;
+  /// <c>ErrorHandlerTests.CodeOf_KnowsEveryKnownErrno</c> fails when a libalpm update adds one.
+  /// <see cref="CodeOf"/> is the only place a raw errno becomes part of this library's vocabulary:
+  /// <see cref="CategoryOf"/> maps the code to a family, so the family is derived rather than
+  /// written a second time.
+  /// </remarks>
+  internal static AlpmFailureCode CodeOf(int errno) => ((_alpm_errno_t)errno) switch
+  {
+    _alpm_errno_t.ALPM_ERR_DB_OPEN => AlpmFailureCode.DatabaseOpen,
+    _alpm_errno_t.ALPM_ERR_DB_CREATE => AlpmFailureCode.DatabaseCreate,
+    _alpm_errno_t.ALPM_ERR_DB_NULL => AlpmFailureCode.DatabaseNull,
+    _alpm_errno_t.ALPM_ERR_DB_NOT_NULL => AlpmFailureCode.DatabaseNotNull,
+    _alpm_errno_t.ALPM_ERR_DB_NOT_FOUND => AlpmFailureCode.DatabaseNotFound,
+    _alpm_errno_t.ALPM_ERR_DB_INVALID => AlpmFailureCode.DatabaseInvalid,
+    _alpm_errno_t.ALPM_ERR_DB_INVALID_SIG => AlpmFailureCode.DatabaseInvalidSignature,
+    _alpm_errno_t.ALPM_ERR_DB_VERSION => AlpmFailureCode.DatabaseVersion,
+    _alpm_errno_t.ALPM_ERR_DB_WRITE => AlpmFailureCode.DatabaseWrite,
+    _alpm_errno_t.ALPM_ERR_DB_REMOVE => AlpmFailureCode.DatabaseRemove,
+
+    _alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND => AlpmFailureCode.PackageNotFound,
+    _alpm_errno_t.ALPM_ERR_PKG_IGNORED => AlpmFailureCode.PackageIgnored,
+    _alpm_errno_t.ALPM_ERR_PKG_MISSING_SIG => AlpmFailureCode.PackageMissingSignature,
+    _alpm_errno_t.ALPM_ERR_PKG_OPEN => AlpmFailureCode.PackageOpen,
+    _alpm_errno_t.ALPM_ERR_PKG_CANT_REMOVE => AlpmFailureCode.PackageCannotRemove,
+    _alpm_errno_t.ALPM_ERR_PKG_INVALID_NAME => AlpmFailureCode.PackageInvalidName,
+
+    _alpm_errno_t.ALPM_ERR_TRANS_NOT_NULL => AlpmFailureCode.TransactionNotNull,
+    _alpm_errno_t.ALPM_ERR_TRANS_NULL => AlpmFailureCode.TransactionNull,
+    _alpm_errno_t.ALPM_ERR_TRANS_DUP_TARGET => AlpmFailureCode.DuplicateTarget,
+    _alpm_errno_t.ALPM_ERR_TRANS_DUP_FILENAME => AlpmFailureCode.DuplicateFileName,
+    _alpm_errno_t.ALPM_ERR_TRANS_NOT_INITIALIZED => AlpmFailureCode.TransactionNotInitialized,
+    _alpm_errno_t.ALPM_ERR_TRANS_NOT_PREPARED => AlpmFailureCode.TransactionNotPrepared,
+    _alpm_errno_t.ALPM_ERR_TRANS_ABORT => AlpmFailureCode.TransactionAbort,
+    _alpm_errno_t.ALPM_ERR_TRANS_TYPE => AlpmFailureCode.TransactionType,
+    _alpm_errno_t.ALPM_ERR_TRANS_NOT_LOCKED => AlpmFailureCode.TransactionNotLocked,
+    _alpm_errno_t.ALPM_ERR_TRANS_HOOK_FAILED => AlpmFailureCode.HookFailed,
+    _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS => AlpmFailureCode.UnsatisfiedDependencies,
+    _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS => AlpmFailureCode.ConflictingDependencies,
+    _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS => AlpmFailureCode.FileConflicts,
+
+    // ADR 0007: these four carry a payload when a transaction call fails, so they are transaction
+    // failures from every entry point. Only the payload distinguishes them.
+    _alpm_errno_t.ALPM_ERR_PKG_INVALID => AlpmFailureCode.PackageInvalid,
+    _alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM => AlpmFailureCode.PackageInvalidChecksum,
+    _alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG => AlpmFailureCode.PackageInvalidSignature,
+    _alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH => AlpmFailureCode.PackageInvalidArchitecture,
+
+    _alpm_errno_t.ALPM_ERR_SIG_MISSING => AlpmFailureCode.SignatureMissing,
+    _alpm_errno_t.ALPM_ERR_SIG_INVALID => AlpmFailureCode.SignatureInvalid,
+    _alpm_errno_t.ALPM_ERR_MISSING_CAPABILITY_SIGNATURES => AlpmFailureCode.MissingCapabilitySignatures,
+
+    _alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE => AlpmFailureCode.RetrievePrepare,
+    _alpm_errno_t.ALPM_ERR_RETRIEVE => AlpmFailureCode.Retrieve,
+    _alpm_errno_t.ALPM_ERR_LIBCURL => AlpmFailureCode.LibCurl,
+    _alpm_errno_t.ALPM_ERR_EXTERNAL_DOWNLOAD => AlpmFailureCode.ExternalDownload,
+
+    _alpm_errno_t.ALPM_ERR_BADPERMS => AlpmFailureCode.BadPermissions,
+    _alpm_errno_t.ALPM_ERR_SYSTEM => AlpmFailureCode.System,
+    _alpm_errno_t.ALPM_ERR_NOT_A_FILE => AlpmFailureCode.NotAFile,
+    _alpm_errno_t.ALPM_ERR_NOT_A_DIR => AlpmFailureCode.NotADirectory,
+    _alpm_errno_t.ALPM_ERR_WRONG_ARGS => AlpmFailureCode.WrongArguments,
+    _alpm_errno_t.ALPM_ERR_DISK_SPACE => AlpmFailureCode.DiskSpace,
+    _alpm_errno_t.ALPM_ERR_HANDLE_NULL => AlpmFailureCode.HandleNull,
+    _alpm_errno_t.ALPM_ERR_HANDLE_NOT_NULL => AlpmFailureCode.HandleNotNull,
+    _alpm_errno_t.ALPM_ERR_HANDLE_LOCK => AlpmFailureCode.HandleLock,
+    _alpm_errno_t.ALPM_ERR_SERVER_BAD_URL => AlpmFailureCode.ServerBadUrl,
+    _alpm_errno_t.ALPM_ERR_SERVER_NONE => AlpmFailureCode.ServerNone,
+    _alpm_errno_t.ALPM_ERR_INVALID_REGEX => AlpmFailureCode.InvalidRegex,
+    _alpm_errno_t.ALPM_ERR_LIBARCHIVE => AlpmFailureCode.LibArchive,
+    _alpm_errno_t.ALPM_ERR_GPGME => AlpmFailureCode.Gpgme,
+
+    _ => AlpmFailureCode.UnknownNative
+  };
+
+  /// <summary>
+  /// The family a failure code belongs to, which is what picks its exception type.
+  /// </summary>
+  internal static AlpmErrorCategory CategoryOf(AlpmFailureCode code) => code switch
+  {
+    AlpmFailureCode.DatabaseOpen or AlpmFailureCode.DatabaseCreate or AlpmFailureCode.DatabaseNull
+      or AlpmFailureCode.DatabaseNotNull or AlpmFailureCode.DatabaseNotFound
+      or AlpmFailureCode.DatabaseInvalid or AlpmFailureCode.DatabaseInvalidSignature
+      or AlpmFailureCode.DatabaseVersion or AlpmFailureCode.DatabaseWrite
+      or AlpmFailureCode.DatabaseRemove => AlpmErrorCategory.Database,
+
+    AlpmFailureCode.PackageNotFound or AlpmFailureCode.PackageIgnored
+      or AlpmFailureCode.PackageMissingSignature or AlpmFailureCode.PackageOpen
+      or AlpmFailureCode.PackageCannotRemove or AlpmFailureCode.PackageInvalidName
+      => AlpmErrorCategory.Package,
+
+    AlpmFailureCode.TransactionNotNull or AlpmFailureCode.TransactionNull
+      or AlpmFailureCode.DuplicateTarget or AlpmFailureCode.DuplicateFileName
+      or AlpmFailureCode.TransactionNotInitialized or AlpmFailureCode.TransactionNotPrepared
+      or AlpmFailureCode.TransactionAbort or AlpmFailureCode.TransactionType
+      or AlpmFailureCode.TransactionNotLocked or AlpmFailureCode.HookFailed
+      or AlpmFailureCode.UnsatisfiedDependencies or AlpmFailureCode.ConflictingDependencies
+      or AlpmFailureCode.FileConflicts or AlpmFailureCode.PackageInvalid
+      or AlpmFailureCode.PackageInvalidChecksum or AlpmFailureCode.PackageInvalidSignature
+      or AlpmFailureCode.PackageInvalidArchitecture => AlpmErrorCategory.Transaction,
+
+    AlpmFailureCode.SignatureMissing or AlpmFailureCode.SignatureInvalid
+      or AlpmFailureCode.MissingCapabilitySignatures => AlpmErrorCategory.Signature,
+
+    AlpmFailureCode.RetrievePrepare or AlpmFailureCode.Retrieve or AlpmFailureCode.LibCurl
+      or AlpmFailureCode.ExternalDownload => AlpmErrorCategory.Retrieve,
+
+    AlpmFailureCode.BadPermissions or AlpmFailureCode.System or AlpmFailureCode.NotAFile
+      or AlpmFailureCode.NotADirectory or AlpmFailureCode.WrongArguments
+      or AlpmFailureCode.DiskSpace or AlpmFailureCode.HandleNull or AlpmFailureCode.HandleNotNull
+      or AlpmFailureCode.HandleLock or AlpmFailureCode.ServerBadUrl or AlpmFailureCode.ServerNone
+      or AlpmFailureCode.InvalidRegex or AlpmFailureCode.LibArchive or AlpmFailureCode.Gpgme
+      => AlpmErrorCategory.Generic,
+
+    _ => AlpmErrorCategory.Unknown
+  };
+
+  /// <summary>
   /// Classifies an errno into the exception type libalpm errors of that kind are reported as.
   /// </summary>
   /// <remarks>
-  /// Every errno known to the bindings must be listed here; only values this library does not know
-  /// return <see cref="AlpmErrorCategory.Unknown"/>, and
+  /// Every errno known to the bindings must reach a real code through <see cref="CodeOf"/>; only
+  /// values this library does not know return <see cref="AlpmErrorCategory.Unknown"/>, and
   /// <c>ErrorHandlerTests.Categorize_ClassifiesEveryKnownErrno</c> fails when a libalpm update adds
   /// one. That is what keeps the mapping in sync instead of letting new errnos degrade silently.
   /// </remarks>
   internal static AlpmErrorCategory Categorize(_alpm_errno_t errno)
-  {
-    return errno switch
-    {
-      _alpm_errno_t.ALPM_ERR_MEMORY => AlpmErrorCategory.Memory,
-
-      _alpm_errno_t.ALPM_ERR_DB_OPEN
-        or _alpm_errno_t.ALPM_ERR_DB_CREATE
-        or _alpm_errno_t.ALPM_ERR_DB_NULL
-        or _alpm_errno_t.ALPM_ERR_DB_NOT_NULL
-        or _alpm_errno_t.ALPM_ERR_DB_NOT_FOUND
-        or _alpm_errno_t.ALPM_ERR_DB_INVALID
-        or _alpm_errno_t.ALPM_ERR_DB_INVALID_SIG
-        or _alpm_errno_t.ALPM_ERR_DB_VERSION
-        or _alpm_errno_t.ALPM_ERR_DB_WRITE
-        or _alpm_errno_t.ALPM_ERR_DB_REMOVE => AlpmErrorCategory.Database,
-
-      _alpm_errno_t.ALPM_ERR_PKG_NOT_FOUND
-        or _alpm_errno_t.ALPM_ERR_PKG_IGNORED
-        or _alpm_errno_t.ALPM_ERR_PKG_MISSING_SIG
-        or _alpm_errno_t.ALPM_ERR_PKG_OPEN
-        or _alpm_errno_t.ALPM_ERR_PKG_CANT_REMOVE
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_NAME => AlpmErrorCategory.Package,
-
-      _alpm_errno_t.ALPM_ERR_TRANS_NOT_NULL
-        or _alpm_errno_t.ALPM_ERR_TRANS_NULL
-        or _alpm_errno_t.ALPM_ERR_TRANS_DUP_TARGET
-        or _alpm_errno_t.ALPM_ERR_TRANS_DUP_FILENAME
-        or _alpm_errno_t.ALPM_ERR_TRANS_NOT_INITIALIZED
-        or _alpm_errno_t.ALPM_ERR_TRANS_NOT_PREPARED
-        or _alpm_errno_t.ALPM_ERR_TRANS_ABORT
-        or _alpm_errno_t.ALPM_ERR_TRANS_TYPE
-        or _alpm_errno_t.ALPM_ERR_TRANS_NOT_LOCKED
-        or _alpm_errno_t.ALPM_ERR_TRANS_HOOK_FAILED
-        or _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS
-        or _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS
-        or _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS
-        // ADR 0007: these four carry a payload - a list of package names - when
-        // alpm_trans_prepare/commit fail, and AlpmTransactionException.TakeFailure reports them as
-        // the InvalidPackage* subclasses. One errno has one public exception type, so the errno is
-        // classified into the transaction family here too: the generic path (Alpm.GetCurrentError,
-        // NativeCall.Failure) then answers with the base state of the same type. The payload is
-        // absent there, not different, because no list was ever dumped.
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG
-        or _alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH => AlpmErrorCategory.Transaction,
-
-      _alpm_errno_t.ALPM_ERR_SIG_MISSING
-        or _alpm_errno_t.ALPM_ERR_SIG_INVALID
-        or _alpm_errno_t.ALPM_ERR_MISSING_CAPABILITY_SIGNATURES => AlpmErrorCategory.Signature,
-
-      _alpm_errno_t.ALPM_ERR_RETRIEVE_PREPARE
-        or _alpm_errno_t.ALPM_ERR_RETRIEVE
-        or _alpm_errno_t.ALPM_ERR_LIBCURL
-        or _alpm_errno_t.ALPM_ERR_EXTERNAL_DOWNLOAD => AlpmErrorCategory.Retrieve,
-
-      // No dedicated category: still an AlpmException, with the errno and libalpm's message.
-      _alpm_errno_t.ALPM_ERR_BADPERMS
-        or _alpm_errno_t.ALPM_ERR_SYSTEM
-        or _alpm_errno_t.ALPM_ERR_NOT_A_FILE
-        or _alpm_errno_t.ALPM_ERR_NOT_A_DIR
-        or _alpm_errno_t.ALPM_ERR_WRONG_ARGS
-        or _alpm_errno_t.ALPM_ERR_DISK_SPACE
-        or _alpm_errno_t.ALPM_ERR_HANDLE_NULL
-        or _alpm_errno_t.ALPM_ERR_HANDLE_NOT_NULL
-        or _alpm_errno_t.ALPM_ERR_HANDLE_LOCK
-        or _alpm_errno_t.ALPM_ERR_SERVER_BAD_URL
-        or _alpm_errno_t.ALPM_ERR_SERVER_NONE
-        or _alpm_errno_t.ALPM_ERR_INVALID_REGEX
-        or _alpm_errno_t.ALPM_ERR_LIBARCHIVE
-        or _alpm_errno_t.ALPM_ERR_GPGME => AlpmErrorCategory.Generic,
-
-      _ => AlpmErrorCategory.Unknown
-    };
-  }
+    => errno == _alpm_errno_t.ALPM_ERR_MEMORY
+      ? AlpmErrorCategory.Memory
+      : CategoryOf(CodeOf((int)errno));
 }
 
 /// <summary>The exception type an errno's errors are reported as.</summary>

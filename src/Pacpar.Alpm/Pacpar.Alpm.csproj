@@ -20,6 +20,7 @@
          external consumer is not. -->
     <InternalsVisibleTo Include="Pacpar.Alpm.Tests" />
     <InternalsVisibleTo Include="Pacpar.Benchmarks" />
+    <InternalsVisibleTo Include="Pacpar.Alpm.FSharp" />
   </ItemGroup>
 
   <ItemGroup>

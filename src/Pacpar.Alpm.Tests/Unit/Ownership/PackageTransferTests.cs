@@ -164,10 +164,9 @@ public sealed class PackageTransferTests : IDisposable
 
     using var transaction = _environment.Alpm.BeginTransaction();
 
-    var failure = Assert.Throws<AlpmPackageException>(() => transaction.AddPackage(installed));
+    var failure = Assert.Throws<AlpmException>(() => transaction.AddPackage(installed));
 
     Assert.Equal((int)_alpm_errno_t.ALPM_ERR_WRONG_ARGS, failure.Errno);
-    Assert.Same(installed, failure.Package);
     Assert.Empty(transaction.GetAddedPackages());
 
     // The transaction borrowed nothing and freed nothing: the package still belongs to the local db.

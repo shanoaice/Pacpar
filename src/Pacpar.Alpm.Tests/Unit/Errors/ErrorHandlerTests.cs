@@ -75,6 +75,41 @@ public sealed class ErrorHandlerTests
   }
 
   [Fact]
+  public void CodeOf_KnowsEveryKnownErrno()
+  {
+    var unknown = Enum.GetValues<_alpm_errno_t>()
+      .Where(errno => errno != _alpm_errno_t.ALPM_ERR_OK && errno != _alpm_errno_t.ALPM_ERR_MEMORY)
+      .Where(errno => ErrorHandler.CodeOf((int)errno) == AlpmFailureCode.UnknownNative)
+      .ToArray();
+
+    Assert.Empty(unknown);
+  }
+
+  [Fact]
+  public void ToException_FromAlpmFailure_YieldsCategorizedExceptionType()
+  {
+    foreach (var errno in Enum.GetValues<_alpm_errno_t>())
+    {
+      if (errno == _alpm_errno_t.ALPM_ERR_OK || errno == _alpm_errno_t.ALPM_ERR_MEMORY) continue;
+
+      var failure = AlpmFailure.Of((int)errno, "test");
+      var ex = failure.ToException();
+
+      var expectedType = ErrorHandler.Categorize(errno) switch
+      {
+        AlpmErrorCategory.Database => typeof(AlpmDatabaseException),
+        AlpmErrorCategory.Package => typeof(AlpmPackageException),
+        AlpmErrorCategory.Transaction => typeof(AlpmTransactionException),
+        AlpmErrorCategory.Signature => typeof(AlpmSignatureException),
+        AlpmErrorCategory.Retrieve => typeof(AlpmRetrieveException),
+        _ => typeof(AlpmException)
+      };
+
+      Assert.IsType(expectedType, ex);
+    }
+  }
+
+  [Fact]
   public void GetException_ReturnsGenericAlpmException_ForAnErrnoTheBindingsDoNotKnow()
   {
     var errno = (_alpm_errno_t)ushort.MaxValue;
@@ -121,8 +156,8 @@ public sealed class ErrorHandlerTests
     Assert.Equal(AlpmErrorCategory.Transaction, ErrorHandler.Categorize((_alpm_errno_t)errno));
 
     var generic = Assert.IsType<AlpmTransactionException>(ErrorHandler.GetException(errno));
-    var transaction = AlpmTransactionException.TakeFailure((_alpm_errno_t)errno, null, "Failed to prepare transaction");
-
+    var transaction = Assert.IsAssignableFrom<AlpmTransactionException>(
+      AlpmFailure.Take(errno, null, "Failed to prepare transaction").ToException());
     Assert.IsAssignableFrom<AlpmTransactionException>(transaction);
     Assert.IsNotAssignableFrom<AlpmPackageException>(transaction);
 

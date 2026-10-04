@@ -1,3 +1,4 @@
+using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
 namespace Pacpar.Alpm.Tests.Unit;
@@ -63,6 +64,20 @@ public sealed class ErrorContractTests : IDisposable
     {
       _ = sync.GetPackageCache();
     });
+  }
+
+  [Fact]
+  public void TryGetPackageCache_ReturnsFalseAndSetsFailure_WhenLibalpmReportsAnError()
+  {
+    var sync = Alpm.RegisterSyncDatabase("core", 0);
+
+    var ok = sync.TryGetPackageCache(out var cache, out var failure);
+
+    Assert.False(ok);
+    Assert.Null(cache);
+    Assert.NotNull(failure);
+    Assert.Equal(AlpmFailureCode.DatabaseNotFound, failure.Code);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_DB_NOT_FOUND, failure.NativeCode);
   }
 
   [Fact]

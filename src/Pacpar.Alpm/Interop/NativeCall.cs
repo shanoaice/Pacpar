@@ -24,7 +24,7 @@ namespace Pacpar.Alpm;
 internal static class NativeCall
 {
   /// <summary>
-  /// The exception for a call that signalled failure through its return value, when the owner crosses
+  /// The failure for a call that signalled failure through its return value, when the owner crosses
   /// the boundary as a <see cref="SafeAlpmHandle"/>.
   /// </summary>
   /// <remarks>
@@ -33,11 +33,15 @@ internal static class NativeCall
   /// </remarks>
   /// <param name="handle">The owning handle.</param>
   /// <param name="operation">What failed, e.g. <c>"unregister database"</c>.</param>
-  internal static Exception Failure(SafeAlpmHandle handle, string operation)
-    => Failure(NativeMethods.alpm_errno(handle), operation);
+  /// <returns>
+  /// A managed failure value. Throw <c>AlpmFailure.ToException()</c> to report it the way the public
+  /// C# API does; hand the value on to a caller that would rather match on it.
+  /// </returns>
+  internal static AlpmFailure Failure(SafeAlpmHandle handle, string operation)
+    => Failure((int)NativeMethods.alpm_errno(handle), operation);
 
   /// <summary>
-  /// The exception for a call that failed while the owner crossed the boundary as a raw pointer.
+  /// The failure for a call that failed while the owner crossed the boundary as a raw pointer.
   /// </summary>
   /// <param name="rawErrno">
   /// The errno the caller read immediately after the failing call, as the first statement of that
@@ -46,19 +50,14 @@ internal static class NativeCall
   /// <param name="operation">What failed, e.g. <c>"unregister database"</c>.</param>
   /// <remarks>
   /// This overload takes the value, not the handle, and that is the point. A raw-handle overload
-  /// would read <c>alpm_errno</c> here - a second native read, inside the exception-construction
-  /// expression - and a <c>GC.KeepAlive(owner)</c> written before that expression does not cover it:
-  /// KeepAlive keeps the owner alive only up to that instruction. Reading at the failure site and
-  /// passing the value makes the anchor provable, because the order becomes
-  /// <c>read errno</c> to <c>GC.KeepAlive(owner)</c> to <c>throw</c>.
+  /// would read <c>alpm_errno</c> here - a second native read, after the caller's anchor - and a
+  /// <c>GC.KeepAlive(owner)</c> written before that expression does not cover it: KeepAlive keeps
+  /// the owner alive only up to its own instruction. Reading at the failure site and passing the
+  /// value makes the anchor provable, because the order becomes <c>read errno</c> to
+  /// <c>GC.KeepAlive(owner)</c> to report.
   /// </remarks>
-  internal static Exception Failure(int rawErrno, string operation)
-    => rawErrno == 0
-      // A failure without an errno is real libalpm behaviour, not a broken error channel. It gets its
-      // own type instead of surfacing as an ArgumentOutOfRangeException out of the errno factory.
-      ? new AlpmNativeFailureException(operation)
-      : ErrorHandler.ToException(rawErrno, operation);
-
-  private static Exception Failure(_alpm_errno_t rawErrno, string operation)
-    => Failure((int)rawErrno, operation);
+  internal static AlpmFailure Failure(int rawErrno, string operation)
+    // A failure with no errno, and ALPM_ERR_MEMORY, are thrown rather than returned: neither is an
+    // ALPM operation failure this library can describe.
+    => AlpmFailure.Of(rawErrno, operation);
 }

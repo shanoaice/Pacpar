@@ -196,56 +196,6 @@ public class AlpmTransactionException(int errno, string? strError = null, string
     public IReadOnlyList<string> Packages { get; } = packages;
   }
 
-  /// <summary>
-  /// Builds the exception describing a failed <c>alpm_trans_prepare</c>/<c>alpm_trans_commit</c> from
-  /// <paramref name="errno"/> and the list libalpm dumped into that call's output parameter.
-  /// </summary>
-  /// <remarks>
-  /// Every branch <b>consumes</b> <paramref name="data"/>: the entries are snapshotted into managed
-  /// objects first, then the whole list - nodes and elements - is freed with the destructor that
-  /// belongs to <paramref name="errno"/>: 45 <c>alpm_depmissing_free</c>, 46 <c>alpm_conflict_free</c>,
-  /// 47 <c>alpm_fileconflict_free</c>, and for 42/35/36/37 libc <c>free</c> on the strings. Any other
-  /// errno frees the nodes only and answers with the base state, because guessing an element
-  /// destructor aborts the process (releasing an <c>alpm_conflict_t</c> with
-  /// <c>alpm_depmissing_free</c> is a measured SIGABRT).
-  /// </remarks>
-  /// <param name="errno">The errno of the failed call, read before anything else runs.</param>
-  /// <param name="data">The list libalpm dumped, or <c>null</c>. Always consumed.</param>
-  /// <param name="context">Optional operation description, e.g. "Failed to prepare the transaction".</param>
-  internal static unsafe AlpmTransactionException TakeFailure(_alpm_errno_t errno, _alpm_list_t* data,
-    string? context = null)
-  {
-    switch (errno)
-    {
-      case _alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS:
-        return new MissingDependencies(
-          AlpmOwnedList<DepMissing>.Take(data, &DepMissing.Factory, &MemoryManagement.DepMissingFreeExtern),
-          context);
-      case _alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS:
-        return new ConflictingDependencies(
-          AlpmOwnedList<Conflict>.Take(data, &Conflict.Factory, &MemoryManagement.ConflictFreeExtern),
-          context);
-      case _alpm_errno_t.ALPM_ERR_FILE_CONFLICTS:
-        return new ConflictingFiles(
-          AlpmOwnedList<FileConflict>.Take(data, &FileConflict.Factory, &MemoryManagement.FileConflictFreeExtern),
-          context);
-      case _alpm_errno_t.ALPM_ERR_PKG_INVALID_ARCH:
-        return new InvalidPackageArchitecture(
-          AlpmStringList.TakeOwned(data, &MemoryManagement.CFreeExtern), context);
-      case _alpm_errno_t.ALPM_ERR_PKG_INVALID:
-        return new InvalidPackage(AlpmStringList.TakeOwned(data, &MemoryManagement.CFreeExtern), context);
-      case _alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM:
-        return new InvalidPackageChecksum(AlpmStringList.TakeOwned(data, &MemoryManagement.CFreeExtern), context);
-      case _alpm_errno_t.ALPM_ERR_PKG_INVALID_SIG:
-        return new InvalidPackageSignature(AlpmStringList.TakeOwned(data, &MemoryManagement.CFreeExtern), context);
-      default:
-        // No documented payload for this errno, so the elements are left alone: leaking a list that
-        // libalpm is about to discard anyway beats aborting the process on a wrong free. The caller
-        // still gets a usable exception, carrying the errno and libalpm's own message.
-        AlpmNativeList.Free(data, null);
-        return new AlpmTransactionException((int)errno, context: context);
-    }
-  }
 }
 
 /// <summary>

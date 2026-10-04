@@ -310,7 +310,7 @@ public sealed class Callback
     if (err != 0)
     {
       GC.KeepAlive(this);
-      throw NativeCall.Failure(_handle, $"set {operation ?? "callback"}");
+      throw NativeCall.Failure(_handle, $"set {operation ?? "callback"}").ToException();
     }
   }
 

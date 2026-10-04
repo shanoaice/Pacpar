@@ -17,7 +17,7 @@
 # A stale entry - one that no longer matches any hazard site - also fails the build. Delete it.
 
 
-Alpm..ctor | SafeAlpmHandle ownership | The raw handle returned by alpm_initialize is passed straight into new SafeAlpmHandle(ownsHandle: true) and stored in Alpm._handle; every managed call marshals through that SafeHandle, and SafeAlpmHandle.ReleaseHandle ends the native handle with alpm_release as a critical finalizer, so the pointer is anchored exactly as long as the Alpm instance - or its finalizer - lives. The provenance pass cannot follow a native call result through a SafeHandle constructor argument into a field of this, which is the ownership hop this entry records. Covers both the alpm_initialize call and the new SafeAlpmHandle construction in the constructor.
+Alpm.TryInitializeHandle | SafeAlpmHandle ownership | The raw handle returned by alpm_initialize is passed straight into new SafeAlpmHandle(ownsHandle: true); every managed call marshals through that SafeHandle, and SafeAlpmHandle.ReleaseHandle ends the native handle with alpm_release as a critical finalizer. Covers both the alpm_initialize call and the new SafeAlpmHandle construction.
 
 
 AlpmDownloadEvent | delegated to caller | FromUnion receives the download-event union by parameter and copies it out eagerly. Its only caller is Callback.DownloadAgent, which runs inside the libalpm download callback whose frame already keeps the handle owner alive.

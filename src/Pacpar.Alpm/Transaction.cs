@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
@@ -99,15 +100,27 @@ public class Transaction : IDisposable
   /// </summary>
   internal readonly Lifetime Lifetime;
 
-  internal Transaction(Alpm alpmLibrary, TransactionFlags flags)
+  private Transaction(Alpm alpmLibrary)
   {
     _library = alpmLibrary;
     Lifetime = alpmLibrary.RootLifetime.CreateChild("the transaction");
-    var err = NativeMethods.alpm_trans_init(_library.Handle, (int)flags);
+  }
+
+  internal static bool TryCreate(Alpm alpmLibrary, TransactionFlags flags,
+    [NotNullWhen(true)] out Transaction? transaction,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    var err = NativeMethods.alpm_trans_init(alpmLibrary.Handle, (int)flags);
     if (err != 0)
     {
-      throw NativeCall.Failure(_library.Handle, "start transaction");
+      transaction = null;
+      failure = NativeCall.Failure(alpmLibrary.Handle, "start transaction");
+      return false;
     }
+
+    transaction = new Transaction(alpmLibrary);
+    failure = null;
+    return true;
   }
 
   private void ThrowIfDisposed()
@@ -162,9 +175,12 @@ public class Transaction : IDisposable
   /// parameter empty (measured), which is why this method answers <c>void</c>. A failure is reported
   /// as the <see cref="AlpmTransactionException"/> case that matches the errno, carrying the payload
   /// as a managed snapshot; the native list is freed at the same moment, with the element destructor
-  /// the errno requires (see the exception's <c>TakeFailure</c> factory).
+  /// the errno requires (see <see cref="AlpmFailure.Take"/>).
   /// </remarks>
-  public unsafe void Prepare()
+  /// <summary>
+  /// The failure-returning seam for <see cref="Prepare"/>.
+  /// </summary>
+  internal unsafe bool TryPrepare([NotNullWhen(false)] out AlpmFailure? failure)
   {
     ThrowIfDisposed();
 
@@ -173,11 +189,51 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_prepare(_library.Handle, &errData);
     if (err != 0)
     {
-      var ex = AlpmTransactionException.TakeFailure((_alpm_errno_t)_library.Errno, errData, "Failed to prepare transaction");
+      failure = AlpmFailure.Take(_library.Errno, errData, "prepare transaction");
       GC.KeepAlive(_library);
       GC.KeepAlive(this);
-      throw ex;
+      return false;
     }
+
+    failure = null;
+    return true;
+  }
+
+  /// <summary>
+  /// Prepares the transaction: the dependency, conflict and architecture checks.
+  /// </summary>
+  /// <remarks>
+  /// A successful call has nothing to report - libalpm leaves the list it dumps into the output
+  /// parameter empty (measured), which is why this method answers <c>void</c>. A failure is reported
+  /// as the <see cref="AlpmTransactionException"/> case that matches the errno, carrying the payload
+  /// as a managed snapshot; the native list is freed at the same moment, with the element destructor
+  /// the errno requires (see <see cref="AlpmFailure.Take"/>).
+  /// </remarks>
+  public unsafe void Prepare()
+  {
+    if (!TryPrepare(out var failure))
+    {
+      throw failure.ToException("Failed to prepare transaction");
+    }
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="AddPackage(PackageView)"/>.
+  /// </summary>
+  internal unsafe bool TryAddPackage(PackageView pkg, [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(pkg);
+
+    var err = NativeMethods.alpm_add_pkg(_library.Handle, pkg.BackingStruct);
+    if (err != 0)
+    {
+      failure = NativeCall.Failure(_library.Handle, "add package");
+      return false;
+    }
+
+    failure = null;
+    return true;
   }
 
   /// <summary>
@@ -192,8 +248,41 @@ public class Transaction : IDisposable
   /// </remarks>
   public void AddPackage(PackageView pkg)
   {
+    if (!TryAddPackage(pkg, out var failure))
+    {
+      throw failure.ToException($"Failed to add package: {pkg.Name}");
+    }
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="AddPackage(LoadedPackage)"/>.
+  /// </summary>
+  internal unsafe bool TryAddPackage(LoadedPackage pkg,
+    [NotNullWhen(true)] out PackageView? view,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
     ThrowIfDisposed();
-    AddCore(pkg);
+    ArgumentNullException.ThrowIfNull(pkg);
+
+    // Before touching libalpm: this instance is already inert when it was handed over once, and
+    // repeating the call is a caller error rather than something libalpm could act on.
+    pkg.ThrowIfNotOwned();
+
+    var err = NativeMethods.alpm_add_pkg(_library.Handle, pkg.BackingStruct);
+    if (err != 0)
+    {
+      view = null;
+      failure = NativeCall.Failure(_library.Handle, "add package");
+      return false;
+    }
+
+    // The pointer is now the transaction's to free; the wrapper must never release it again. Read the
+    // views off it first, because the hand-over retires the wrapper for reads too. The view carries
+    // the transaction's token: the package lives exactly as long as the transaction owns it.
+    view = new PackageView(pkg.BackingStruct, Lifetime);
+    pkg.Disown();
+    failure = null;
+    return true;
   }
 
   /// <summary>
@@ -213,30 +302,30 @@ public class Transaction : IDisposable
   /// </exception>
   public unsafe PackageView AddPackage(LoadedPackage pkg)
   {
-    ThrowIfDisposed();
-
-    // Before touching libalpm: this instance is already inert when it was handed over once, and
-    // repeating the call is a caller error rather than something libalpm could act on.
-    pkg.ThrowIfNotOwned();
-
-    AddCore(pkg);
-
-    // The pointer is now the transaction's to free; the wrapper must never release it again. Read the
-    // views off it first, because the hand-over retires the wrapper for reads too. The view carries
-    // the transaction's token: the package lives exactly as long as the transaction owns it.
-    var view = new PackageView(pkg.BackingStruct, Lifetime);
-    pkg.Disown();
+    if (!TryAddPackage(pkg, out var view, out var failure))
+    {
+      throw failure.ToException($"Failed to add package: {pkg.Name}");
+    }
     return view;
   }
 
-  /// <summary>Adds <paramref name="pkg"/> to the transaction, without deciding who owns it.</summary>
-  private unsafe void AddCore(PackageBase pkg)
+  /// <summary>
+  /// The failure-returning seam for <see cref="RemovePackage(PackageView)"/>.
+  /// </summary>
+  internal unsafe bool TryRemovePackage(PackageView pkg, [NotNullWhen(false)] out AlpmFailure? failure)
   {
-    var err = NativeMethods.alpm_add_pkg(_library.Handle, pkg.BackingStruct);
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(pkg);
+
+    var err = NativeMethods.alpm_remove_pkg(_library.Handle, pkg.BackingStruct);
     if (err != 0)
     {
-      throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to add package: {pkg.Name}");
+      failure = NativeCall.Failure(_library.Handle, "remove package");
+      return false;
     }
+
+    failure = null;
+    return true;
   }
 
   /// <summary>
@@ -245,12 +334,27 @@ public class Transaction : IDisposable
   /// <param name="pkg">The package to remove.</param>
   public unsafe void RemovePackage(PackageView pkg)
   {
+    if (!TryRemovePackage(pkg, out var failure))
+    {
+      throw failure.ToException($"Failed to remove package: {pkg.Name}");
+    }
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="SystemUpgrade(bool)"/>.
+  /// </summary>
+  internal bool TrySystemUpgrade(bool enableDowngrade, [NotNullWhen(false)] out AlpmFailure? failure)
+  {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_remove_pkg(_library.Handle, pkg.BackingStruct);
+    var err = NativeMethods.alpm_sync_sysupgrade(_library.Handle, enableDowngrade ? 1 : 0);
     if (err != 0)
     {
-      throw new AlpmPackageException(_library.Errno, package: pkg, context: $"Failed to remove package: {pkg.Name}");
+      failure = NativeCall.Failure(_library.Handle, "compute system upgrade");
+      return false;
     }
+
+    failure = null;
+    return true;
   }
 
   /// <summary>
@@ -259,12 +363,27 @@ public class Transaction : IDisposable
   /// <param name="enableDowngrade">Whether to allow downgrading packages if the repository version is older.</param>
   public void SystemUpgrade(bool enableDowngrade)
   {
+    if (!TrySystemUpgrade(enableDowngrade, out var failure))
+    {
+      throw failure.ToException();
+    }
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="Interrupt"/>.
+  /// </summary>
+  internal bool TryInterrupt([NotNullWhen(false)] out AlpmFailure? failure)
+  {
     ThrowIfDisposed();
-    var err = NativeMethods.alpm_sync_sysupgrade(_library.Handle, enableDowngrade ? 1 : 0);
+    var err = NativeMethods.alpm_trans_interrupt(_library.Handle);
     if (err != 0)
     {
-      throw NativeCall.Failure(_library.Handle, "compute system upgrade");
+      failure = NativeCall.Failure(_library.Handle, "interrupt transaction");
+      return false;
     }
+
+    failure = null;
+    return true;
   }
 
   /// <summary>
@@ -272,25 +391,16 @@ public class Transaction : IDisposable
   /// </summary>
   public void Interrupt()
   {
-    ThrowIfDisposed();
-    var err = NativeMethods.alpm_trans_interrupt(_library.Handle);
-    if (err != 0)
+    if (!TryInterrupt(out var failure))
     {
-      throw NativeCall.Failure(_library.Handle, "interrupt transaction");
+      throw failure.ToException();
     }
   }
 
   /// <summary>
-  /// Commits the transaction.
+  /// The failure-returning seam for <see cref="Commit"/>.
   /// </summary>
-  /// <remarks>
-  /// A successful commit has nothing to report - libalpm leaves the output parameter empty
-  /// (measured), which is why this method answers <c>void</c>. A failure is reported as the
-  /// <see cref="AlpmTransactionException"/> case that matches the errno: conflicting files, or a list
-  /// of package names, depending on the errno. The native list is freed at the same moment, with the
-  /// element destructor that errno requires (see the exception's <c>TakeFailure</c> factory).
-  /// </remarks>
-  public unsafe void Commit()
+  internal unsafe bool TryCommit([NotNullWhen(false)] out AlpmFailure? failure)
   {
     ThrowIfDisposed();
 
@@ -304,10 +414,10 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_commit(_library.Handle, &messages);
     if (err != 0)
     {
-      var ex = AlpmTransactionException.TakeFailure((_alpm_errno_t)_library.Errno, messages, "Failed to commit transaction");
+      failure = AlpmFailure.Take(_library.Errno, messages, "commit transaction");
       GC.KeepAlive(_library);
       GC.KeepAlive(this);
-      throw ex;
+      return false;
     }
     // A successful commit rewrites the local database and frees libalpm's in-memory package caches:
     // every view borrowed from the local database now points into freed memory. Retire the local
@@ -315,6 +425,26 @@ public class Transaction : IDisposable
     // the next GetLocalDatabase() issue a fresh one. Callers that keep package data across a commit
     // call ToSnapshot() first.
     _library.InvalidateLocalDatabase("Transaction.Commit()");
+    failure = null;
+    return true;
+  }
+
+  /// <summary>
+  /// Commits the transaction.
+  /// </summary>
+  /// <remarks>
+  /// A successful commit has nothing to report - libalpm leaves the output parameter empty
+  /// (measured), which is why this method answers <c>void</c>. A failure is reported as the
+  /// <see cref="AlpmTransactionException"/> case that matches the errno: conflicting files, or a list
+  /// of package names, depending on the errno. The native list is freed at the same moment, with the
+  /// element destructor that errno requires (see <see cref="AlpmFailure.Take"/>).
+  /// </remarks>
+  public unsafe void Commit()
+  {
+    if (!TryCommit(out var failure))
+    {
+      throw failure.ToException("Failed to commit transaction");
+    }
   }
 
   /// <summary>
@@ -398,6 +528,6 @@ public class Transaction : IDisposable
     GC.KeepAlive(_library);
     GC.KeepAlive(this);
 
-    ReleaseFailure ??= failure;
+    ReleaseFailure ??= failure.ToException();
   }
 }

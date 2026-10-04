@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
@@ -36,40 +37,95 @@ public class Alpm : IDisposable
   private int _disposeStarted;
   private int _disposedFlag;
 
+  private Alpm(SafeAlpmHandle handle)
+  {
+    _handle = handle;
+    _lifetime = Lifetime.CreateRoot(this, "the ALPM handle");
+    _handle.OwnDomain(_lifetime);
+    Options = new AlpmOptions(_handle, _lifetime);
+    BindingConfig = new AlpmBindingConfig();
+    Callback = new Callback(_handle, _lifetime, BindingConfig);
+  }
+
+  private static SafeAlpmHandle InitializeOrThrow(string root, string dbpath)
+  {
+    if (!TryInitializeHandle(root, dbpath, out var handle, out var failure))
+    {
+      throw failure.ToException("Failed to initialize libalpm.");
+    }
+    return handle;
+  }
+
+  private static unsafe bool TryInitializeHandle(string root, string dbpath,
+    [NotNullWhen(true)] out SafeAlpmHandle? handle,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ArgumentNullException.ThrowIfNull(root);
+    ArgumentNullException.ThrowIfNull(dbpath);
+
+    var initializeErrno = (_alpm_errno_t*)NativeMemory.Alloc(sizeof(_alpm_errno_t));
+    *initializeErrno = _alpm_errno_t.ALPM_ERR_OK;
+
+    _alpm_handle_t* rawHandle;
+    try
+    {
+      Span<byte> rootScratch = stackalloc byte[256];
+      Span<byte> dbpathScratch = stackalloc byte[256];
+      using var rootBuf = new Utf8Buffer(root, rootScratch);
+      using var dbpathBuf = new Utf8Buffer(dbpath, dbpathScratch);
+      rawHandle = NativeMethods.alpm_initialize(rootBuf.Ptr, dbpathBuf.Ptr, initializeErrno);
+    }
+    catch
+    {
+      NativeMemory.Free(initializeErrno);
+      throw;
+    }
+
+    if (rawHandle == null)
+    {
+      var rawErrno = (int)*initializeErrno;
+      NativeMemory.Free(initializeErrno);
+      handle = null;
+      failure = NativeCall.Failure(rawErrno, "initialize libalpm");
+      return false;
+    }
+
+    NativeMemory.Free(initializeErrno);
+    handle = new SafeAlpmHandle(rawHandle);
+    failure = null;
+    return true;
+  }
+
+  /// <summary>
+  /// The failure-returning seam for creating an <see cref="Alpm"/> session.
+  /// </summary>
+  /// <param name="root">The root directory of the installation (e.g. <c>"/"</c>).</param>
+  /// <param name="dbpath">The path to the pacman database directory (e.g. <c>"/var/lib/pacman"</c>).</param>
+  /// <param name="session">The newly created session, or <c>null</c> when initialization failed.</param>
+  /// <param name="failure">The failure, or <c>null</c> when initialization succeeded.</param>
+  /// <returns><c>true</c> if initialization succeeded; otherwise <c>false</c>.</returns>
+  internal static bool TryCreate(string root, string dbpath,
+    [NotNullWhen(true)] out Alpm? session,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    if (!TryInitializeHandle(root, dbpath, out var handle, out failure))
+    {
+      session = null;
+      return false;
+    }
+
+    session = new Alpm(handle);
+    return true;
+  }
+
   /// <summary>
   /// Initializes a new instance of the <see cref="Alpm"/> library handle.
   /// </summary>
   /// <param name="root">The root directory of the installation (e.g. <c>"/"</c>).</param>
   /// <param name="dbpath">The path to the pacman database directory (e.g. <c>"/var/lib/pacman"</c>).</param>
   /// <exception cref="Exception">Thrown if libalpm fails to initialize.</exception>
-  public unsafe Alpm(string root, string dbpath)
+  public Alpm(string root, string dbpath) : this(InitializeOrThrow(root, dbpath))
   {
-    var initializeErrno = (_alpm_errno_t*)NativeMemory.Alloc(sizeof(_alpm_errno_t));
-    *initializeErrno = _alpm_errno_t.ALPM_ERR_OK;
-
-    // alpm_initialize copies root and dbpath during the call (the buffer lifetime ends with this
-    // frame), and both are paths - hence the 256-byte scratch.
-    Span<byte> rootScratch = stackalloc byte[256];
-    Span<byte> dbpathScratch = stackalloc byte[256];
-    using var rootBuf = new Utf8Buffer(root, rootScratch);
-    using var dbpathBuf = new Utf8Buffer(dbpath, dbpathScratch);
-    var rawHandle = NativeMethods.alpm_initialize(rootBuf.Ptr, dbpathBuf.Ptr, initializeErrno);
-
-    if (rawHandle == null)
-    {
-      var exception = ErrorHandler.GetException(*initializeErrno) ?? new Exception("Failed to initialize libalpm.");
-      NativeMemory.Free(initializeErrno);
-      throw exception;
-    }
-
-    _handle = new SafeAlpmHandle(rawHandle);
-    _lifetime = Lifetime.CreateRoot(this, "the ALPM handle");
-    // The handle finalizes the session path, so it needs the domain to retire stamps from there.
-    _handle.OwnDomain(_lifetime);
-    Options = new AlpmOptions(_handle, _lifetime);
-    BindingConfig = new AlpmBindingConfig();
-    Callback = new Callback(_handle, _lifetime, BindingConfig);
-    NativeMemory.Free(initializeErrno);
   }
 
   private void ThrowIfDisposed()
@@ -196,16 +252,15 @@ public class Alpm : IDisposable
   }
 
   /// <summary>
-  /// Loads a package archive from disk.
+  /// The failure-returning seam for <see cref="LoadPackage"/>.
   /// </summary>
-  /// <param name="filename">The path to the package archive file.</param>
-  /// <param name="full">Whether to load all package metadata eagerly into memory.</param>
-  /// <param name="level">The signature verification requirements for loading the package.</param>
-  /// <returns>A <see cref="LoadedPackage"/> representing the package file.</returns>
-  /// <exception cref="Exception">Thrown if libalpm fails to load or parse the package archive.</exception>
-  public unsafe LoadedPackage LoadPackage(string filename, bool full, SigLevel level)
+  internal unsafe bool TryLoadPackage(string filename, bool full, SigLevel level,
+    [NotNullWhen(true)] out LoadedPackage? package,
+    [NotNullWhen(false)] out AlpmFailure? failure)
   {
     ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(filename);
+
     // Paths are long, hence the 256-byte scratch; alpm_pkg_load only reads the string.
     Span<byte> scratch = stackalloc byte[256];
     using var filenameBuf = new Utf8Buffer(filename, scratch);
@@ -218,8 +273,9 @@ public class Alpm : IDisposable
       var err = NativeMethods.alpm_pkg_load(Handle, filenameBuf.Ptr, full ? 1 : 0, (int)level, pkgOutPtr);
       if (err != 0)
       {
-        // Note: alpm_pkg_load sets the handle errno on failure.
-        throw NativeCall.Failure(Handle, "load package");
+        package = null;
+        failure = NativeCall.Failure(Handle, "load package");
+        return false;
       }
 
       var rawPkg = *pkgOutPtr;
@@ -229,13 +285,64 @@ public class Alpm : IDisposable
       }
 
       var pkgLifetime = _lifetime.CreateChild("a loaded package");
-      return new LoadedPackage(this, rawPkg, pkgLifetime);
+      package = new LoadedPackage(this, rawPkg, pkgLifetime);
+      failure = null;
+      return true;
     }
     finally
     {
       // We must free the memory we allocated for the output pointer.
       NativeMemory.Free(pkgOutPtr);
     }
+  }
+
+  /// <summary>
+  /// Loads a package archive from disk.
+  /// </summary>
+  /// <param name="filename">The path to the package archive file.</param>
+  /// <param name="full">Whether to load all package metadata eagerly into memory.</param>
+  /// <param name="level">The signature verification requirements for loading the package.</param>
+  /// <returns>A <see cref="LoadedPackage"/> representing the package file.</returns>
+  /// <exception cref="Exception">Thrown if libalpm fails to load or parse the package archive.</exception>
+  public unsafe LoadedPackage LoadPackage(string filename, bool full, SigLevel level)
+  {
+    if (!TryLoadPackage(filename, full, level, out var package, out var failure))
+    {
+      throw failure.ToException();
+    }
+    return package;
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="BeginTransaction"/>.
+  /// </summary>
+  internal bool TryBeginTransaction(TransactionFlags flags,
+    [NotNullWhen(true)] out Transaction? transaction,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+
+    if (CurrentTransaction is { } active)
+    {
+      if (active.GetFlags() != flags)
+      {
+        throw new InvalidOperationException(
+          $"A transaction with flags {active.GetFlags()} is already active on this handle; dispose it " +
+          $"before starting one with flags {flags}.");
+      }
+
+      transaction = active;
+      failure = null;
+      return true;
+    }
+
+    if (!Transaction.TryCreate(this, flags, out transaction, out failure))
+    {
+      return false;
+    }
+
+    CurrentTransaction = transaction;
+    return true;
   }
 
   /// <summary>
@@ -258,22 +365,10 @@ public class Alpm : IDisposable
   /// </exception>
   public Transaction BeginTransaction(TransactionFlags flags = default)
   {
-    ThrowIfDisposed();
-
-    if (CurrentTransaction is { } active)
+    if (!TryBeginTransaction(flags, out var transaction, out var failure))
     {
-      if (active.GetFlags() != flags)
-      {
-        throw new InvalidOperationException(
-          $"A transaction with flags {active.GetFlags()} is already active on this handle; dispose it " +
-          $"before starting one with flags {flags}.");
-      }
-
-      return active;
+      throw failure.ToException();
     }
-
-    var transaction = new Transaction(this, flags);
-    CurrentTransaction = transaction;
     return transaction;
   }
 
@@ -306,6 +401,32 @@ public class Alpm : IDisposable
   }
 
   /// <summary>
+  /// The failure-returning seam for <see cref="RegisterSyncDatabase"/>.
+  /// </summary>
+  internal unsafe bool TryRegisterSyncDatabase(string treename, SigLevel level,
+    [NotNullWhen(true)] out Database? database,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(treename);
+
+    Span<byte> scratch = stackalloc byte[64];
+    using var treeNameBuf = new Utf8Buffer(treename, scratch);
+    var dbPtr = NativeMethods.alpm_register_syncdb(Handle, treeNameBuf.Ptr, (int)level);
+    if (dbPtr is null)
+    {
+      database = null;
+      failure = NativeCall.Failure(Handle, "register sync database");
+      return false;
+    }
+
+    var token = _lifetime.GetLifetimeTokenForHandle(dbPtr, $"the sync database {treename}");
+    database = new Database(dbPtr, token);
+    failure = null;
+    return true;
+  }
+
+  /// <summary>
   /// Registers a new sync package database on this handle.
   /// </summary>
   /// <param name="treename">The name of the database repository (e.g. "core", "extra").</param>
@@ -318,17 +439,29 @@ public class Alpm : IDisposable
   /// </remarks>
   public unsafe Database RegisterSyncDatabase(string treename, SigLevel level)
   {
-    ThrowIfDisposed();
-    Span<byte> scratch = stackalloc byte[64];
-    using var treeNameBuf = new Utf8Buffer(treename, scratch);
-    var database = NativeMethods.alpm_register_syncdb(Handle, treeNameBuf.Ptr, (int)level);
-    if (database is null)
+    if (!TryRegisterSyncDatabase(treename, level, out var database, out var failure))
     {
-      // The null pointer is the failure signal; the errno read is the next thing that happens.
-      throw NativeCall.Failure(Handle, "register sync database");
+      throw failure.ToException();
     }
-    var token = _lifetime.GetLifetimeTokenForHandle(database, $"the sync database {treename}");
-    return new Database(database, token);
+    return database;
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="UnregisterAllSyncDatabases"/>.
+  /// </summary>
+  internal bool TryUnregisterAllSyncDatabases([NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    var err = NativeMethods.alpm_unregister_all_syncdbs(Handle);
+    if (err != 0)
+    {
+      failure = NativeCall.Failure(Handle, "unregister all sync databases");
+      return false;
+    }
+
+    _lifetime.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
+    failure = null;
+    return true;
   }
 
   /// <summary>
@@ -336,11 +469,10 @@ public class Alpm : IDisposable
   /// </summary>
   public void UnregisterAllSyncDatabases()
   {
-    ThrowIfDisposed();
-    var err = NativeMethods.alpm_unregister_all_syncdbs(Handle);
-    if (err != 0) throw NativeCall.Failure(Handle, "unregister all sync databases");
-
-    _lifetime.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
+    if (!TryUnregisterAllSyncDatabases(out var failure))
+    {
+      throw failure.ToException();
+    }
   }
 
   /// <summary>

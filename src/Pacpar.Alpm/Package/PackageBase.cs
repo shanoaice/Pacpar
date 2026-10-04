@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
@@ -542,7 +543,7 @@ public abstract unsafe class PackageBase
         // it has to come after the last native read on this path.
         var rawErrno = (int)NativeMethods.alpm_errno(handlePtr);
         GC.KeepAlive(this);
-        throw NativeCall.Failure(rawErrno, "read package signature");
+        ThrowSignatureFailure(rawErrno);
       }
       if (buffer != null)
       {
@@ -565,4 +566,10 @@ public abstract unsafe class PackageBase
   /// the copy and most callers do not need it.
   /// </param>
   public PackageSnapshot ToSnapshot(bool includeFiles = false) => new(this, includeFiles);
+
+  [DoesNotReturn]
+  private static void ThrowSignatureFailure(int rawErrno)
+  {
+    throw NativeCall.Failure(rawErrno, "read package signature").ToException();
+  }
 }

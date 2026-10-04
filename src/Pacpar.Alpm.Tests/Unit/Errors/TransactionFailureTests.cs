@@ -82,6 +82,25 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     Assert.Equal("missing-xyz", missing.Depend?.Name);
   }
 
+  [Fact]
+  public void TryPrepare_WithAnUnsatisfiedDependency_ReportsTheMissingDependencyInDetail()
+  {
+    using var transaction = _alpm.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-needs-try", depend: "missing-xyz"));
+
+    var ok = transaction.TryPrepare(out var failure);
+
+    Assert.False(ok);
+    Assert.NotNull(failure);
+    Assert.Equal(AlpmFailureCode.UnsatisfiedDependencies, failure.Code);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_UNSATISFIED_DEPS, failure.NativeCode);
+
+    var detail = Assert.IsType<AlpmFailureDetail.MissingDependencies>(failure.Detail);
+    var missing = Assert.Single(detail.Dependencies);
+    Assert.Equal("audit-needs-try", missing.Target);
+    Assert.Equal("missing-xyz", missing.Depend?.Name);
+  }
+
   /// <summary>
   /// The conflict payload is a list of <c>alpm_conflict_t</c>, not of <c>alpm_depmissing_t</c>.
   /// Reaching the assertions at all is half of the test: the previous wrapper released that list with
@@ -160,6 +179,61 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     Assert.EndsWith(Path.Combine("usr", "bin", "probe-file"), conflict.File);
   }
 
+  [Fact]
+  public void TryCommit_WithAFileConflict_ReportsTheFileInDetail()
+  {
+    var owned = Path.Combine(_root, "usr", "bin", "probe-file-try");
+    Directory.CreateDirectory(Path.GetDirectoryName(owned)!);
+    File.WriteAllText(owned, "already on disk, owned by nobody");
+
+    using var transaction = _alpm.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-file-try", file: "usr/bin/probe-file-try"));
+
+    Assert.True(transaction.TryPrepare(out _));
+
+    var ok = transaction.TryCommit(out var failure);
+
+    Assert.False(ok);
+    Assert.NotNull(failure);
+    Assert.Equal(AlpmFailureCode.FileConflicts, failure.Code);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_FILE_CONFLICTS, failure.NativeCode);
+
+    var detail = Assert.IsType<AlpmFailureDetail.ConflictingFiles>(failure.Detail);
+    var conflict = Assert.Single(detail.Conflicts);
+    Assert.Equal("audit-file-try", conflict.Target);
+    Assert.EndsWith(Path.Combine("usr", "bin", "probe-file-try"), conflict.File);
+  }
+
+  [Fact]
+  public void TryAddPackage_LoadedPackage_OnFailure_LeavesPackageOwned()
+  {
+    var path = PackageArchive.Create(_packageDirectory, "audit-dup-target");
+    using var transaction = _alpm.BeginTransaction();
+
+    using var pkg1 = _alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+    using var pkg2 = _alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+
+    // First add succeeds; transaction takes ownership.
+    var ok1 = transaction.TryAddPackage(pkg1, out var view1, out var failure1);
+    Assert.True(ok1);
+    Assert.NotNull(view1);
+    Assert.Null(failure1);
+    Assert.False(pkg1.OwnsPackage);
+
+    // Second add fails with DuplicateTarget.
+    var ok2 = transaction.TryAddPackage(pkg2, out var view2, out var failure2);
+    Assert.False(ok2);
+    Assert.Null(view2);
+    Assert.NotNull(failure2);
+    Assert.Equal(AlpmFailureCode.DuplicateTarget, failure2.Code);
+
+    // Crucial: pkg2 is still owned by the caller and was not disowned.
+    Assert.True(pkg2.OwnsPackage);
+    // pkg2 can be disposed cleanly without throwing.
+    pkg2.Dispose();
+    Assert.False(pkg2.OwnsPackage);
+  }
+
   /// <summary>
   /// The other half of the contract: a sound transaction reports nothing at all - which is why both
   /// methods answer <c>void</c>. The success paths of <c>alpm_trans_prepare</c>/<c>alpm_trans_commit</c>
@@ -206,10 +280,12 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   {
     var list = NativeMethods.alpm_list_add(null, (void*)0x1);
 
-    var failure = AlpmTransactionException.TakeFailure(_alpm_errno_t.ALPM_ERR_TRANS_NULL, list);
+    var failure = AlpmFailure.Take((int)_alpm_errno_t.ALPM_ERR_TRANS_NULL, list, "prepare transaction");
+    var exception = Assert.IsType<AlpmTransactionException>(failure.ToException());
 
-    Assert.Equal(typeof(AlpmTransactionException), failure.GetType());
-    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_TRANS_NULL, failure.Errno);
+    Assert.Equal(typeof(AlpmTransactionException), exception.GetType());
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_TRANS_NULL, exception.Errno);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_TRANS_NULL, failure.NativeCode);
   }
 
   [Fact]
