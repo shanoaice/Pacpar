@@ -70,7 +70,6 @@ type PlanAction =
 type TransactionPlan = {
     Actions: PlanAction list
     Flags: TransactionFlags
-    QuestionHandler: QuestionHandler
 }
 ```
 
@@ -94,65 +93,242 @@ type PreparedTransaction =
 
 module Transaction =
     /// Phase 1: Begins the native transaction, registers targets, and runs alpm_trans_prepare.
-    val prepare: AlpmSession -> TransactionPlan -> Result<PreparedTransaction, PrepareError>
+    val prepare:
+        session: AlpmSession
+        -> prompter: IQuestionPrompter
+        -> plan: TransactionPlan
+        -> Result<PreparedTransaction, PrepareError>
 
     /// Phase 2: Commits changes to disk.
     val commit: PreparedTransaction -> Result<TransactionReport, TransactionError>
 
     /// Higher-order bracket guaranteeing that the lock is released whether confirmed, aborted, or faulted.
     val withPrepared:
-        AlpmSession
-        -> TransactionPlan
+        session: AlpmSession
+        -> prompter: IQuestionPrompter
+        -> plan: TransactionPlan
         -> (PreparedTransaction -> Result<'a, TransactionError>)
         -> Result<'a, TransactionError>
 ```
 
----
+### 2.3 Declarative Plan Construction: The `plan { ... }` Computation Expression
 
-## 3. Safe Interactive Question Handling
+To bridge the gap between the immutable data model and human ergonomics, F# provides a **Plan Builder Computation Expression**. Rather than a monolithic monadic workflow (which would obscure inspectability and conflict with the strict native state machine), the CE serves as a **declarative syntactic lens** over `TransactionPlan`.
 
-During `prepare` and `commit`, `libalpm` fires mid-computation questions. Carelessly defaulting these questions can lead to severe system corruption (e.g. accidentally agreeing to replace core system packages or picking incorrect virtual packages).
-
-### 3.1 Domain-Specific Question Model
-
-Each question carries rich context rather than raw strings:
-
+#### Consumer Usage:
 ```fsharp
-type ConflictInfo = {
-    Package1: PackageView
-    Package2: PackageView
-    Reason: Depend
+let myPlan = plan {
+    install "ripgrep"
+    installFrom "core" "linux"
+    installLocal "/tmp/custom-kernel.pkg.tar.zst"
+    remove "nano"
+    upgrade
+    flag TransactionFlags.NoHooks
+}
+```
+
+#### Sample Builder Implementation:
+```fsharp
+namespace Pacpar.Alpm.FSharp
+
+open Pacpar.Alpm
+
+type PlanState = {
+    Actions: PlanAction list
+    Flags: TransactionFlags
 }
 
-type ProviderSelection = {
-    Providers: PackageView list
+type PlanBuilder() =
+    // Monoid / builder primitives
+    member _.Yield(_) = 
+        { Actions = []; Flags = TransactionFlags.None }
+    
+    member _.Zero() = 
+        { Actions = []; Flags = TransactionFlags.None }
+
+    member _.Combine(a: PlanState, b: PlanState) = 
+        { Actions = a.Actions @ b.Actions; Flags = a.Flags ||| b.Flags }
+
+    member _.Delay(f: unit -> PlanState) = f ()
+
+    // Final compile step: validates invariants before producing the pure TransactionPlan
+    member _.Run(state: PlanState) : TransactionPlan =
+        // Semantic validation: verify no conflicting actions in one plan
+        let installed = 
+            state.Actions 
+            |> List.choose (function Install (Sync (name, _)) -> Some name | _ -> None) 
+            |> Set.ofList
+        let removed = 
+            state.Actions 
+            |> List.choose (function Remove name -> Some name | _ -> None) 
+            |> Set.ofList
+        let overlap = Set.intersect installed removed
+        if not (Set.isEmpty overlap) then
+            invalidOp (sprintf "Plan cannot both install and remove the same package(s): %A" overlap)
+        
+        { Actions = List.rev state.Actions; Flags = state.Flags }
+
+    // Custom operations (DSL verbs)
+    [<CustomOperation("install")>]
+    member _.Install(state: PlanState, name: string) =
+        { state with Actions = Install (Sync (name, None)) :: state.Actions }
+
+    [<CustomOperation("installFrom")>]
+    member _.InstallFrom(state: PlanState, repository: string, name: string) =
+        { state with Actions = Install (Sync (name, Some repository)) :: state.Actions }
+
+    [<CustomOperation("installLocal")>]
+    member _.InstallLocal(state: PlanState, path: string) =
+        { state with Actions = Install (LocalFile (path, None)) :: state.Actions }
+
+    [<CustomOperation("installView")>]
+    member _.InstallView(state: PlanState, view: PackageView) =
+        { state with Actions = Install (View view) :: state.Actions }
+
+    [<CustomOperation("remove")>]
+    member _.Remove(state: PlanState, packageName: string) =
+        { state with Actions = Remove packageName :: state.Actions }
+
+    [<CustomOperation("upgrade")>]
+    member _.Upgrade(state: PlanState) =
+        { state with Actions = SysUpgrade (allowDowngrade = false) :: state.Actions }
+
+    [<CustomOperation("enableDowngrade")>]
+    member _.EnableDowngrade(state: PlanState) =
+        { state with Actions = SysUpgrade (allowDowngrade = true) :: state.Actions }
+
+    [<CustomOperation("flag")>]
+    member _.Flag(state: PlanState, flag: TransactionFlags) =
+        { state with Flags = state.Flags ||| flag }
+
+[<AutoOpen>]
+module PlanDsl =
+    let plan = PlanBuilder()
+```
+
+---
+
+## 3. Safe Interactive Question Handling: A Runtime Dialogue
+
+During `prepare` and `commit`, `libalpm` halts execution on the calling thread and fires synchronous question callbacks. Carelessly defaulting these questions can lead to severe system corruption (e.g. silently replacing core system packages or selecting incorrect virtual dependencies).
+
+ALPM questions are **not declarative configuration policies**. They are **runtime decision points** where `libalpm` cannot proceed without human intent. Therefore, question handling is decoupled from the static `TransactionPlan` and modeled as an **interactive capability (`IQuestionPrompter`)** supplied at the execution boundary.
+
+### 3.1 Domain-Specific Question Dialogue Models
+
+Questions carry managed, snapshot-backed domain context (`PackageSnapshot`), preventing borrowed view invalidation:
+
+```fsharp
+type ProviderChoice = {
+    Providers: PackageSnapshot list
     Dependency: Depend
 }
 
-type Question =
-    | SelectProvider of ProviderSelection
-    | ReplacePackage of oldPkg: PackageView * newDb: Database * newPkg: PackageView
-    | ConflictPackage of ConflictInfo
-    | InstallIgnored of package: PackageView
-    | CorruptedPackage of filePath: string
-    | RemovePackages of packages: PackageView list
-    | ImportKey of keyUid: string * fingerprint: string
+type ConflictChoice = {
+    Package1: PackageSnapshot
+    Package2: PackageSnapshot
+    Reason: Depend
+}
+
+type ReplaceChoice = {
+    OldPackage: PackageSnapshot
+    NewPackage: PackageSnapshot
+    Repository: string
+}
 ```
 
-### 3.2 Question Handlers
+### 3.2 The `IQuestionPrompter` Interface
 
-Instead of a lossy bool policy, we offer typed responses or a handler interface:
+Rather than untyped boolean flags, `IQuestionPrompter` provides compile-time safe response signatures:
 
 ```fsharp
-type QuestionHandler =
-    /// Full custom handling per question case.
-    | Custom of (Question -> QuestionAnswer)
-    /// Explicit interactive console/UI prompter.
-    | Interactive of InteractivePrompter
-    /// Strict non-interactive mode: fail transaction on ambiguous choices (e.g., CI/CD).
-    | StrictNonInteractive
-    /// Built-in defaults (mirrors pacman's defaults when --noconfirm is passed).
-    | LibalpmDefault
+/// The interactive dialogue capability requested by libalpm during transaction execution.
+type IQuestionPrompter =
+    /// Select provider index (0-based) from candidates, or None to cancel the transaction.
+    abstract member SelectProvider: ProviderChoice -> int option
+
+    /// Resolve conflict: true = remove conflicting package, false = abort/skip.
+    abstract member ResolveConflict: ConflictChoice -> bool
+
+    /// Approve package replacement: true = replace, false = keep existing.
+    abstract member ApproveReplacement: ReplaceChoice -> bool
+
+    /// Import unknown PGP key: true = import and trust key, false = reject.
+    abstract member ImportKey: keyUid: string * fingerprint: string -> bool
+
+    /// Handle corrupted package cache file: true = delete file and re-download, false = abort.
+    abstract member DeleteCorrupted: filePath: string -> bool
+
+    /// Install package explicitly listed in IgnorePkg: true = install anyway, false = skip.
+    abstract member InstallIgnored: PackageSnapshot -> bool
+```
+
+### 3.3 Prompter Implementation Patterns
+
+`libalpm` invokes question callbacks synchronously on the execution thread. Decoupling the prompter accommodates CLI, GUI, and headless automation cleanly:
+
+#### A. Terminal / CLI Console (Interactive stdin/stdout)
+```fsharp
+type ConsolePrompter() =
+    interface IQuestionPrompter with
+        member _.SelectProvider choice =
+            printfn "There are multiple providers for %s:" choice.Dependency.Name
+            choice.Providers |> List.iteri (fun i p -> printfn "  %d) %s %s" (i + 1) p.Name (p.Version.ToString()))
+            printf "Enter a number [1-%d]: " choice.Providers.Length
+            match System.Int32.TryParse(Console.ReadLine()) with
+            | true, n when n >= 1 && n <= choice.Providers.Length -> Some (n - 1)
+            | _ -> None
+
+        member _.ResolveConflict choice =
+            printf "Remove %s in favor of %s? [y/N]: " choice.Package2.Name choice.Package1.Name
+            Console.ReadLine().Trim().Equals("y", System.StringComparison.OrdinalIgnoreCase)
+
+        member _.ApproveReplacement choice =
+            printf "Replace %s with %s/%s? [Y/n]: " choice.OldPackage.Name choice.Repository choice.NewPackage.Name
+            not (Console.ReadLine().Trim().Equals("n", System.StringComparison.OrdinalIgnoreCase))
+
+        member _.ImportKey(keyUid, fingerprint) =
+            printf "Import PGP key %s (%s)? [Y/n]: " keyUid fingerprint
+            not (Console.ReadLine().Trim().Equals("n", System.StringComparison.OrdinalIgnoreCase))
+
+        member _.DeleteCorrupted filePath =
+            printf "Delete corrupted file %s? [Y/n]: " filePath
+            not (Console.ReadLine().Trim().Equals("n", System.StringComparison.OrdinalIgnoreCase))
+
+        member _.InstallIgnored pkg =
+            printf "%s is in IgnorePkg. Install anyway? [y/N]: " pkg.Name
+            Console.ReadLine().Trim().Equals("y", System.StringComparison.OrdinalIgnoreCase)
+```
+
+#### B. GUI / Desktop Applications (Modal Dispatch)
+ALPM executes on a background worker thread. When a question is asked, the prompter blocks the ALPM worker thread on a synchronization signal while displaying a modal dialog on the UI thread (Avalonia/Elmish):
+```fsharp
+type GuiModalPrompter(uiDispatcher: IUiDispatcher) =
+    interface IQuestionPrompter with
+        member _.SelectProvider choice =
+            uiDispatcher.ShowModalDialog(ProviderSelectionDialog(choice))
+            |> Async.RunSynchronously
+
+        member _.ResolveConflict choice =
+            uiDispatcher.ShowConfirmDialog(ConflictResolutionDialog(choice))
+            |> Async.RunSynchronously
+        
+        // ...
+```
+
+#### C. Non-Interactive / Headless Automation (Pacman's `--noconfirm`)
+Automated environments explicitly supply a predetermined prompter:
+```fsharp
+module QuestionPrompter =
+    /// Mirrors pacman --noconfirm defaults (selects first provider, declines destructive conflicts).
+    let noConfirm: IQuestionPrompter =
+        { new IQuestionPrompter with
+            member _.SelectProvider _ = Some 0
+            member _.ResolveConflict _ = false
+            member _.ApproveReplacement _ = true
+            member _.ImportKey _ = false
+            member _.DeleteCorrupted _ = true
+            member _.InstallIgnored _ = false }
 ```
 
 ---
