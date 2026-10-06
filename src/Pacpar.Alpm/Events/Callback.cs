@@ -112,7 +112,7 @@ public sealed class Callback
   private bool _detached;
 
   // The ALPM handle's root lifetime token
-  private readonly Lifetime _lifetime;
+  private readonly Lifetime _rootLifetime;
 
   // The handle's binding policy; the payload factories read it while a callback runs.
   private readonly AlpmBindingConfig _binding;
@@ -130,13 +130,15 @@ public sealed class Callback
       var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
       if (!success || callback == null) return;
       callback._invokeDepth++;
+      var callbackLifetime = callback._rootLifetime.CreateChild("Callback.EventAgent");
       try
       {
-        SafeInvoke(() => callback.EventHandler?.Invoke(AlpmEvent.FromUnion(eventT, callback._lifetime)), callback.HandlerException);
+        SafeInvoke(() => callback.EventHandler?.Invoke(AlpmEvent.FromUnion(eventT, callbackLifetime)), callback.HandlerException);
       }
       finally
       {
         callback._invokeDepth--;
+        callbackLifetime.Invalidate("callback frame ended");
       }
     }
     catch
@@ -290,7 +292,7 @@ public sealed class Callback
   internal Callback(SafeAlpmHandle alpmHandle, Lifetime lifetime, AlpmBindingConfig binding)
   {
     _handle = alpmHandle;
-    _lifetime = lifetime;
+    _rootLifetime = lifetime;
     _binding = binding;
     _ctxHandle = new WeakGCHandle<Callback>(this);
   }
@@ -305,13 +307,11 @@ public sealed class Callback
     }
   }
 
-  private void ThrowIfError(int err, [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
+  private void ThrowIfError(int err, [CallerMemberName] string? operation = null)
   {
-    if (err != 0)
-    {
-      GC.KeepAlive(this);
-      throw NativeCall.Failure(_handle, $"set {operation ?? "callback"}").ToException();
-    }
+    if (err == 0) return;
+    GC.KeepAlive(this);
+    throw NativeCall.Failure(_handle, $"set {operation ?? "callback"}").ToException();
   }
 
   /// <summary>
