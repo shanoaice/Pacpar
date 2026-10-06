@@ -3,7 +3,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item M, guide §3.8: <c>alpm_fetch_pkgurl</c>.
+/// Coverage ledger §4: <c>alpm_fetch_pkgurl</c>.
 /// </summary>
 /// <remarks>
 /// libalpm downloads through whatever <c>alpm_cb_fetch</c> is registered, which is

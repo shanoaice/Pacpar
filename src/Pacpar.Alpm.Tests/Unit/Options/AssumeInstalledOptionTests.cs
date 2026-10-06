@@ -4,7 +4,7 @@ using Pacpar.Alpm.Bindings;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Covers the non-string branch of the option-collection template (design report §K) now that
+/// Covers the non-string branch of the option-collection template now that
 /// <see cref="Depend"/> is a managed snapshot: <c>Add</c> materialises the snapshot for libalpm,
 /// while <c>Contains</c> and <c>Remove</c> resolve the snapshot to the element libalpm stored by
 /// comparing values.
@@ -170,7 +170,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   /// removed the entry, 0 when it found nothing and -1 on error, while its own header documents
   /// "0 on success, -1 on error" for all of them. Testing that result against 0, as this wrapper
   /// used to, made <see cref="ICollection{T}.Remove"/> answer with the inverse of its contract for
-  /// every option collection; report item N moved the interpretation into the base class.
+  /// every option collection; the base class now owns that interpretation.
   /// </summary>
   [Fact]
   public void Remove_ReportsWhetherTheDependencyWasThere()

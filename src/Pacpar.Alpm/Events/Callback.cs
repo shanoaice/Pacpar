@@ -60,8 +60,8 @@ public enum FetchResult
 /// </summary>
 /// <remarks>
 /// Registration of native callbacks with libalpm is presence-driven: setting a non-null handler
-/// registers the corresponding <c>[UnmanagedCallersOnly]</c> native thunk, while setting a handler
-/// to <see langword="null"/> unregisters it from the native handle. When a callback is unregistered,
+/// registers the corresponding callback, while setting a handler to <see langword="null"/>
+/// unregisters it from the native handle. When a callback is unregistered,
 /// libalpm's own default behavior applies directly:
 /// <list type="bullet">
 ///   <item>
@@ -466,7 +466,7 @@ public sealed class Callback
   /// </summary>
   /// <remarks>
   /// This is a managed observer hook and does not register a native callback with libalpm.
-  /// Handler exceptions never cross the FFI boundary: they are caught inside the native thunks
+  /// Handler exceptions never cross the FFI boundary: they are caught by the wrapper's native callbacks
   /// and, when this is set, forwarded here so they can be logged. Exceptions thrown by this
   /// observer are swallowed as well, so it cannot terminate the process either. Leave it null to
   /// ignore handler failures.

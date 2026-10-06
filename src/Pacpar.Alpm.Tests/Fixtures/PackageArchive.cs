@@ -10,8 +10,8 @@ namespace Pacpar.Alpm.Tests.Fixtures;
 /// <remarks>
 /// A <c>.PKGINFO</c> plus, optionally, one file the package owns is enough. The archive stays
 /// uncompressed - libalpm reads a plain tar, so no <c>zstd</c> is involved - and no <c>.MTREE</c> is
-/// required, not even for a <c>full</c> load or for reaching the commit-time file-conflict check;
-/// <c>.dsh-scratch/audit-probe/pkgs/pkg-audit-f-*.pkg.tar.zst</c> is the measured example of that.
+/// required, not even for a <c>full</c> load or for reaching the commit-time file-conflict check. A
+/// package built exactly this way was measured against libalpm to pass both cases.
 /// </remarks>
 internal static class PackageArchive
 {

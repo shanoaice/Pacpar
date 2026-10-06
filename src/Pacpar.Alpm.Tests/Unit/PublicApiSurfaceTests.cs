@@ -3,7 +3,7 @@ using System.Reflection;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item I: no public member may take or return a raw native pointer, and the generated binding
+/// No public member may take or return a raw native pointer, and the generated binding
 /// layer must not be reachable from the public surface at all.
 /// </summary>
 /// <remarks>

@@ -4,7 +4,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Locks in the low-risk half of the error-signal rules from the design report (§E):
+/// Locks in the low-risk half of the error-signal rules:
 /// <list type="bullet">
 /// <item>rule 3 - a null native pointer with an ok errno means "empty", not "failure";</item>
 /// <item>rule 4 - <c>Database.Validate</c> no longer returns a <c>(bool, Exception?)</c> tuple;</item>

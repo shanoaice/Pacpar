@@ -5,15 +5,15 @@ using AlpmHandle = Pacpar.Alpm.Alpm;
 namespace Pacpar.Benchmarks;
 
 /// <summary>
-/// The null-miss loop of <c>field ??=</c> versus the bool-flag fix (Recommendation 3 of the audit
-/// report). Each benchmark is one 50,000-read loop over a single property.
+/// The null-miss loop of <c>field ??=</c> versus the bool-flag fix. Each benchmark is one
+/// 50,000-read loop over a single property.
 /// </summary>
 /// <remarks>
 /// The library now caches with a flag on every property that can be absent, so the pair below is the
 /// fixed path on an absent property (<see cref="PackageBase.Filename"/>) against the coalescing path on
 /// one libalpm always sets (<see cref="PackageBase.Name"/>). The pre-fix comparison - the same loop over
-/// the old coalescing implementation, 91.67 us against 10.04 us - is recorded in section 4.3 of the
-/// report; this class is kept as the regression check for the fix.
+/// the old coalescing implementation, 91.67 us against 10.04 us - is why this class exists as the
+/// regression check for the fix.
 /// </remarks>
 [MemoryDiagnoser]
 [ProcessCount(1)]

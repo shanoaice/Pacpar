@@ -4,7 +4,7 @@ using Pacpar.Alpm.Bindings;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item M, guide §3.1: libalpm's own version and compile-time capabilities.
+/// Coverage ledger §4: libalpm's own version and compile-time capabilities.
 /// </summary>
 /// <remarks>
 /// Neither call takes a handle — libalpm allows both before <c>alpm_initialize</c> — so these tests

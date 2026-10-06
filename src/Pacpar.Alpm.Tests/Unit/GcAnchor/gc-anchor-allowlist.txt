@@ -60,3 +60,11 @@ PackageView | delegated to caller | Factory(void*, Lifetime?) receives the packa
 Transaction | token-carrying construction | AddPackage builds PackageView from the transaction's own non-nullable Lifetime, which is a child of the handle's root token. The view therefore roots the handle that owns the package memory for as long as the caller holds the view.
 
 Alpm.UnregisterLoadedPackage | delegated to caller | the native pointer is a method parameter: the anchoring obligation belongs to the call site
+
+Alpm.get_Version | static library call | alpm_version takes no handle and returns a static string pointer valid for the process lifetime.
+
+Alpm.get_Capabilities | static library call | alpm_capabilities takes no handle and returns a bitmask of compile-time capabilities.
+
+Alpm.TryFindSatisfier | token-carrying construction and database lookup | alpm_pkg_get_db and alpm_db_get_name resolve the owning database from the caller's databases, and the constructed PackageView receives that database's child lifetime token.
+
+PackageChangelogStream | receiver on stack | PackageChangelogStream holds the owning PackageBase instance, which roots the database or handle lifetime token for the package across changelog read and close operations.

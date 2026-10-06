@@ -1,9 +1,7 @@
 # Pacpar.Benchmarks
 
 BenchmarkDotNet suite for `Pacpar.Alpm`: it measures the cost model behind lazy property access
-versus eager managed snapshots, the null-miss caching loop, and `AlpmList<T>` traversal. The
-numbers back [`lazy-caching-audit-report.md`](../../lazy-caching-audit-report.md), which also
-carries the full result tables and the design rationale.
+versus eager managed snapshots, the null-miss caching loop, and `AlpmList<T>` traversal.
 
 ## Requirements
 
@@ -61,8 +59,8 @@ than milliseconds across machines.
 
 ## Notes
 
-- `PackageSnapshot.cs` contains the eager snapshot prototypes the audit report recommends
-  promoting into the library behind a `ToSnapshot()` API.
+- `PackageSnapshot.cs` exposes the eager snapshot prototypes behind `PackageBase.ToSnapshot()`;
+  the benchmarks here measure what they cost.
 - `ListTraversalBenchmarks` picks whichever local package has the most dependencies, so the
   element count varies between machines. It also doubles as a regression check for the optimized
   `AlpmList<T>.ToArray` single-pass traversal.

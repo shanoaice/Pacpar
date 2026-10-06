@@ -259,4 +259,52 @@ internal static unsafe partial class NativeMethods
   [LibraryImport(__DllName, EntryPoint = "alpm_remove_pkg")]
   internal static partial int alpm_remove_pkg(SafeAlpmHandle handle, _alpm_pkg_t* pkg);
 
+  [LibraryImport(__DllName, EntryPoint = "alpm_unlock")]
+  internal static partial int alpm_unlock(SafeAlpmHandle handle);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_logaction")]
+  internal static partial int alpm_logaction(SafeAlpmHandle handle, byte* prefix, byte* fmt);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_checkdeps")]
+  internal static partial _alpm_list_t* alpm_checkdeps(SafeAlpmHandle handle, _alpm_list_t* pkglist, _alpm_list_t* remove, _alpm_list_t* upgrade, int reversedeps);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_checkconflicts")]
+  internal static partial _alpm_list_t* alpm_checkconflicts(SafeAlpmHandle handle, _alpm_list_t* pkglist);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_find_dbs_satisfier")]
+  internal static partial _alpm_pkg_t* alpm_find_dbs_satisfier(SafeAlpmHandle handle, _alpm_list_t* dbs, byte* depstring);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_db_update")]
+  internal static partial int alpm_db_update(SafeAlpmHandle handle, _alpm_list_t* dbs, int force);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_get_disable_dl_timeout")]
+  internal static partial int alpm_option_get_disable_dl_timeout(SafeAlpmHandle handle);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_set_disable_dl_timeout")]
+  internal static partial int alpm_option_set_disable_dl_timeout(SafeAlpmHandle handle, ushort disable_dl_timeout);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_get_disable_sandbox_filesystem")]
+  internal static partial int alpm_option_get_disable_sandbox_filesystem(SafeAlpmHandle handle);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox_filesystem")]
+  internal static partial int alpm_option_set_disable_sandbox_filesystem(SafeAlpmHandle handle, ushort disable_sandbox_filesystem);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_get_disable_sandbox_network")]
+  internal static partial int alpm_option_get_disable_sandbox_network(SafeAlpmHandle handle);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox_network")]
+  internal static partial int alpm_option_set_disable_sandbox_network(SafeAlpmHandle handle, ushort disable_sandbox_network);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_get_disable_sandbox_syscalls")]
+  internal static partial int alpm_option_get_disable_sandbox_syscalls(SafeAlpmHandle handle);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_set_disable_sandbox_syscalls")]
+  internal static partial int alpm_option_set_disable_sandbox_syscalls(SafeAlpmHandle handle, ushort disable_sandbox_syscalls);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_get_sandboxuser")]
+  internal static partial byte* alpm_option_get_sandboxuser(SafeAlpmHandle handle);
+
+  [LibraryImport(__DllName, EntryPoint = "alpm_option_set_sandboxuser")]
+  internal static partial int alpm_option_set_sandboxuser(SafeAlpmHandle handle, byte* sandboxuser);
+
 }

@@ -3,7 +3,7 @@ using Pacpar.Alpm.Bindings;
 namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 
 /// <summary>
-/// Report §E-8: the public surface must not expose <c>Pacpar.Alpm.Bindings</c> enums (or raw
+/// The public surface must not expose <c>Pacpar.Alpm.Bindings</c> enums (or raw
 /// pointers) for data this library already models. Every managed enum mirrors its native
 /// counterpart value-for-value, so a libalpm update that adds a member turns these tests red
 /// instead of silently dropping the new value.

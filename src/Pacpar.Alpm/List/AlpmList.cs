@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm.List;
@@ -19,12 +20,12 @@ namespace Pacpar.Alpm.List;
 /// managed through <see cref="AlpmOwnedList{T}"/>.
 /// </para>
 /// <para>
-/// Lifetime safety: The view is guarded by its owning context's <see cref="Lifetime"/> token. If
-/// the owning database, transaction, or ALPM handle is disposed, accessing elements from this view
-/// throws an <see cref="AlpmLifetimeException"/> to prevent reading freed memory.
+/// Lifetime safety: the view belongs to the database, transaction, or handle it was obtained from.
+/// Accessing elements after that owner is disposed throws an <see cref="AlpmLifetimeException"/>
+/// instead of reading freed memory.
 /// </para>
 /// </remarks>
-public abstract class AlpmList<T> : IEnumerable<T>
+public abstract class AlpmList<T> : IReadOnlyCollection<T>
 {
   // Visible to this class and to AlpmBorrowedList/AlpmOwnedList only; everything outside goes
   // through ValidatedNative().
@@ -55,6 +56,11 @@ public abstract class AlpmList<T> : IEnumerable<T>
     Lifetime?.ThrowIfStale();
     return _native;
   }
+
+  /// <summary>
+  /// Gets the number of elements in the list.
+  /// </summary>
+  public unsafe int Count => (int)NativeMethods.alpm_list_count(ValidatedNative());
 
   /// <summary>
   /// Wraps an existing <c>alpm_list_t</c> that this library does not own and must not free.
@@ -221,12 +227,68 @@ internal static class AlpmNativeList
   /// <param name="innerFree">
   /// Optional element destructor, or <c>null</c> if elements do not require individual destruction.
   /// </param>
-  internal static unsafe void Free(_alpm_list_t* list, delegate* unmanaged[Cdecl]<void*, void> innerFree)
+  internal static unsafe void Free(_alpm_list_t* list, delegate* unmanaged[Cdecl]<void*, void> innerFree = null)
   {
     if (list == null) return;
 
     if (innerFree != null) NativeMethods.alpm_list_free_inner(list, innerFree);
     NativeMethods.alpm_list_free(list);
+  }
+
+  internal static unsafe _alpm_list_t* BuildPointerList(IEnumerable<nint> pointers)
+  {
+    ArgumentNullException.ThrowIfNull(pointers);
+
+    _alpm_list_t* list = null;
+    try
+    {
+      foreach (var ptr in pointers)
+      {
+        list = NativeMethods.alpm_list_add(list, (void*)ptr);
+      }
+      return list;
+    }
+    catch
+    {
+      if (list != null) NativeMethods.alpm_list_free(list);
+      throw;
+    }
+  }
+
+  internal static unsafe _alpm_list_t* BuildStringList(IEnumerable<string> strings, out List<nint> allocatedBuffers)
+  {
+    ArgumentNullException.ThrowIfNull(strings);
+
+    allocatedBuffers = [];
+    _alpm_list_t* list = null;
+    try
+    {
+      foreach (var str in strings)
+      {
+        var ptr = (nint)NativeString.ToNative(str);
+        allocatedBuffers.Add(ptr);
+        list = NativeMethods.alpm_list_add(list, (void*)ptr);
+      }
+      return list;
+    }
+    catch
+    {
+      FreeStringListBuffers(allocatedBuffers, list);
+      allocatedBuffers.Clear();
+      throw;
+    }
+  }
+
+  internal static unsafe void FreeStringListBuffers(List<nint>? allocatedBuffers, _alpm_list_t* list)
+  {
+    if (allocatedBuffers != null)
+    {
+      foreach (var buf in allocatedBuffers)
+      {
+        if (buf != 0) NativeMemory.Free((void*)buf);
+      }
+    }
+    if (list != null) NativeMethods.alpm_list_free(list);
   }
 }
 

@@ -5,7 +5,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item H: libalpm's string contract is UTF-8, so both the marshalling helpers and one
+/// libalpm's string contract is UTF-8, so both the marshalling helpers and one
 /// end-to-end option round trip must carry non-ASCII text through unchanged.
 /// </summary>
 /// <remarks>

@@ -3,7 +3,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item M, guide §3.6: <c>alpm_checkdeps</c> / <c>alpm_checkconflicts</c>.
+/// Coverage ledger §4: <c>alpm_checkdeps</c> / <c>alpm_checkconflicts</c>.
 /// </summary>
 /// <remarks>
 /// Both functions return an allocated list or <c>NULL</c>, and <b>NULL means "nothing wrong"</b> —
@@ -56,6 +56,8 @@ public sealed class DependencyCheckTests
     environment.Alpm.CheckConflicts(packages);
 
     Assert.Empty(packages);
+#pragma warning disable xUnit2013
     Assert.Equal(0, packages.Count());
+#pragma warning restore xUnit2013
   }
 }

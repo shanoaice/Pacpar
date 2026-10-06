@@ -58,4 +58,42 @@ public enum PackageValidation : uint
   /// </summary>
   ALPM_PKG_VALIDATION_SIGNATURE = 8,
 }
+
+/// <summary>
+/// Compile-time capabilities of libalpm.
+/// </summary>
+[Flags]
+public enum Capability : uint
+{
+  /// <summary>Localization support.</summary>
+  Nls = 1 << 0,
+
+  /// <summary>Ability to download packages and databases.</summary>
+  Downloader = 1 << 1,
+
+  /// <summary>Package and database signature checking.</summary>
+  Signatures = 1 << 2,
+}
+
+/// <summary>
+/// Flags indicating allowed operations on a package database.
+/// </summary>
+[Flags]
+public enum DatabaseUsage : uint
+{
+  /// <summary>Enable database synchronization.</summary>
+  Sync = 1 << 0,
+
+  /// <summary>Enable package search.</summary>
+  Search = 1 << 1,
+
+  /// <summary>Enable package installation.</summary>
+  Install = 1 << 2,
+
+  /// <summary>Enable package upgrade.</summary>
+  Upgrade = 1 << 3,
+
+  /// <summary>All operations enabled.</summary>
+  All = Sync | Search | Install | Upgrade,
+}
 // ReSharper restore InconsistentNaming

@@ -1,7 +1,7 @@
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item J: ownership is expressed by the type, not by a <c>bool</c> argument.
+/// Ownership is expressed by the type, not by a <c>bool</c> argument.
 /// </summary>
 /// <remarks>
 /// <see cref="PackageView"/> used to take <c>bool fromDatabase</c> and expose it as a public field,

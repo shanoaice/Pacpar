@@ -7,7 +7,7 @@ namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 
 /// <summary>
 /// Locks in the snapshot contract for the value types that used to be borrowed views over
-/// libalpm-owned memory (report item F9, and the snapshot pass that followed it): the fields are
+/// libalpm-owned memory: the fields are
 /// copied at construction, so overwriting - or releasing - the structure they came from cannot
 /// change what they answer.
 /// </summary>
@@ -257,8 +257,8 @@ public sealed unsafe class ManagedSnapshotTests
   }
 
   /// <summary>
-  /// libalpm builds the event union on the calling thread's stack; the probe in
-  /// <c>.dsh-scratch/audit-probe/events.c</c> read zeros from it once the callback returned.
+  /// libalpm builds the event union on the calling thread's stack; a C probe against libalpm read
+  /// zeros from it once the callback returned.
   /// </summary>
   [Fact]
   public void EventPayload_CopiesItsFieldsOutOfTheCallbackUnion()

@@ -3,7 +3,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item M, guide §3.4: <c>alpm_db_usage_t</c> exposed as <see cref="DatabaseUsage"/>.
+/// Coverage ledger §4: <c>alpm_db_usage_t</c> exposed as <see cref="DatabaseUsage"/>.
 /// </summary>
 public sealed class DatabaseUsageTests
 {

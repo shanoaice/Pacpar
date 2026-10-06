@@ -14,8 +14,8 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// a <c>.pkg.tar</c> holding a <c>.PKGINFO</c> (plus the odd file entry) is accepted by
 /// <c>alpm_pkg_load</c> even without <c>.MTREE</c>, so none of this needs the integration container. The conflicting-dependency case
 /// is the regression for the worst of the old behaviour: the wrapper released that payload with
-/// <c>alpm_depmissing_free</c>, which aborts the process with <c>free(): invalid pointer</c> (probe
-/// <c>.dsh-scratch/audit-probe/own.c</c>) instead of reporting anything.
+/// <c>alpm_depmissing_free</c>, which aborts the process with <c>free(): invalid pointer</c>
+/// instead of reporting anything. A C probe against libalpm measured that abort.
 /// </remarks>
 public sealed unsafe class TransactionFailureTests : IDisposable
 {

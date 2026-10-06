@@ -3,7 +3,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item M, guide §3.7: <c>alpm_logaction</c>.
+/// Coverage ledger §4: <c>alpm_logaction</c>.
 /// </summary>
 /// <remarks>
 /// <c>alpm_logaction</c> is a printf-like variadic function, and the only thing we can hand it is

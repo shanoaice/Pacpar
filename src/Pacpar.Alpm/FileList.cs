@@ -11,9 +11,9 @@ namespace Pacpar.Alpm;
 /// view rather than copied because a package's file list routinely holds tens of thousands of
 /// entries, and every entry it yields is already a <see cref="PackageFile"/> snapshot.
 /// <para>
-/// The package's lifetime token guards every dereference: <see cref="Count"/>, the indexer and
-/// <see cref="GetEnumerator"/> throw <see cref="AlpmLifetimeException"/> once the package has been
-/// released, instead of reading the freed array.
+/// Every dereference first checks that the owning package is still alive: <see cref="Count"/>, the
+/// indexer and <see cref="GetEnumerator"/> throw <see cref="AlpmLifetimeException"/> once the
+/// package has been released, instead of reading the freed array.
 /// </para>
 /// </remarks>
 public unsafe class FileList : IReadOnlyList<PackageFile>
@@ -55,6 +55,40 @@ public unsafe class FileList : IReadOnlyList<PackageFile>
       GC.KeepAlive(this);
       return file;
     }
+  }
+
+  /// <summary>
+  /// Determines whether the file list contains a file at the specified path.
+  /// </summary>
+  /// <param name="path">The relative path of the file to locate (e.g. <c>"usr/bin/bash"</c>).</param>
+  /// <returns><c>true</c> if the file is in the list; otherwise, <c>false</c>.</returns>
+  public bool Contains(string path)
+  {
+    ArgumentNullException.ThrowIfNull(path);
+    _lifetime?.ThrowIfStale();
+
+    Span<byte> scratch = stackalloc byte[256];
+    using var pathBuf = new Utf8Buffer(path, scratch);
+    var filePtr = NativeMethods.alpm_filelist_contains(_backingStruct, pathBuf.Ptr);
+    GC.KeepAlive(this);
+    return filePtr != null;
+  }
+
+  /// <summary>
+  /// Searches for a file at the specified path in this file list.
+  /// </summary>
+  /// <param name="path">The relative path of the file to locate.</param>
+  /// <returns>A <see cref="PackageFile"/> snapshot if found; otherwise, <c>null</c>.</returns>
+  public PackageFile? FindFile(string path)
+  {
+    ArgumentNullException.ThrowIfNull(path);
+    _lifetime?.ThrowIfStale();
+
+    Span<byte> scratch = stackalloc byte[256];
+    using var pathBuf = new Utf8Buffer(path, scratch);
+    var filePtr = NativeMethods.alpm_filelist_contains(_backingStruct, pathBuf.Ptr);
+    GC.KeepAlive(this);
+    return filePtr != null ? new PackageFile(filePtr) : null;
   }
   /// <summary>Forward-only enumerator over the borrowed array of file entries.</summary>
   /// <remarks>

@@ -38,7 +38,7 @@ public sealed class ErrorHandlerTests
   [InlineData((int)_alpm_errno_t.ALPM_ERR_WRONG_ARGS)]
   public void GetException_DoesNotDisguiseNativeErrorsAsArgumentErrors(int errno)
   {
-    // Report §E-6: a native condition is not caller misuse. Reporting it as an ArgumentException
+    // A native condition is not caller misuse. Reporting it as an ArgumentException
     // made it indistinguishable from real parameter validation, which does carry a ParamName.
     var exception = Assert.IsType<AlpmException>(ErrorHandler.GetException(errno));
 

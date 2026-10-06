@@ -6,27 +6,23 @@ This project contains the C# test harness for `Pacpar.Alpm`.
 
 - `Unit/` contains managed-only tests and hermetic libalpm tests that run against isolated temporary directory trees (`IsolatedAlpmEnvironment`).
 - `Fixtures/` contains reusable environment setup that can also be shared by future F# tests.
-- `Pending/` contains the specification tests for features that are not implemented yet (report item
-  M). They are excluded from the build by default, see below.
+- `Pending/` contains the acceptance tests for the features recorded in the coverage ledger
+  (`src/Pacpar.Alpm/COMPLETENESS.md`). Those features exist now, so the folder builds and runs with
+  the rest of the suite; the name records only that the files have not moved to `Unit/` yet.
 - `native/` contains a C caller for the `va_list` forwarding test, compiled by this project into
   its intermediate output. It is test-only: `Pacpar.Alpm` itself ships no native artifact.
 
-## Pending feature tests
+## Feature tests in `Pending/`
 
-`Pending/` describes the API of the features listed in the implementation guide
-(`.dsh-scratch/missing-features-guide.md`). Those members do not exist yet, so the folder is kept
-out of the build:
+The coverage ledger (`src/Pacpar.Alpm/COMPLETENESS.md` §4) records the native APIs that landed
+after the first implementation batch. Their acceptance tests live in `Pending/` and run with the
+rest of the suite:
 
 ```bash
-# The current, building test set:
 dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj
-
-# Turn the specification tests on. Until the API exists this fails to compile, and the compiler
-# errors are the to-do list; once it exists they are the acceptance criteria.
-dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj -p:PacparPendingFeatureTests=true
 ```
 
-When a feature lands, move its file from `Pending/` to `Unit/`.
+Move a file from `Pending/` to `Unit/` once it no longer needs to be singled out.
 
 ## Running locally
 

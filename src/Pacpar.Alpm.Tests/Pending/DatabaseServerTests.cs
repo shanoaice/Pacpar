@@ -3,12 +3,13 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item M, guide §3.3: server and cache-server administration on a sync database.
+/// Coverage ledger §4: server and cache-server administration on a sync
+/// database.
 /// </summary>
 /// <remarks>
 /// The return conventions here are the opposite of the <c>alpm_option_remove_*</c> family: these
-/// return <c>0</c> when they removed the entry and <c>1</c> when it was not there (measured with
-/// <c>.dsh-scratch/assume-probe/dbserver3.c</c>). The tests below pin that in the wrapper's own
+/// return <c>0</c> when they removed the entry and <c>1</c> when it was not there, measured against
+/// libalpm directly. The tests below pin that in the wrapper's own
 /// vocabulary.
 /// </remarks>
 public sealed class DatabaseServerTests

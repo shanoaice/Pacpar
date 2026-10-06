@@ -9,6 +9,21 @@ namespace Pacpar.Alpm;
 /// Options of array type are queried and modified through properties exposed as <see cref="ICollection{T}"/>s.
 /// Options of scalar type are queried and modified through properties with overridden accessors that calls underlying ALPM functions.
 /// </summary>
+/// <summary>
+/// Represents the aggregate state of the libalpm sandbox.
+/// </summary>
+public enum SandboxState
+{
+  /// <summary>All sandbox components are enabled.</summary>
+  Enabled = 0,
+
+  /// <summary>Some sandbox components are disabled.</summary>
+  PartiallyDisabled = 1,
+
+  /// <summary>All sandbox components are disabled.</summary>
+  Disabled = 2,
+}
+
 public class AlpmOptions
 {
   private readonly SafeAlpmHandle _handle;
@@ -246,10 +261,132 @@ public class AlpmOptions
     }
     set => SetStringOption(value, &NativeMethods.alpm_option_set_gpgdir);
   }
-  // alpm_option_get_disable_dl_timeout and alpm_option_set_disable_dl_timeout are bound in
-  // NativeMethods.libalpm.g.cs, but AlpmOptions exposes no property for them.
+  /// <summary>
+  /// Enables or disables the download timeout.
+  /// </summary>
+  public bool DisableDownloadTimeout
+  {
+    get
+    {
+      var val = NativeMethods.alpm_option_get_disable_dl_timeout(_handle) != 0;
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_disable_dl_timeout(_handle, (ushort)(value ? 1 : 0)));
+      GC.KeepAlive(this);
+    }
+  }
 
-  // The sandbox options (alpm_option_get/set_disable_sandbox, _disable_sandbox_filesystem,
-  // _disable_sandbox_network, _disable_sandbox_syscalls and _sandboxuser) are bound in
-  // NativeMethods.libalpm.g.cs, but AlpmOptions exposes no properties for them.
+  /// <summary>
+  /// Enables or disables the filesystem portion of the sandbox.
+  /// </summary>
+  public bool DisableSandboxFilesystem
+  {
+    get
+    {
+      var val = NativeMethods.alpm_option_get_disable_sandbox_filesystem(_handle) != 0;
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_disable_sandbox_filesystem(_handle, (ushort)(value ? 1 : 0)));
+      GC.KeepAlive(this);
+    }
+  }
+
+  /// <summary>
+  /// Enables or disables the network portion of the sandbox.
+  /// </summary>
+  public bool DisableSandboxNetwork
+  {
+    get
+    {
+      var val = NativeMethods.alpm_option_get_disable_sandbox_network(_handle) != 0;
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_disable_sandbox_network(_handle, (ushort)(value ? 1 : 0)));
+      GC.KeepAlive(this);
+    }
+  }
+
+  /// <summary>
+  /// Enables or disables the syscalls portion of the sandbox.
+  /// </summary>
+  public bool DisableSandboxSyscalls
+  {
+    get
+    {
+      var val = NativeMethods.alpm_option_get_disable_sandbox_syscalls(_handle) != 0;
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      ThrowIfError(NativeMethods.alpm_option_set_disable_sandbox_syscalls(_handle, (ushort)(value ? 1 : 0)));
+      GC.KeepAlive(this);
+    }
+  }
+
+  /// <summary>
+  /// Gets the aggregate state of the sandbox.
+  /// </summary>
+  public SandboxState Sandbox
+  {
+    get
+    {
+      var fs = DisableSandboxFilesystem;
+      var net = DisableSandboxNetwork;
+      var sys = DisableSandboxSyscalls;
+
+      if (!fs && !net && !sys)
+      {
+        return SandboxState.Enabled;
+      }
+
+      if (fs && net && sys)
+      {
+        return SandboxState.Disabled;
+      }
+
+      return SandboxState.PartiallyDisabled;
+    }
+  }
+
+  /// <summary>
+  /// Gets or sets the user to switch to for sandboxed operations, or <c>null</c> when none is set.
+  /// </summary>
+  public unsafe string? SandboxUser
+  {
+    get
+    {
+      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_sandboxuser(_handle));
+      GC.KeepAlive(this);
+      return val;
+    }
+    set
+    {
+      if (value is null)
+      {
+        ThrowIfError(NativeMethods.alpm_option_set_sandboxuser(_handle, null));
+        GC.KeepAlive(this);
+        return;
+      }
+
+      Span<byte> scratch = stackalloc byte[64];
+      using var buffer = new Utf8Buffer(value, scratch);
+      var err = NativeMethods.alpm_option_set_sandboxuser(_handle, buffer.Ptr);
+      if (err == 1)
+      {
+        throw new ArgumentException($"The user '{value}' is not known on this system.", nameof(value));
+      }
+      ThrowIfError(err);
+      GC.KeepAlive(this);
+    }
+  }
 }

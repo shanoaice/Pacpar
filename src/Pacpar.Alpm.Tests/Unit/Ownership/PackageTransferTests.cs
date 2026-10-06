@@ -4,16 +4,16 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Covers the ownership hand-over of <see cref="Transaction.AddPackage(LoadedPackage)"/> (report item
-/// F2): libalpm frees a file-loaded package when the transaction is released, so the wrapper must stop
+/// Covers the ownership hand-over of <see cref="Transaction.AddPackage(LoadedPackage)"/>: libalpm
+/// frees a file-loaded package when the transaction is released, so the wrapper must stop
 /// owning it at that moment - otherwise the natural <c>using</c> pattern aborts the process with a
 /// double free. The two <c>AddPackage</c> overloads cannot be confused, because
 /// <see cref="PackageView"/> and <see cref="LoadedPackage"/> do not convert to one another.
 /// </summary>
 /// <remarks>
 /// Reaching the end of <see cref="AddPackage_TransfersOwnership_SoBothDisposalsAreSafe"/> is half of the
-/// test: the old wrapper freed the package a second time there and died with SIGABRT (probe
-/// <c>.dsh-scratch/audit-probe/own.c</c>, variants c and d).
+/// test: the old wrapper freed the package a second time there and died with SIGABRT, which a C
+/// probe against libalpm reproduced in two release orders.
 /// </remarks>
 public sealed class PackageTransferTests : IDisposable
 {
@@ -79,7 +79,7 @@ public sealed class PackageTransferTests : IDisposable
   }
 
   /// <summary>
-  /// Report item M1: a view whose owning transaction was released must never reach libalpm. Before
+  /// A view whose owning transaction was released must never reach libalpm. Before
   /// the pointer was confined behind <c>ValidatedPtr</c>, this call handed the stale pointer
   /// straight to <c>alpm_add_pkg</c>, so libalpm parsed freed memory and the diagnostic was a
   /// SIGSEGV inside native code rather than a managed lifetime exception.

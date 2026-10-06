@@ -36,7 +36,7 @@ public enum DepMod : uint
 /// <i>changing</i> the dependency means replacing the entry in the list that owns it.
 /// <para>
 /// Handing a snapshot back to libalpm is explicit: <see cref="ToNative"/> materialises a struct for
-/// the calls that take one, and <see cref="Options.AssumeInstalled"/> uses it for <c>Add</c>. Lookups
+/// the calls that take one, and the assume-installed option list uses it for <c>Add</c>. Lookups
 /// (<c>Contains</c>, <c>Remove</c>) compare by value through <see cref="Matches"/> instead, because
 /// libalpm's removal predicate also compares the internal <c>name_hash</c>, which only a struct
 /// libalpm built itself carries.

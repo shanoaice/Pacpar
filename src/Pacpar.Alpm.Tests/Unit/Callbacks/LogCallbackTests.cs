@@ -3,7 +3,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report §G: the log callback is the one handler whose payload libalpm does not expand for us, so
+/// The log callback is the one handler whose payload libalpm does not expand for us, so
 /// it is the only one that cannot be covered by <see cref="Callback.SafeInvoke"/> tests alone. These
 /// drive the whole production path on a real handle: native <c>alpm_cb_log</c> → the log thunk →
 /// <see cref="LogMessageFormatter"/> → <see cref="Callback.LogHandler"/>.

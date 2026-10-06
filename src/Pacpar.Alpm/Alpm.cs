@@ -97,6 +97,16 @@ public class Alpm : IDisposable
   }
 
   /// <summary>
+  /// Gets the version of libalpm.
+  /// </summary>
+  public static unsafe string Version => NativeString.FromNative((nint)NativeMethods.alpm_version())!;
+
+  /// <summary>
+  /// Gets the compile-time capabilities of libalpm.
+  /// </summary>
+  public static Capability Capabilities => (Capability)(uint)NativeMethods.alpm_capabilities();
+
+  /// <summary>
   /// The failure-returning seam for creating an <see cref="Alpm"/> session.
   /// </summary>
   /// <param name="root">The root directory of the installation (e.g. <c>"/"</c>).</param>
@@ -150,8 +160,7 @@ public class Alpm : IDisposable
   /// <remarks>
   /// libalpm's own options live in <see cref="Options"/>; this object only carries choices this
   /// wrapper makes on the consumer's behalf, such as <see cref="AlpmBindingConfig.QuestionPayloadIncludeFiles"/>.
-  /// The handle's callback thunks read it per invocation, so mutate it only while no native call is
-  /// in flight.
+  /// The value is read on each callback, so mutate it only while no native call is in flight.
   /// </remarks>
   public AlpmBindingConfig BindingConfig { get; }
 
@@ -216,7 +225,7 @@ public class Alpm : IDisposable
   /// <remarks>
   /// The value is libalpm's own numbering; consult <c>alpm.h</c>. It carries no stability promise of
   /// its own - match on the exception hierarchy, and use this only to distinguish or report a case
-  /// the hierarchy deliberately collapses. The generated binding enum is internal since ADR 0006.
+  /// the hierarchy deliberately collapses.
   /// </remarks>
   public int Errno
   {
@@ -376,10 +385,9 @@ public class Alpm : IDisposable
   /// The local database of this handle.
   /// </summary>
   /// <remarks>
-  /// Repeated calls share one lifetime token, so all wrappers for the local database are retired
-  /// together. A successful transaction commit invalidates the current token - committing frees
-  /// libalpm's in-memory package caches - and the next call issues a fresh one for the re-opened
-  /// database.
+  /// Repeated calls return wrappers that are retired together. A successful transaction commit
+  /// retires the ones issued before it - committing frees libalpm's in-memory package caches - and
+  /// the next call returns a fresh wrapper for the re-opened database.
   /// </remarks>
   public unsafe Database GetLocalDatabase()
   {
@@ -473,6 +481,370 @@ public class Alpm : IDisposable
     {
       throw failure.ToException();
     }
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="UpdateDatabases"/>.
+  /// </summary>
+  internal unsafe bool TryUpdateDatabases(
+    IEnumerable<Database> databases,
+    bool force,
+    out bool updated,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(databases);
+
+    var dbList = databases.ToList();
+    foreach (var db in dbList)
+    {
+      db.InvalidateViews("Database.Update");
+    }
+
+    _alpm_list_t* nativeList = null;
+    try
+    {
+      nativeList = AlpmNativeList.BuildPointerList(dbList.Select(d => (nint)d.ValidatedPtr));
+      var ret = NativeMethods.alpm_db_update(Handle, nativeList, force ? 1 : 0);
+      if (ret < 0)
+      {
+        updated = false;
+        failure = NativeCall.Failure(Handle, "update databases");
+        return false;
+      }
+
+      updated = ret == 0;
+      failure = null;
+      return true;
+    }
+    finally
+    {
+      AlpmNativeList.Free(nativeList);
+    }
+  }
+
+  /// <summary>
+  /// Updates the specified synchronization databases from their configured download servers.
+  /// </summary>
+  /// <param name="databases">The databases to update.</param>
+  /// <param name="force">If <c>true</c>, forces the download even if local copies are current.</param>
+  /// <returns><c>true</c> if any database was updated; <c>false</c> if all were already up to date.</returns>
+  public bool UpdateDatabases(IEnumerable<Database> databases, bool force = false)
+  {
+    ThrowIfDisposed();
+    if (!TryUpdateDatabases(databases, force, out var updated, out var failure))
+    {
+      throw failure.ToException();
+    }
+    return updated;
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="Unlock"/>.
+  /// </summary>
+  /// <remarks>
+  /// Thin forwarding: libalpm owns the lock and releases it here, when this session is the one that
+  /// holds it. Nothing here touches a lock this session did not take. See the
+  /// <see cref="Unlock"/> remarks for what that means and what it does not cover.
+  /// </remarks>
+  internal bool TryUnlock([NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    var err = NativeMethods.alpm_unlock(Handle);
+    if (err != 0)
+    {
+      failure = NativeCall.Failure(Handle, "unlock database");
+      return false;
+    }
+
+    failure = null;
+    return true;
+  }
+
+  /// <summary>
+  /// Releases the database lock this session holds.
+  /// </summary>
+  /// <remarks>
+  /// <para>
+  /// The lock is not owned by a transaction but by the handle, and libalpm represents it as a pair:
+  /// an open file descriptor on the lock file, and the file itself, created with
+  /// <c>open(O_CREAT | O_EXCL)</c> — there is no <c>flock</c>, so the file's existence <i>is</i> the
+  /// lock. This method drops both halves in the order libalpm requires: it closes the descriptor
+  /// first, so the handle stops believing it is locked, and unlinks afterwards. Removing the file
+  /// with <see cref="System.IO.File"/> instead leaves the descriptor open, and libalpm then answers
+  /// every later lock attempt with "already locked" — a session that can no longer take the lock it
+  /// thinks it holds, while other sessions are free to create their own.
+  /// </para>
+  /// <para>
+  /// Releasing is meaningful only while this session holds the lock, which is only ever true between
+  /// <see cref="BeginTransaction"/> and the transaction's release, or inside
+  /// <see cref="UpdateDatabases"/>. With nothing locked, libalpm returns success without doing
+  /// anything, and so does this method.
+  /// </para>
+  /// <para>
+  /// What this deliberately does <b>not</b> do: remove a lock file some other session — or a crashed
+  /// one — left behind. A lock left by a dead process looks exactly like a lock held by a live one
+  /// (an empty, mode-0000 file carrying no holder information), so the two cannot be told apart by
+  /// looking at it; the decision belongs to whoever knows no other instance is running. Delete the
+  /// file with <see cref="System.IO.File"/> once you have decided that, not through this method —
+  /// letting every caller of <see cref="Unlock"/> delete whatever they find turns a no-op into a
+  /// silent unlock of someone else's session.
+  /// </para>
+  /// </remarks>
+  public void Unlock()
+  {
+    ThrowIfDisposed();
+    if (!TryUnlock(out var failure))
+    {
+      throw failure.ToException();
+    }
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="LogAction"/>.
+  /// </summary>
+  internal unsafe bool TryLogAction(string prefix, string message, [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(prefix);
+    ArgumentNullException.ThrowIfNull(message);
+
+    var messageWithNewline = message.EndsWith('\n') ? message : message + "\n";
+    var safeMessage = messageWithNewline.Replace("%", "%%");
+    Span<byte> prefixScratch = stackalloc byte[64];
+    Span<byte> messageScratch = stackalloc byte[256];
+    using var prefixBuf = new Utf8Buffer(prefix, prefixScratch);
+    using var messageBuf = new Utf8Buffer(safeMessage, messageScratch);
+
+    var err = NativeMethods.alpm_logaction(Handle, prefixBuf.Ptr, messageBuf.Ptr);
+    if (err != 0)
+    {
+      failure = NativeCall.Failure(Handle, "log action");
+      return false;
+    }
+
+    failure = null;
+    return true;
+  }
+
+  /// <summary>
+  /// Writes an audit record to the log file.
+  /// </summary>
+  public void LogAction(string prefix, string message)
+  {
+    ThrowIfDisposed();
+    if (!TryLogAction(prefix, message, out var failure))
+    {
+      throw failure.ToException();
+    }
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="FetchPackageUrls"/>.
+  /// </summary>
+  internal unsafe bool TryFetchPackageUrls(IEnumerable<string> urls,
+    [NotNullWhen(true)] out IReadOnlyList<string>? fetchedUrls,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(urls);
+
+    var nativeUrls = AlpmNativeList.BuildStringList(urls, out var buffers);
+    _alpm_list_t* fetchedList = null;
+    try
+    {
+      var err = NativeMethods.alpm_fetch_pkgurl(Handle, nativeUrls, &fetchedList);
+      if (err != 0)
+      {
+        if (fetchedList != null)
+        {
+          AlpmNativeList.Free(fetchedList, &MemoryManagement.CFreeExtern);
+        }
+        fetchedUrls = null;
+        failure = NativeCall.Failure(Handle, "fetch package URLs");
+        return false;
+      }
+
+      fetchedUrls = AlpmStringList.TakeOwned(fetchedList, &MemoryManagement.CFreeExtern);
+      failure = null;
+      return true;
+    }
+    finally
+    {
+      AlpmNativeList.FreeStringListBuffers(buffers, nativeUrls);
+    }
+  }
+
+  /// <summary>
+  /// Fetches packages from the specified URLs.
+  /// </summary>
+  public IReadOnlyList<string> FetchPackageUrls(IEnumerable<string> urls)
+  {
+    ThrowIfDisposed();
+    if (!TryFetchPackageUrls(urls, out var fetchedUrls, out var failure))
+    {
+      throw failure.ToException();
+    }
+
+    return fetchedUrls;
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="CheckDependencies"/>.
+  /// </summary>
+  internal unsafe bool TryCheckDependencies(
+    IEnumerable<PackageView> packages,
+    IEnumerable<PackageView>? remove,
+    IEnumerable<PackageView>? upgrade,
+    bool reverseDependencies,
+    [NotNullWhen(true)] out IReadOnlyList<DepMissing>? missing,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(packages);
+
+    _alpm_list_t* pkgList = null;
+    _alpm_list_t* remList = null;
+    _alpm_list_t* upgList = null;
+    try
+    {
+      pkgList = AlpmNativeList.BuildPointerList(packages.Select(p => (nint)p.BackingStruct));
+      if (remove is not null)
+      {
+        remList = AlpmNativeList.BuildPointerList(remove.Select(p => (nint)p.BackingStruct));
+      }
+      if (upgrade is not null)
+      {
+        upgList = AlpmNativeList.BuildPointerList(upgrade.Select(p => (nint)p.BackingStruct));
+      }
+
+      var result = NativeMethods.alpm_checkdeps(Handle, pkgList, remList, upgList, reverseDependencies ? 1 : 0);
+      missing = result != null
+        ? AlpmOwnedList<DepMissing>.Take(result, &DepMissing.Factory, &MemoryManagement.DepMissingFreeExtern)
+        : Array.Empty<DepMissing>();
+      failure = null;
+      return true;
+    }
+    finally
+    {
+      AlpmNativeList.Free(pkgList);
+      AlpmNativeList.Free(remList);
+      AlpmNativeList.Free(upgList);
+    }
+  }
+
+  /// <summary>
+  /// Checks a list of packages for missing dependencies.
+  /// </summary>
+  public IReadOnlyList<DepMissing> CheckDependencies(
+    IEnumerable<PackageView> packages,
+    IEnumerable<PackageView>? remove = null,
+    IEnumerable<PackageView>? upgrade = null,
+    bool reverseDependencies = false)
+  {
+    ThrowIfDisposed();
+    if (!TryCheckDependencies(packages, remove, upgrade, reverseDependencies, out var missing, out var failure))
+    {
+      throw failure.ToException();
+    }
+    return missing;
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="CheckConflicts"/>.
+  /// </summary>
+  internal unsafe bool TryCheckConflicts(
+    IEnumerable<PackageView> packages,
+    [NotNullWhen(true)] out IReadOnlyList<Conflict>? conflicts,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(packages);
+
+    _alpm_list_t* pkgList = null;
+    try
+    {
+      pkgList = AlpmNativeList.BuildPointerList(packages.Select(p => (nint)p.BackingStruct));
+      var result = NativeMethods.alpm_checkconflicts(Handle, pkgList);
+      conflicts = result != null
+        ? AlpmOwnedList<Conflict>.Take(result, &Conflict.Factory, &MemoryManagement.ConflictFreeExtern)
+        : Array.Empty<Conflict>();
+      failure = null;
+      return true;
+    }
+    finally
+    {
+      AlpmNativeList.Free(pkgList);
+    }
+  }
+
+  /// <summary>
+  /// Checks a list of packages for conflicts.
+  /// </summary>
+  public IReadOnlyList<Conflict> CheckConflicts(IEnumerable<PackageView> packages)
+  {
+    ThrowIfDisposed();
+    if (!TryCheckConflicts(packages, out var conflicts, out var failure))
+    {
+      throw failure.ToException();
+    }
+    return conflicts;
+  }
+
+  /// <summary>
+  /// The failure-returning seam for <see cref="FindSatisfier"/>.
+  /// </summary>
+  internal unsafe bool TryFindSatisfier(
+    IEnumerable<Database> databases,
+    string dependency,
+    out PackageView? satisfier,
+    [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    ArgumentNullException.ThrowIfNull(databases);
+    ArgumentNullException.ThrowIfNull(dependency);
+
+    var dbList = databases.ToList();
+    _alpm_list_t* nativeList = null;
+    Span<byte> scratch = stackalloc byte[64];
+    using var depBuf = new Utf8Buffer(dependency, scratch);
+    try
+    {
+      nativeList = AlpmNativeList.BuildPointerList(dbList.Select(d => (nint)d.ValidatedPtr));
+      var pkgPtr = NativeMethods.alpm_find_dbs_satisfier(Handle, nativeList, depBuf.Ptr);
+      if (pkgPtr == null)
+      {
+        satisfier = null;
+        failure = null;
+        return true;
+      }
+
+      var dbPtr = NativeMethods.alpm_pkg_get_db(pkgPtr);
+      // Resolved among the wrappers the caller handed in, not through the handle registry: the local
+      // database is never registered there (see Alpm.GetLocalDatabase), and a registry lookup would
+      // therefore mint a second domain for it. See Database.ResolveLifetime for what rides on this.
+      var dbLifetime = Database.ResolveLifetime(dbList, dbPtr);
+      satisfier = new PackageView(pkgPtr, dbLifetime);
+      failure = null;
+      return true;
+    }
+    finally
+    {
+      AlpmNativeList.Free(nativeList);
+    }
+  }
+
+  /// <summary>
+  /// Finds a package satisfying the specified dependency across the given databases.
+  /// </summary>
+  public PackageView? FindSatisfier(IEnumerable<Database> databases, string dependency)
+  {
+    ThrowIfDisposed();
+    if (!TryFindSatisfier(databases, dependency, out var satisfier, out var failure))
+    {
+      throw failure.ToException();
+    }
+    return satisfier;
   }
 
   /// <summary>

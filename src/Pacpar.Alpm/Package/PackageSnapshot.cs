@@ -11,9 +11,9 @@ namespace Pacpar.Alpm;
 /// it is constructed and keeps no native pointer at all: it stays readable after the owning database is
 /// unregistered, after the handle is released, and while a transaction commits.
 /// <para>
-/// The copy costs what an eager read costs - roughly 27 times a lazy scan of the local database (audit
-/// report, section 4.1) - which is why it is opt-in per package. Scan through the view, and snapshot
-/// only what has to outlive the scan.
+/// The copy costs what an eager read costs - roughly 27 times a lazy scan of the local database
+/// (measured by the benchmark suite) - which is why it is opt-in per package. Scan through the view,
+/// and snapshot only what has to outlive the scan.
 /// </para>
 /// <para>
 /// Values are captured once. The fields libalpm mutates - <see cref="Reason"/>, <see cref="InstallDate"/>

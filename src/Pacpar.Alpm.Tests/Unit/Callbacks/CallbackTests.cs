@@ -6,7 +6,7 @@ using Pacpar.Alpm.Bindings;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Locks in the callback safety contract (report §B): a user handler that throws must not let the
+/// Locks in the callback safety contract: a user handler that throws must not let the
 /// exception escape an <c>[UnmanagedCallersOnly]</c> thunk (that would terminate the process); it
 /// is reported through <see cref="Callback.HandlerException"/> instead. The callback ctx handle is
 /// owned by <see cref="Alpm"/> and has no public release path.

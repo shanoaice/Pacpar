@@ -207,7 +207,7 @@ public class Transaction : IDisposable
   /// parameter empty (measured), which is why this method answers <c>void</c>. A failure is reported
   /// as the <see cref="AlpmTransactionException"/> case that matches the errno, carrying the payload
   /// as a managed snapshot; the native list is freed at the same moment, with the element destructor
-  /// the errno requires (see <see cref="AlpmFailure.Take"/>).
+  /// the errno requires.
   /// </remarks>
   public unsafe void Prepare()
   {
@@ -291,9 +291,8 @@ public class Transaction : IDisposable
   /// <c>alpm_pkg_load()</c>, it will be freed upon <c>alpm_trans_release</c> invocation").
   /// </summary>
   /// <returns>
-  /// A borrowed view of the package, valid while the transaction owns it: it carries this
-  /// transaction's lifetime token, so releasing the transaction - or disposing the handle - retires
-  /// it. The view replaces the wrapper whose ownership was given up, which stops answering reads
+  /// A borrowed view of the package, valid while the transaction owns it: it belongs to this
+  /// transaction, so releasing the transaction - or disposing the handle - retires it. The view replaces the wrapper whose ownership was given up, which stops answering reads
   /// after this call; the view itself owns nothing, so giving it to
   /// <see cref="AddPackage(PackageView)"/> never transfers ownership.
   /// </returns>
@@ -437,7 +436,7 @@ public class Transaction : IDisposable
   /// (measured), which is why this method answers <c>void</c>. A failure is reported as the
   /// <see cref="AlpmTransactionException"/> case that matches the errno: conflicting files, or a list
   /// of package names, depending on the errno. The native list is freed at the same moment, with the
-  /// element destructor that errno requires (see <see cref="AlpmFailure.Take"/>).
+  /// element destructor that errno requires.
   /// </remarks>
   public unsafe void Commit()
   {
@@ -451,8 +450,8 @@ public class Transaction : IDisposable
   /// The packages this transaction is going to install, as a borrowed view.
   /// </summary>
   /// <remarks>
-  /// The list and its elements carry the transaction's lifetime token: releasing the transaction
-  /// frees the file-loaded packages it owns, after which this view answers
+  /// The list and its elements belong to the transaction: releasing the transaction frees the
+  /// file-loaded packages it owns, after which this view answers
   /// <see cref="AlpmLifetimeException"/> instead of reading freed memory.
   /// </remarks>
   public unsafe AlpmList<PackageView> GetAddedPackages()
@@ -477,8 +476,8 @@ public class Transaction : IDisposable
   /// The packages this transaction is going to remove, as a borrowed view.
   /// </summary>
   /// <remarks>
-  /// Like <see cref="GetAddedPackages"/>, the view carries the transaction's lifetime token and is
-  /// retired when the transaction is released.
+  /// Like <see cref="GetAddedPackages"/>, the view belongs to the transaction and is retired when
+  /// the transaction is released.
   /// </remarks>
   public unsafe AlpmList<PackageView> GetRemovedPackages()
   {

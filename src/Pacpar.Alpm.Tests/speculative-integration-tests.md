@@ -1,7 +1,6 @@
 # Speculative Integration Test Plan: Real-World Libalpm & Arch Linux Repository Workflows
 
 > **Document Status**: Architectural Specification & Proposal  
-> **Target Path**: `reports/speculative-integration-tests.md`  
 > **Related Components**: `Pacpar.Alpm`, `containers/alpm-tests`, `src/Pacpar.Alpm.Tests`
 
 ---
@@ -161,7 +160,7 @@ To maintain fast developer feedback loops and absolute host safety, tests must b
 
 2. **Mock Mirror / Local HTTP Server**:
    - To avoid flakiness and external network dependencies, container test suites should embed a lightweight mock HTTP server (or utilize a read-only container directory served by `nginx`/`darkhttpd`/kestrel).
-   - Snapshot repository databases (`core.db.tar.gz`) from an Arch Linux archive date should be bundled in `.dsh-scratch/test-repos/` or container volumes.
+   - Snapshot repository databases (`core.db.tar.gz`) from an Arch Linux archive date should be bundled into the container image or a mounted volume.
 
 3. **Trait Filtering**:
    - All genuine container integration tests must carry `[Trait("Category", "ContainerIntegration")]`.

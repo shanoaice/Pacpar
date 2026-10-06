@@ -11,7 +11,7 @@ namespace Pacpar.Alpm;
 /// from <see cref="Database.GetGroup"/> or <see cref="Database.GetGroupCache"/> stays readable after
 /// libalpm's group cache moves on. Its members are <see cref="PackageView"/> views, because that is
 /// what a package always is: libalpm owns it and this library reads through its accessors. The
-/// members inherit the issuing database's lifetime token, so reading one after that database was
+/// members belong to the database that issued them, so reading one after that database was
 /// unregistered throws <see cref="AlpmLifetimeException"/> even though the group itself is a copy.
 /// </remarks>
 public class Group
@@ -42,10 +42,9 @@ public class Group
   /// <remarks>
   /// libalpm allocates the returned list for the caller ("caller is responsible for
   /// <c>alpm_list_free</c>"), so it is copied into a managed collection and freed here. The
-  /// packages themselves stay owned by their databases, and each member is bound to the domain of
-  /// the database that owns it - see <see cref="GroupPackageFactory"/>. That keeps the per-database
-  /// granularity the design promises: unregistering one database retires its own members and, through
-  /// the root, the session-level views, but not the members of a sibling database.
+  /// packages themselves stay owned by their databases, and each member stays tied to the database
+  /// that owns it. Unregistering one database therefore retires its own members, but not the members
+  /// of a sibling database.
   /// </remarks>
   public unsafe IReadOnlyList<PackageView> FindGroupPackages(AlpmList<Database> dbs)
   {

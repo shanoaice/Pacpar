@@ -3,7 +3,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Report item M, guide §3.5: the sandbox options.
+/// Coverage ledger §4: the sandbox options.
 /// </summary>
 /// <remarks>
 /// The aggregate C accessors (<c>alpm_option_get/set_disable_sandbox</c>) are declared in alpm.h and

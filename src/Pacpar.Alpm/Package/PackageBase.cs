@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
-
 namespace Pacpar.Alpm;
 
 /// <summary>
@@ -25,16 +25,14 @@ namespace Pacpar.Alpm;
 /// Scalar metadata libalpm may report as absent is cached behind an explicit boolean flag rather than
 /// <c>field ??=</c>: coalescing only re-runs the native call while the field is null, so an absent value - a
 /// local package has no <see cref="Filename"/>, a sync package no <see cref="Md5Sum"/> - would cross the
-  /// interop boundary again on every read. The flag makes the miss happen exactly once. Caching has
-  /// one consequence worth stating: a member that answers from its cache never evaluates
-  /// <see cref="BackingStruct"/>, so the guarded accessor - and with it the stamp check - would not
-  /// run at all. Every cached member therefore calls <see cref="ThrowIfDisposed"/> itself.
+  /// interop boundary again on every read. The flag makes the miss happen exactly once. A member
+  /// that answers from its cache never runs the disposal guard, so every cached member checks for
+  /// disposal itself.
   /// </para>
 /// <para>
-/// Every read goes through <see cref="ThrowIfDisposed"/>, which also verifies the <see cref="Lifetime"/>
-/// token of the native context that owns <see cref="BackingStruct"/>: reading a package whose database,
-/// transaction or handle was released throws <see cref="AlpmLifetimeException"/> instead of touching
-/// freed memory.
+/// Every read is guarded: it also checks that the database, transaction or handle this package was
+/// obtained from is still alive, so reading a package whose owner was released throws
+/// <see cref="AlpmLifetimeException"/> instead of touching freed memory.
 /// </para>
 /// </remarks>
 public abstract unsafe class PackageBase
@@ -386,6 +384,19 @@ public abstract unsafe class PackageBase
   }
 
   /// <summary>
+  /// The estimated or calculated download size of the package in bytes.
+  /// </summary>
+  public long DownloadSize
+  {
+    get
+    {
+      var size = NativeMethods.alpm_pkg_download_size(BackingStruct);
+      GC.KeepAlive(this);
+      return size.Value;
+    }
+  }
+
+  /// <summary>
   /// The reason why this package is installed (explicitly requested or installed as a dependency).
   /// </summary>
   public PackageReason Reason
@@ -567,9 +578,102 @@ public abstract unsafe class PackageBase
   /// </param>
   public PackageSnapshot ToSnapshot(bool includeFiles = false) => new(this, includeFiles);
 
+  /// <summary>
+  /// Opens a stream for reading the package changelog, or returns <c>null</c> if no changelog is available.
+  /// </summary>
+  public Stream? OpenChangelogStream()
+  {
+    var fp = NativeMethods.alpm_pkg_changelog_open(BackingStruct);
+    if (fp == null) return null;
+    return new PackageChangelogStream(this, fp);
+  }
+
+  /// <summary>
+  /// Reads the complete changelog text as a UTF-8 string, or returns <c>null</c> if none is available.
+  /// </summary>
+  public string? ReadChangelog()
+  {
+    using var stream = OpenChangelogStream();
+    if (stream is null) return null;
+
+    using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+    return reader.ReadToEnd();
+  }
+
   [DoesNotReturn]
   private static void ThrowSignatureFailure(int rawErrno)
   {
     throw NativeCall.Failure(rawErrno, "read package signature").ToException();
+  }
+}
+
+/// <summary>
+/// A read-only forward stream over a package's changelog, backed by libalpm's changelog read routine.
+/// </summary>
+internal sealed unsafe class PackageChangelogStream : Stream
+{
+  private readonly PackageBase _package;
+  private void* _fp;
+  private bool _disposed;
+
+  internal PackageChangelogStream(PackageBase package, void* fp)
+  {
+    _package = package;
+    _fp = fp;
+  }
+
+  public override bool CanRead => !_disposed;
+  public override bool CanSeek => false;
+  public override bool CanWrite => false;
+  public override long Length => throw new NotSupportedException();
+  public override long Position
+  {
+    get => throw new NotSupportedException();
+    set => throw new NotSupportedException();
+  }
+
+  public override void Flush() { }
+
+  public override int Read(byte[] buffer, int offset, int count)
+  {
+    ObjectDisposedException.ThrowIf(_disposed, this);
+    ArgumentNullException.ThrowIfNull(buffer);
+    ArgumentOutOfRangeException.ThrowIfNegative(offset);
+    ArgumentOutOfRangeException.ThrowIfNegative(count);
+    if (offset + count > buffer.Length) throw new ArgumentException("Offset and count exceed buffer length.");
+    if (count == 0) return 0;
+
+    return Read(buffer.AsSpan(offset, count));
+  }
+
+  public override int Read(Span<byte> buffer)
+  {
+    ObjectDisposedException.ThrowIf(_disposed, this);
+    if (buffer.Length == 0) return 0;
+
+    fixed (byte* ptr = buffer)
+    {
+      var readBytes = NativeMethods.alpm_pkg_changelog_read(ptr, (nuint)buffer.Length, _package.BackingStruct, _fp);
+      GC.KeepAlive(_package);
+      return (int)readBytes;
+    }
+  }
+
+  public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+  public override void SetLength(long value) => throw new NotSupportedException();
+  public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+  protected override void Dispose(bool disposing)
+  {
+    if (!_disposed)
+    {
+      if (_fp != null)
+      {
+        NativeMethods.alpm_pkg_changelog_close(_package.BackingStruct, _fp);
+        _fp = null;
+      }
+      _disposed = true;
+    }
+    base.Dispose(disposing);
   }
 }

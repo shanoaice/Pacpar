@@ -15,8 +15,8 @@ namespace Pacpar.Alpm;
 /// <para>
 /// This public class is deliberately non-finalizable, in accordance with the .NET Framework Design
 /// Guidelines. A wrapper the garbage collector collects without <see cref="Dispose"/> therefore
-/// keeps its package until the session ends: <see cref="Alpm.Dispose()"/> sweeps the session's
-/// registry of file-loaded packages before it releases the handle, and the hand-over to a
+/// keeps its package until the session ends: <see cref="Alpm.Dispose()"/> releases every
+/// file-loaded package the session still tracks before it releases the handle, and the hand-over to a
 /// transaction leaves the release to <c>alpm_trans_release</c>. Disposing the owning
 /// <see cref="Alpm"/> is what guarantees that all unmanaged memory goes back.
 /// <para>
