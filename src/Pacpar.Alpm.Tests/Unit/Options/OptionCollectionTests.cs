@@ -179,4 +179,31 @@ public sealed class OptionCollectionTests : IDisposable
     Assert.False(architectures.Contains("x86_64"));
     Assert.True(architectures.Contains("aarch64"));
   }
+
+  [Fact]
+  public void ScalarOptions_ThrowAlpmLifetimeException_AfterSessionDisposed()
+  {
+    var options = _environment.Alpm.Options;
+    _environment.Alpm.Dispose();
+
+    Assert.Throws<AlpmLifetimeException>(() => options.CheckSpace);
+    Assert.Throws<AlpmLifetimeException>(() => options.CheckSpace = true);
+    Assert.Throws<AlpmLifetimeException>(() => options.DatabaseExtension);
+    Assert.Throws<AlpmLifetimeException>(() => options.DatabasePath);
+    Assert.Throws<AlpmLifetimeException>(() => options.Root);
+    Assert.Throws<AlpmLifetimeException>(() => options.DefaultSigLevel);
+    Assert.Throws<AlpmLifetimeException>(() => options.DefaultSigLevel = SigLevel.AlpmSigPackage);
+    Assert.Throws<AlpmLifetimeException>(() => options.LocalFileSigLevel);
+    Assert.Throws<AlpmLifetimeException>(() => options.RemoteFileSigLevel);
+    Assert.Throws<AlpmLifetimeException>(() => options.ParallelDownloads);
+    Assert.Throws<AlpmLifetimeException>(() => options.ParallelDownloads = 5);
+    Assert.Throws<AlpmLifetimeException>(() => options.LogFile);
+    Assert.Throws<AlpmLifetimeException>(() => options.UseSyslog);
+    Assert.Throws<AlpmLifetimeException>(() => options.Lockfile);
+    Assert.Throws<AlpmLifetimeException>(() => options.GpgDirectory);
+    Assert.Throws<AlpmLifetimeException>(() => options.DisableDownloadTimeout);
+    Assert.Throws<AlpmLifetimeException>(() => options.DisableSandboxFilesystem);
+    Assert.Throws<AlpmLifetimeException>(() => options.Sandbox);
+    Assert.Throws<AlpmLifetimeException>(() => options.SandboxUser);
+  }
 }

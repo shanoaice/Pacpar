@@ -24,7 +24,7 @@ public enum SandboxState
   Disabled = 2,
 }
 
-public class AlpmOptions
+public unsafe class AlpmOptions
 {
   private readonly SafeAlpmHandle _handle;
 
@@ -32,11 +32,13 @@ public class AlpmOptions
   // libalpm's handle state: they carry the root token so every native call they make is guarded,
   // and the lists they hand out retire together with the handle.
   private readonly RootLifetime _lifetime;
+  private readonly LifetimeStamp _stamp;
 
   internal AlpmOptions(SafeAlpmHandle handle, RootLifetime lifetime)
   {
     _handle = handle;
     _lifetime = lifetime;
+    _stamp = lifetime.Capture();
   }
 
   /// <summary>
@@ -49,11 +51,46 @@ public class AlpmOptions
   /// </param>
   private void ThrowIfError(int err, [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
   {
-    if (err != 0)
-    {
-      GC.KeepAlive(this);
-      throw NativeCall.Failure(_handle, $"set {operation ?? "option"}").ToException();
-    }
+    if (err == 0) return;
+    GC.KeepAlive(this);
+    throw NativeCall.Failure(_handle, $"set {operation ?? "option"}").ToException();
+  }
+
+  private T Read<T>(delegate* managed<SafeAlpmHandle, T> reader)
+  {
+    _stamp.ThrowIfStale();
+    var val = reader(_handle);
+    GC.KeepAlive(this);
+    return val;
+  }
+
+  private string? ReadString(delegate* managed<SafeAlpmHandle, byte*> reader)
+  {
+    _stamp.ThrowIfStale();
+    var val = NativeString.FromNative((nint)reader(_handle));
+    GC.KeepAlive(this);
+    return val;
+  }
+
+  private void Write(delegate* managed<SafeAlpmHandle, int, int> writer, int value, [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
+  {
+    _stamp.ThrowIfStale();
+    ThrowIfError(writer(_handle, value), operation);
+    GC.KeepAlive(this);
+  }
+
+  private void WriteUInt(delegate* managed<SafeAlpmHandle, uint, int> writer, uint value, [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
+  {
+    _stamp.ThrowIfStale();
+    ThrowIfError(writer(_handle, value), operation);
+    GC.KeepAlive(this);
+  }
+
+  private void WriteUShort(delegate* managed<SafeAlpmHandle, ushort, int> writer, ushort value, [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
+  {
+    _stamp.ThrowIfStale();
+    ThrowIfError(writer(_handle, value), operation);
+    GC.KeepAlive(this);
   }
   /// <summary>
   /// Marshals <paramref name="value"/> for a string option setter and throws on failure.
@@ -66,10 +103,11 @@ public class AlpmOptions
   /// cannot point at a <c>[DllImport]</c> method (CS8786).
   /// </para>
   /// </remarks>
-  private unsafe void SetStringOption(string value, delegate* managed<SafeAlpmHandle, byte*, int> setter,
+  private void SetStringOption(string value, delegate* managed<SafeAlpmHandle, byte*, int> setter,
     [System.Runtime.CompilerServices.CallerMemberName] string? operation = null)
   {
     ArgumentNullException.ThrowIfNull(value);
+    _stamp.ThrowIfStale();
     Span<byte> scratch = stackalloc byte[256];
     using var buffer = new Utf8Buffer(value, scratch);
     ThrowIfError(setter(_handle, buffer.Ptr), operation);
@@ -95,108 +133,48 @@ public class AlpmOptions
 
   public bool CheckSpace
   {
-    get
-    {
-      var val = NativeMethods.alpm_option_get_checkspace(_handle) != 0;
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_checkspace(_handle, value ? 1 : 0));
-      GC.KeepAlive(this);
-    }
+    get => Read(&NativeMethods.alpm_option_get_checkspace) != 0;
+    set => Write(&NativeMethods.alpm_option_set_checkspace, value ? 1 : 0);
   }
 
-  public unsafe string DatabaseExtension
+  public string DatabaseExtension
   {
-    get
-    {
-      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_dbext(_handle))!;
-      GC.KeepAlive(this);
-      return val;
-    }
+    get => ReadString(&NativeMethods.alpm_option_get_dbext)!;
     set => SetStringOption(value, &NativeMethods.alpm_option_set_dbext);
   }
 
-  public unsafe string DatabasePath
+  public string DatabasePath
   {
-    get
-    {
-      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_dbpath(_handle))!;
-      GC.KeepAlive(this);
-      return val;
-    }
+    get => ReadString(&NativeMethods.alpm_option_get_dbpath)!;
   }
 
-  public unsafe string Root
+  public string Root
   {
-    get
-    {
-      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_root(_handle))!;
-      GC.KeepAlive(this);
-      return val;
-    }
+    get => ReadString(&NativeMethods.alpm_option_get_root)!;
   }
 
   public SigLevel DefaultSigLevel
   {
-    get
-    {
-      var val = (SigLevel)NativeMethods.alpm_option_get_default_siglevel(_handle);
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_default_siglevel(_handle, (int)value));
-      GC.KeepAlive(this);
-    }
+    get => (SigLevel)Read(&NativeMethods.alpm_option_get_default_siglevel);
+    set => Write(&NativeMethods.alpm_option_set_default_siglevel, (int)value);
   }
 
   public SigLevel LocalFileSigLevel
   {
-    get
-    {
-      var val = (SigLevel)NativeMethods.alpm_option_get_local_file_siglevel(_handle);
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_local_file_siglevel(_handle, (int)value));
-      GC.KeepAlive(this);
-    }
+    get => (SigLevel)Read(&NativeMethods.alpm_option_get_local_file_siglevel);
+    set => Write(&NativeMethods.alpm_option_set_local_file_siglevel, (int)value);
   }
 
   public SigLevel RemoteFileSigLevel
   {
-    get
-    {
-      var val = (SigLevel)NativeMethods.alpm_option_get_remote_file_siglevel(_handle);
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_remote_file_siglevel(_handle, (int)value));
-      GC.KeepAlive(this);
-    }
+    get => (SigLevel)Read(&NativeMethods.alpm_option_get_remote_file_siglevel);
+    set => Write(&NativeMethods.alpm_option_set_remote_file_siglevel, (int)value);
   }
 
   public int ParallelDownloads
   {
-    get
-    {
-      var val = NativeMethods.alpm_option_get_parallel_downloads(_handle);
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_parallel_downloads(_handle, (uint)value));
-      GC.KeepAlive(this);
-    }
+    get => Read(&NativeMethods.alpm_option_get_parallel_downloads);
+    set => WriteUInt(&NativeMethods.alpm_option_set_parallel_downloads, (uint)value);
   }
 
   /// <summary>
@@ -207,40 +185,21 @@ public class AlpmOptions
   /// Attempting to assign <c>null</c> throws an <see cref="ArgumentNullException"/>.
   /// </remarks>
   [DisallowNull]
-  public unsafe string? LogFile
+  public string? LogFile
   {
-    get
-    {
-      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_logfile(_handle));
-      GC.KeepAlive(this);
-      return val;
-    }
+    get => ReadString(&NativeMethods.alpm_option_get_logfile);
     set => SetStringOption(value, &NativeMethods.alpm_option_set_logfile);
   }
 
   public bool UseSyslog
   {
-    get
-    {
-      var val = NativeMethods.alpm_option_get_usesyslog(_handle) != 0;
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_usesyslog(_handle, value ? 1 : 0));
-      GC.KeepAlive(this);
-    }
+    get => Read(&NativeMethods.alpm_option_get_usesyslog) != 0;
+    set => Write(&NativeMethods.alpm_option_set_usesyslog, value ? 1 : 0);
   }
 
-  public unsafe string Lockfile
+  public string Lockfile
   {
-    get
-    {
-      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_lockfile(_handle))!;
-      GC.KeepAlive(this);
-      return val;
-    }
+    get => ReadString(&NativeMethods.alpm_option_get_lockfile)!;
   }
 
   /// <summary>
@@ -251,32 +210,19 @@ public class AlpmOptions
   /// Attempting to assign <c>null</c> throws an <see cref="ArgumentNullException"/>.
   /// </remarks>
   [DisallowNull]
-  public unsafe string? GpgDirectory
+  public string? GpgDirectory
   {
-    get
-    {
-      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_gpgdir(_handle));
-      GC.KeepAlive(this);
-      return val;
-    }
+    get => ReadString(&NativeMethods.alpm_option_get_gpgdir);
     set => SetStringOption(value, &NativeMethods.alpm_option_set_gpgdir);
   }
+
   /// <summary>
   /// Enables or disables the download timeout.
   /// </summary>
   public bool DisableDownloadTimeout
   {
-    get
-    {
-      var val = NativeMethods.alpm_option_get_disable_dl_timeout(_handle) != 0;
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_disable_dl_timeout(_handle, (ushort)(value ? 1 : 0)));
-      GC.KeepAlive(this);
-    }
+    get => Read(&NativeMethods.alpm_option_get_disable_dl_timeout) != 0;
+    set => WriteUShort(&NativeMethods.alpm_option_set_disable_dl_timeout, (ushort)(value ? 1 : 0));
   }
 
   /// <summary>
@@ -284,17 +230,8 @@ public class AlpmOptions
   /// </summary>
   public bool DisableSandboxFilesystem
   {
-    get
-    {
-      var val = NativeMethods.alpm_option_get_disable_sandbox_filesystem(_handle) != 0;
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_disable_sandbox_filesystem(_handle, (ushort)(value ? 1 : 0)));
-      GC.KeepAlive(this);
-    }
+    get => Read(&NativeMethods.alpm_option_get_disable_sandbox_filesystem) != 0;
+    set => WriteUShort(&NativeMethods.alpm_option_set_disable_sandbox_filesystem, (ushort)(value ? 1 : 0));
   }
 
   /// <summary>
@@ -302,17 +239,8 @@ public class AlpmOptions
   /// </summary>
   public bool DisableSandboxNetwork
   {
-    get
-    {
-      var val = NativeMethods.alpm_option_get_disable_sandbox_network(_handle) != 0;
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_disable_sandbox_network(_handle, (ushort)(value ? 1 : 0)));
-      GC.KeepAlive(this);
-    }
+    get => Read(&NativeMethods.alpm_option_get_disable_sandbox_network) != 0;
+    set => WriteUShort(&NativeMethods.alpm_option_set_disable_sandbox_network, (ushort)(value ? 1 : 0));
   }
 
   /// <summary>
@@ -320,17 +248,8 @@ public class AlpmOptions
   /// </summary>
   public bool DisableSandboxSyscalls
   {
-    get
-    {
-      var val = NativeMethods.alpm_option_get_disable_sandbox_syscalls(_handle) != 0;
-      GC.KeepAlive(this);
-      return val;
-    }
-    set
-    {
-      ThrowIfError(NativeMethods.alpm_option_set_disable_sandbox_syscalls(_handle, (ushort)(value ? 1 : 0)));
-      GC.KeepAlive(this);
-    }
+    get => Read(&NativeMethods.alpm_option_get_disable_sandbox_syscalls) != 0;
+    set => WriteUShort(&NativeMethods.alpm_option_set_disable_sandbox_syscalls, (ushort)(value ? 1 : 0));
   }
 
   /// <summary>
@@ -361,16 +280,12 @@ public class AlpmOptions
   /// <summary>
   /// Gets or sets the user to switch to for sandboxed operations, or <c>null</c> when none is set.
   /// </summary>
-  public unsafe string? SandboxUser
+  public string? SandboxUser
   {
-    get
-    {
-      var val = NativeString.FromNative((nint)NativeMethods.alpm_option_get_sandboxuser(_handle));
-      GC.KeepAlive(this);
-      return val;
-    }
+    get => ReadString(&NativeMethods.alpm_option_get_sandboxuser);
     set
     {
+      _stamp.ThrowIfStale();
       if (value is null)
       {
         ThrowIfError(NativeMethods.alpm_option_set_sandboxuser(_handle, null));
