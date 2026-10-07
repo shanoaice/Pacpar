@@ -43,8 +43,7 @@ public class Alpm : IDisposable
     _lifetime = RootLifetime.Create(this, "the ALPM handle");
     _handle.OwnDomain(_lifetime);
     Options = new AlpmOptions(_handle, _lifetime);
-    BindingConfig = new AlpmBindingConfig();
-    Callback = new Callback(_handle, _lifetime, BindingConfig);
+    Callback = new Callback(_handle, _lifetime);
   }
 
   private static SafeAlpmHandle InitializeOrThrow(string root, string dbpath)
@@ -152,17 +151,6 @@ public class Alpm : IDisposable
   /// Exposes properties to configure libalpm callbacks on demand.
   /// </summary>
   public Callback Callback { get; }
-
-  /// <summary>
-  /// Exposes the wrapper's per-handle binding policy: what to copy out of libalpm when a callback
-  /// payload is materialized.
-  /// </summary>
-  /// <remarks>
-  /// libalpm's own options live in <see cref="Options"/>; this object only carries choices this
-  /// wrapper makes on the consumer's behalf, such as <see cref="AlpmBindingConfig.QuestionPayloadIncludeFiles"/>.
-  /// The value is read on each callback, so mutate it only while no native call is in flight.
-  /// </remarks>
-  public AlpmBindingConfig BindingConfig { get; }
 
   /// <summary>
   /// The transaction currently initialized on this handle, or <c>null</c> when there is none.

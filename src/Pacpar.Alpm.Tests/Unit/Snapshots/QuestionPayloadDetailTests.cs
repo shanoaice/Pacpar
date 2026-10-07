@@ -6,10 +6,9 @@ using AlpmHandle = Pacpar.Alpm.Alpm;
 namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 
 /// <summary>
-/// The question payload copies packages instead of lending views, and
-/// <see cref="AlpmBindingConfig.QuestionPayloadIncludeFiles"/> decides whether the file list is copied. These tests
-/// pin the default, the opt-in, the per-handle scope of the setting and the one property that makes the
-/// copy worth its cost: the payload stays readable after the package it came from is gone.
+/// The question payload borrows package views under the callback frame's lifetime.
+/// These tests verify reading package properties within the frame, invalidation when the frame completes,
+/// and that explicit ToSnapshot() captures an independent copy that outlives the package.
 /// </summary>
 public sealed unsafe class QuestionPayloadDetailTests : IDisposable
 {
@@ -18,36 +17,24 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   private readonly string _packageDirectory =
     Path.Combine(Path.GetTempPath(), "pacpar-payload-detail", Guid.NewGuid().ToString("n"));
 
-  private readonly string _otherPackageDirectory =
-    Path.Combine(Path.GetTempPath(), "pacpar-payload-detail", Guid.NewGuid().ToString("n"));
-
   public QuestionPayloadDetailTests()
   {
     Directory.CreateDirectory(_packageDirectory);
-    Directory.CreateDirectory(_otherPackageDirectory);
   }
 
   public void Dispose()
   {
     _environment.Dispose();
 
-    foreach (var directory in new[] { _packageDirectory, _otherPackageDirectory })
+    if (Directory.Exists(_packageDirectory))
     {
-      if (Directory.Exists(directory))
-      {
-        Directory.Delete(directory, recursive: true);
-      }
+      Directory.Delete(_packageDirectory, recursive: true);
     }
   }
 
-  /// <summary>
-  /// Builds an INSTALL_IGNOREPKG payload the way the callback thunk does - the union is freed before
-  /// the assertion runs, so every value the payload answers with must have been copied.
-  /// </summary>
-  private static AlpmQuestion.InstallIgnoredPackage QuestionFor(AlpmHandle alpm, _alpm_pkg_t* package)
+  private static AlpmQuestion.InstallIgnoredPackage QuestionFor(
+    AlpmHandle alpm, _alpm_pkg_t* package, ChildLifetime? lifetime = null)
   {
-    // Allocated zeroed: only the fields of the branch under test are written, and a payload that
-    // copies a field this test never touched must read a null pointer, not a recycled page.
     var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
 
     try
@@ -57,7 +44,7 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
       native->install_ignorepkg.pkg = package;
 
       return Assert.IsType<AlpmQuestion.InstallIgnoredPackage>(
-        AlpmQuestion.FromUnion(native, alpm.BindingConfig));
+        AlpmQuestion.FromUnion(native, lifetime));
     }
     finally
     {
@@ -66,69 +53,61 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   }
 
   [Fact]
-  public void Default_LeavesTheFileListOut()
+  public void Payload_ReadsPackagePropertiesWithinTheCallbackFrame()
   {
     using var pkg = Load("payload-default", file: "usr/bin/probe");
+    var frameLifetime = _environment.Alpm.RootLifetime.CreateChild("test frame");
 
-    Assert.False(_environment.Alpm.BindingConfig.QuestionPayloadIncludeFiles);
-
-    var question = QuestionFor(_environment.Alpm, pkg.BackingStruct);
+    var question = QuestionFor(_environment.Alpm, pkg.BackingStruct, frameLifetime);
 
     Assert.Equal("payload-default", question.Package.Name);
-    Assert.Null(question.Package.Files);
+    Assert.NotNull(question.Package.Files);
+    Assert.Contains(question.Package.Files, file => file.Name == "usr/bin/probe");
   }
 
   [Fact]
-  public void WithFiles_CopiesTheFileList()
+  public void Payload_DiesWhenCallbackFrameCompletes()
   {
-    using var pkg = Load("payload-files", file: "usr/bin/probe");
+    using var pkg = Load("payload-frame-dies", file: "usr/bin/probe");
+    var frameLifetime = _environment.Alpm.RootLifetime.CreateChild("test frame");
 
-    _environment.Alpm.BindingConfig.QuestionPayloadIncludeFiles = true;
+    var question = QuestionFor(_environment.Alpm, pkg.BackingStruct, frameLifetime);
+    Assert.Equal("payload-frame-dies", question.Package.Name);
 
-    var files = QuestionFor(_environment.Alpm, pkg.BackingStruct).Package.Files;
+    // Frame ends
+    frameLifetime.Invalidate("test frame completed");
 
-    Assert.NotNull(files);
-    Assert.Contains(files, file => file.Name == "usr/bin/probe");
+    // Reading package or modifying answer now throws AlpmLifetimeException
+    Assert.Throws<AlpmLifetimeException>(() => question.Package.Name);
+    Assert.Throws<AlpmLifetimeException>(() => question.Install = false);
   }
 
   [Fact]
-  public void Payload_OutlivesThePackageItWasCopiedFrom()
+  public void ExplicitSnapshot_OutlivesThePackageAndTheFrame()
   {
-    AlpmQuestion.InstallIgnoredPackage question;
+    PackageSnapshot snapshot;
+    var frameLifetime = _environment.Alpm.RootLifetime.CreateChild("test frame");
 
     using (var pkg = Load("payload-detached", file: "usr/bin/probe"))
     {
-      question = QuestionFor(_environment.Alpm, pkg.BackingStruct);
-      Assert.Equal("payload-detached", question.Package.Name);
+      var question = QuestionFor(_environment.Alpm, pkg.BackingStruct, frameLifetime);
+      snapshot = question.Package.ToSnapshot(includeFiles: true);
+      Assert.Equal("payload-detached", snapshot.Name);
     }
 
-    // The package's native memory is freed by the disposal above and the question union is already gone.
-    Assert.Equal("payload-detached", question.Package.Name);
-    Assert.Equal(PackageArchive.Version, question.Package.Version.ToString());
-  }
+    // Invalidate frame
+    frameLifetime.Invalidate("test frame completed");
 
-  /// <summary>
-  /// The setting hangs off the handle, not the process: a second handle keeps the default while the
-  /// first opts in, which is what lets a CLI and a TUI share the process with different payload costs.
-  /// </summary>
-  [Fact]
-  public void Binding_IsPerHandle()
-  {
-    using var other = new IsolatedAlpmEnvironment();
-    using var configured = Load("payload-configured", file: "usr/bin/probe");
-    using var untouched = LoadInto(other, _otherPackageDirectory, "payload-untouched", file: "usr/bin/probe");
-
-    _environment.Alpm.BindingConfig.QuestionPayloadIncludeFiles = true;
-
-    Assert.NotNull(QuestionFor(_environment.Alpm, configured.BackingStruct).Package.Files);
-    Assert.Null(QuestionFor(other.Alpm, untouched.BackingStruct).Package.Files);
+    // The explicit snapshot stays valid independently of native memory and frame lifetime
+    Assert.Equal("payload-detached", snapshot.Name);
+    Assert.Equal(PackageArchive.Version, snapshot.Version.ToString());
+    Assert.NotNull(snapshot.Files);
+    Assert.Contains(snapshot.Files, file => file.Name == "usr/bin/probe");
   }
 
   private LoadedPackage Load(string name, string file)
-    => LoadInto(_environment, _packageDirectory, name, file);
-
-  private static LoadedPackage LoadInto(IsolatedAlpmEnvironment environment, string directory, string name,
-    string file)
-    => environment.Alpm.LoadPackage(PackageArchive.Create(directory, name, file: file),
-      full: true, SigLevel.AlpmSigUseDefault);
+    => _environment.Alpm.LoadPackage(
+      PackageArchive.Create(_packageDirectory, name, file: file),
+      full: true,
+      SigLevel.AlpmSigUseDefault);
 }

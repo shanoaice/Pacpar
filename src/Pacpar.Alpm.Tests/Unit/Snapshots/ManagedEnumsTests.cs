@@ -39,22 +39,19 @@ public sealed class ManagedEnumsTests
 
     Assert.Equal(typeof(bool),
       typeof(AlpmQuestion.InstallIgnoredPackage).GetProperty(nameof(AlpmQuestion.InstallIgnoredPackage.Install))!.PropertyType);
-    Assert.Equal(typeof(PackageSnapshot),
+    Assert.Equal(typeof(PackageView),
       typeof(AlpmQuestion.InstallIgnoredPackage).GetProperty(nameof(AlpmQuestion.InstallIgnoredPackage.Package))!.PropertyType);
-    Assert.Equal(typeof(PackageSnapshot),
+    Assert.Equal(typeof(PackageView),
       typeof(AlpmQuestion.ReplacePackage).GetProperty(nameof(AlpmQuestion.ReplacePackage.OldPackage))!.PropertyType);
-    Assert.Equal(typeof(PackageSnapshot),
+    Assert.Equal(typeof(PackageView),
       typeof(AlpmQuestion.ReplacePackage).GetProperty(nameof(AlpmQuestion.ReplacePackage.NewPackage))!.PropertyType);
-    Assert.Equal(typeof(PackageSnapshot),
+    Assert.Equal(typeof(PackageView),
       typeof(AlpmQuestion.ConflictPkg).GetProperty(nameof(AlpmQuestion.ConflictPkg.Package1))!.PropertyType);
-    Assert.Equal(typeof(PackageSnapshot),
+    Assert.Equal(typeof(PackageView),
       typeof(AlpmQuestion.ConflictPkg).GetProperty(nameof(AlpmQuestion.ConflictPkg.Package2))!.PropertyType);
-    // A callback payload is a snapshot, so the packages inside it - and the member lists carrying them -
-    // are copied rather than viewed: libalpm's question union and the list hanging off it are built on
-    // the calling thread's stack, and the packages they point at die with their database or transaction.
-    Assert.Equal(typeof(IReadOnlyList<PackageSnapshot>),
+    Assert.Equal(typeof(IReadOnlyList<PackageView>),
       typeof(AlpmQuestion.RemovePkgs).GetProperty(nameof(AlpmQuestion.RemovePkgs.Packages))!.PropertyType);
-    Assert.Equal(typeof(IReadOnlyList<PackageSnapshot>),
+    Assert.Equal(typeof(IReadOnlyList<PackageView>),
       typeof(AlpmQuestion.SelectProvider).GetProperty(nameof(AlpmQuestion.SelectProvider.Providers))!.PropertyType);
     Assert.Equal(typeof(int),
       typeof(AlpmQuestion.SelectProvider).GetProperty(nameof(AlpmQuestion.SelectProvider.UseIndex))!.PropertyType);

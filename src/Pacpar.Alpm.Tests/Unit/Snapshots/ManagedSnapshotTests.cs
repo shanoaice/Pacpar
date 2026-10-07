@@ -338,9 +338,8 @@ public sealed unsafe class ManagedSnapshotTests
         native->replace.oldpkg = oldPkg.BackingStruct;
         native->replace.newpkg = newPkg.BackingStruct;
         native->replace.newdb = db.ValidatedPtr;
-
-        var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
-
+        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var payload = AlpmQuestion.FromUnion(native, frame);
         *native = default;
 
         var replace = Assert.IsType<AlpmQuestion.ReplacePackage>(payload);
@@ -380,9 +379,8 @@ public sealed unsafe class ManagedSnapshotTests
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
         native->install_ignorepkg.install = 1;
         native->install_ignorepkg.pkg = pkg.BackingStruct;
-
-        var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
-
+        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var payload = AlpmQuestion.FromUnion(native, frame);
         *native = default;
 
         var question = Assert.IsType<AlpmQuestion.InstallIgnoredPackage>(payload);
@@ -435,9 +433,8 @@ public sealed unsafe class ManagedSnapshotTests
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_CONFLICT_PKG;
         native->conflict.remove = 1;
         native->conflict.conflict = conflictStruct;
-
-        var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
-
+        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var payload = AlpmQuestion.FromUnion(native, frame);
         *native = default;
         *conflictStruct = default;
         *dependStruct = default;
@@ -494,18 +491,18 @@ public sealed unsafe class ManagedSnapshotTests
         native->remove_pkgs.skip = 0;
         native->remove_pkgs.packages = members;
 
-        // The REMOVE_PKGS branch traverses the member list and copies each package out of it,
-        // so the resulting payload retains no native memory.
-        var payload = AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig);
+        // The REMOVE_PKGS branch wraps the member list under the callback frame lifetime.
+        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var payload = AlpmQuestion.FromUnion(native, frame);
 
         *native = default;
         NativeMethods.alpm_list_free(members);
         members = null;
-        pkg.Dispose();
 
         var remove = Assert.IsType<AlpmQuestion.RemovePkgs>(payload);
         Assert.False(remove.Skip);
         Assert.Equal("member-list", Assert.Single(remove.Packages).Name);
+        pkg.Dispose();
       }
       finally
       {
@@ -566,9 +563,9 @@ public sealed unsafe class ManagedSnapshotTests
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
         native->install_ignorepkg.install = 0;
         native->install_ignorepkg.pkg = pkg.BackingStruct;
-
+        var frame = env.Alpm.RootLifetime.CreateChild("frame");
         var question = Assert.IsType<AlpmQuestion.InstallIgnoredPackage>(
-          AlpmQuestion.FromUnion(native, env.Alpm.BindingConfig));
+          AlpmQuestion.FromUnion(native, frame));
 
         Assert.False(question.Install);
 
@@ -577,11 +574,11 @@ public sealed unsafe class ManagedSnapshotTests
         Assert.True(question.Install);
         Assert.Equal(1, native->install_ignorepkg.install);
 
-        // Disarming freezes the answer and prevents further mutations
-        question.Disarm();
+        // Frame ending invalidates the answer and prevents further mutations
+        frame.Invalidate("frame completed");
         Assert.True(question.Install);
 
-        Assert.Throws<InvalidOperationException>(() => question.Install = false);
+        Assert.Throws<AlpmLifetimeException>(() => question.Install = false);
       }
       finally
       {

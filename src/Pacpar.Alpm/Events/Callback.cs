@@ -114,9 +114,6 @@ public sealed class Callback
   // The ALPM handle's root lifetime token
   private readonly RootLifetime _rootLifetime;
 
-  // The handle's binding policy; the payload factories read it while a callback runs.
-  private readonly AlpmBindingConfig _binding;
-
   // do not Dispose this before the callback class has been disposed
   // otherwise it will screw up the callbacks
   private WeakGCHandle<Callback> _ctxHandle;
@@ -188,16 +185,17 @@ public sealed class Callback
       var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
       if (!success || callback == null) return;
       callback._invokeDepth++;
-      var question = AlpmQuestion.FromUnion(questionT, callback._binding);
+      var questionLifetime = callback._rootLifetime.CreateChild("Callback.QuestionAgent");
       try
       {
+        var question = AlpmQuestion.FromUnion(questionT, questionLifetime);
         SafeInvoke(
           () => callback.QuestionHandler?.Invoke(question), callback.HandlerException);
       }
       finally
       {
         callback._invokeDepth--;
-        question.Disarm();
+        questionLifetime.Invalidate("Question callback frame ended. Answers must be provided synchronously.");
       }
     }
     catch
@@ -289,11 +287,10 @@ public sealed class Callback
     }
   }
 
-  internal Callback(SafeAlpmHandle alpmHandle, RootLifetime lifetime, AlpmBindingConfig binding)
+  internal Callback(SafeAlpmHandle alpmHandle, RootLifetime lifetime)
   {
     _handle = alpmHandle;
     _rootLifetime = lifetime;
-    _binding = binding;
     _ctxHandle = new WeakGCHandle<Callback>(this);
   }
 
