@@ -134,6 +134,37 @@ public sealed class TransactionLifecycleTests
     Assert.Null(transaction.ReleaseFailure);
     Assert.Null(alpm.CurrentTransaction);
   }
+  [Fact]
+  public void Dispose_Throws_WhenReleaseFailsAfterSuccessfulCommit()
+  {
+    using var environment = new IsolatedAlpmEnvironment();
+    var alpm = environment.Alpm;
+
+    var pkgDir = Path.Combine(Path.GetTempPath(), "pacpar-test-" + Guid.NewGuid().ToString("n"));
+    Directory.CreateDirectory(pkgDir);
+    try
+    {
+      var pkgPath = PackageArchive.Create(pkgDir, "audit-commit-ok");
+      using var loaded = alpm.LoadPackage(pkgPath, full: true, SigLevel.AlpmSigUseDefault);
+
+      var transaction = alpm.BeginTransaction();
+      transaction.AddPackage(loaded);
+      transaction.Prepare();
+      transaction.Commit();
+
+      // Force a release failure behind the wrapper's back after commit succeeded:
+      Assert.Equal(0, NativeMethods.alpm_trans_release(alpm.Handle));
+
+      var ex = Assert.Throws<AlpmTransactionException>(() => transaction.Dispose());
+      Assert.Equal((int)_alpm_errno_t.ALPM_ERR_TRANS_NULL, ex.Errno);
+      Assert.False(transaction.IsReleased);
+      Assert.NotNull(transaction.ReleaseFailure);
+    }
+    finally
+    {
+      if (Directory.Exists(pkgDir)) Directory.Delete(pkgDir, recursive: true);
+    }
+  }
 
   [Fact]
   public void BeginTransaction_AfterTheHandleWasDisposed_ThrowsObjectDisposed()

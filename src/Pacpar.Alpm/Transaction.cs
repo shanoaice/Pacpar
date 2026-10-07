@@ -87,10 +87,16 @@ public enum TransactionFlags : uint
 
 public class Transaction : IDisposable
 {
+  private enum CompletionState : byte
+  {
+    InProgress,
+    Committed,
+    Faulted,
+  }
+
+  private CompletionState _completionState = CompletionState.InProgress;
   private readonly Alpm _library;
-
   private readonly LifetimeStamp _stamp;
-
   /// <summary>
   /// The transaction's lifetime token, a child of the handle's root token: it is retired both by
   /// this transaction's own successful release and - through the parent chain - by the handle's
@@ -191,6 +197,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_prepare(_library.Handle, &errData);
     if (err != 0)
     {
+      _completionState = CompletionState.Faulted;
       failure = AlpmFailure.Take(_library.Errno, errData, "prepare transaction");
       GC.KeepAlive(_library);
       GC.KeepAlive(this);
@@ -230,10 +237,10 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_add_pkg(_library.Handle, pkg.BackingStruct);
     if (err != 0)
     {
+      _completionState = CompletionState.Faulted;
       failure = NativeCall.Failure(_library.Handle, "add package");
       return false;
     }
-
     failure = null;
     return true;
   }
@@ -273,6 +280,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_add_pkg(_library.Handle, pkg.BackingStruct);
     if (err != 0)
     {
+      _completionState = CompletionState.Faulted;
       view = null;
       failure = NativeCall.Failure(_library.Handle, "add package");
       return false;
@@ -321,6 +329,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_remove_pkg(_library.Handle, pkg.BackingStruct);
     if (err != 0)
     {
+      _completionState = CompletionState.Faulted;
       failure = NativeCall.Failure(_library.Handle, "remove package");
       return false;
     }
@@ -350,10 +359,10 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_sync_sysupgrade(_library.Handle, enableDowngrade ? 1 : 0);
     if (err != 0)
     {
+      _completionState = CompletionState.Faulted;
       failure = NativeCall.Failure(_library.Handle, "compute system upgrade");
       return false;
     }
-
     failure = null;
     return true;
   }
@@ -379,10 +388,10 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_interrupt(_library.Handle);
     if (err != 0)
     {
+      _completionState = CompletionState.Faulted;
       failure = NativeCall.Failure(_library.Handle, "interrupt transaction");
       return false;
     }
-
     failure = null;
     return true;
   }
@@ -415,12 +424,13 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_commit(_library.Handle, &messages);
     if (err != 0)
     {
+      _completionState = CompletionState.Faulted;
       failure = AlpmFailure.Take(_library.Errno, messages, "commit transaction");
       GC.KeepAlive(_library);
       GC.KeepAlive(this);
       return false;
     }
-    // A successful commit rewrites the local database and frees libalpm's in-memory package caches:
+    _completionState = CompletionState.Committed;
     // every view borrowed from the local database now points into freed memory. Retire the local
     // database's token conservatively - libalpm does not tell us which caches it dropped - and let
     // the next GetLocalDatabase() issue a fresh one. Callers that keep package data across a commit
@@ -492,14 +502,14 @@ public class Transaction : IDisposable
   /// Releases the transaction (and its database lock) deterministically.
   /// </summary>
   /// <remarks>
-  /// A failed <c>alpm_trans_release</c> is recorded, not thrown: throwing from a <c>finally</c> or a
-  /// <c>using</c> would replace the caller's own failure with one about teardown. Ask
-  /// <see cref="IsReleased"/> whether the release happened, and <see cref="ReleaseFailure"/> why it
-  /// did not.
+  /// If the transaction committed successfully but releasing it fails, this method throws to prevent
+  /// the application from continuing in a corrupted native transaction state. If an operation failed
+  /// prior to disposal, the release failure is recorded in <see cref="ReleaseFailure"/> without throwing,
+  /// preserving the original exception.
   /// </remarks>
   public void Dispose()
   {
-    if (IsReleased) return;
+    if (IsReleased || ReleaseFailure is not null) return;
 
     GC.SuppressFinalize(this);
 
@@ -523,12 +533,19 @@ public class Transaction : IDisposable
       return;
     }
 
-    // Nothing is thrown, so the outcome is what the caller has to go on. The errno is read here, as
-    // the first thing after the failing call, and only then is the owner kept alive.
+    // If the transaction committed successfully, there is no in-flight exception to mask;
+    // a release failure indicates a corrupted native state and must be thrown.
+    // Otherwise (on fault or in-progress abort), record without throwing per ADR 0008.
     var failure = NativeCall.Failure(_library.Handle, "release transaction");
     GC.KeepAlive(_library);
     GC.KeepAlive(this);
 
-    ReleaseFailure ??= failure.ToException();
+    var ex = failure.ToException();
+    ReleaseFailure ??= ex;
+
+    if (_completionState == CompletionState.Committed)
+    {
+      throw ex;
+    }
   }
 }
