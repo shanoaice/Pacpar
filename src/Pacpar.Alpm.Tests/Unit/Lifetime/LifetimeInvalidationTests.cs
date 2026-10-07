@@ -156,6 +156,12 @@ public sealed class LifetimeInvalidationTests : IDisposable
     Assert.Equal("the ALPM handle", thrown.Target);
     Assert.Equal("Database.Unregister()", thrown.InvalidatedBy);
   }
+  [Fact]
+  public void LocalDatabaseUnregister_ThrowsInvalidOperationException()
+  {
+    var localDb = _environment.Alpm.GetLocalDatabase();
+    Assert.Throws<InvalidOperationException>(() => localDb.Unregister());
+  }
 
   [Fact]
   public void UnregisterAllSyncDatabases_RetiresTheRetainedSyncDatabaseList()

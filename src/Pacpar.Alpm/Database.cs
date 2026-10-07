@@ -41,6 +41,7 @@ public unsafe class Database
   /// </summary>
   internal readonly ChildLifetime Lifetime;
 
+  private readonly bool _isLocal;
   private readonly Action? _onUnregistered;
 
   /// <summary>When this wrapper was created, so <see cref="ThrowIfInvalidated"/> can detect a bump.</summary>
@@ -49,10 +50,12 @@ public unsafe class Database
   /// <param name="backingStruct">The libalpm-owned database.</param>
   /// <param name="lifetime">The database's domain; all accessors and issued views guard on it.</param>
   /// <param name="onUnregistered">Optional callback invoked when the database is unregistered.</param>
-  internal Database(_alpm_db_t* backingStruct, ChildLifetime lifetime, Action? onUnregistered = null)
+  /// <param name="isLocal"><c>true</c> if this is the local database; <c>false</c> for sync databases.</param>
+  internal Database(_alpm_db_t* backingStruct, ChildLifetime lifetime, Action? onUnregistered = null, bool isLocal = false)
   {
     ValidatedPtr = backingStruct;
     Lifetime = lifetime;
+    _isLocal = isLocal;
     _onUnregistered = onUnregistered;
     _stamp = lifetime.Capture();
   }
@@ -81,7 +84,7 @@ public unsafe class Database
     {
       root.ForgetHandle(ptr);
       root.Invalidate("Database.Unregister()");
-    });
+    }, isLocal: false);
   }
 
   /// <summary>
@@ -735,6 +738,12 @@ public unsafe class Database
   /// </summary>
   internal bool TryUnregister([NotNullWhen(false)] out AlpmFailure? failure)
   {
+    if (_isLocal)
+    {
+      throw new InvalidOperationException(
+        "The local database cannot be unregistered. It represents installed packages and is released when the session is disposed.");
+    }
+
     // Both captured before anything is invalidated. ValidatedPtr runs the stamp guard, so it cannot
     // be read again after the Invalidate below - it would throw on its own database. The handle has
     // to come from the same read, because on the failure path the errno read must be the next native

@@ -393,12 +393,12 @@ public class Alpm : IDisposable
   {
     ThrowIfDisposed();
     var databasePtr = NativeMethods.alpm_get_localdb(Handle);
-    _localDatabaseLifetime ??= _lifetime.CreateChild("the local database");
-    return new Database(databasePtr, _localDatabaseLifetime, () =>
+    if (databasePtr is null)
     {
-      _localDatabaseLifetime = null;
-      _lifetime.Invalidate("Database.Unregister()");
-    });
+      throw new InvalidOperationException("The local database is not available on this handle.");
+    }
+    _localDatabaseLifetime ??= _lifetime.CreateChild("the local database");
+    return new Database(databasePtr, _localDatabaseLifetime, isLocal: true);
   }
   /// <summary>
   /// Gets the list of registered sync package databases.
@@ -436,7 +436,7 @@ public class Alpm : IDisposable
     {
       _lifetime.ForgetHandle(dbPtr);
       _lifetime.Invalidate("Database.Unregister()");
-    });
+    }, isLocal: false);
     failure = null;
     return true;
   }
