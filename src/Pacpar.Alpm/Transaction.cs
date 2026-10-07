@@ -87,9 +87,9 @@ public enum TransactionFlags : uint
 
 public class Transaction : IDisposable
 {
-  private bool _released;
-
   private readonly Alpm _library;
+
+  private readonly LifetimeStamp _stamp;
 
   /// <summary>
   /// The transaction's lifetime token, a child of the handle's root token: it is retired both by
@@ -103,6 +103,7 @@ public class Transaction : IDisposable
   private Transaction(Alpm alpmLibrary)
   {
     _library = alpmLibrary;
+    _stamp = alpmLibrary.RootLifetime.Capture();
     Lifetime = alpmLibrary.RootLifetime.CreateChild("the transaction");
   }
 
@@ -125,7 +126,8 @@ public class Transaction : IDisposable
 
   private void ThrowIfDisposed()
   {
-    if (_released) throw new ObjectDisposedException(GetType().FullName);
+    ObjectDisposedException.ThrowIf(IsReleased, this);
+    _stamp.ThrowIfStale();
   }
 
   /// <summary>
@@ -144,7 +146,7 @@ public class Transaction : IDisposable
   /// <c>alpm_release</c> refuses to run while one is initialized.
   /// </para>
   /// </remarks>
-  public bool IsReleased => _released;
+  public bool IsReleased { get; private set; }
 
   /// <summary>
   /// The failure <see cref="Dispose()"/> observed from <c>alpm_trans_release</c>, or <c>null</c>
@@ -162,7 +164,7 @@ public class Transaction : IDisposable
   /// </para>
   /// <para>
   /// This is not written to the consumer's log callback. That callback is an inbound channel from
-  /// libalpm and may never have been registered; teardown is also when it is least safe to call.
+  /// libalpm and may have never been registered; teardown is also when it is the least safe to call.
   /// </para>
   /// </remarks>
   public Exception? ReleaseFailure { get; private set; }
@@ -209,7 +211,7 @@ public class Transaction : IDisposable
   /// as a managed snapshot; the native list is freed at the same moment, with the element destructor
   /// the errno requires.
   /// </remarks>
-  public unsafe void Prepare()
+  public void Prepare()
   {
     if (!TryPrepare(out var failure))
     {
@@ -299,7 +301,7 @@ public class Transaction : IDisposable
   /// <exception cref="ObjectDisposedException">
   /// The package was already released or handed to a transaction.
   /// </exception>
-  public unsafe PackageView AddPackage(LoadedPackage pkg)
+  public PackageView AddPackage(LoadedPackage pkg)
   {
     if (!TryAddPackage(pkg, out var view, out var failure))
     {
@@ -331,7 +333,7 @@ public class Transaction : IDisposable
   /// Marks an installed package to be removed as part of this transaction.
   /// </summary>
   /// <param name="pkg">The package to remove.</param>
-  public unsafe void RemovePackage(PackageView pkg)
+  public void RemovePackage(PackageView pkg)
   {
     if (!TryRemovePackage(pkg, out var failure))
     {
@@ -438,7 +440,7 @@ public class Transaction : IDisposable
   /// of package names, depending on the errno. The native list is freed at the same moment, with the
   /// element destructor that errno requires.
   /// </remarks>
-  public unsafe void Commit()
+  public void Commit()
   {
     if (!TryCommit(out var failure))
     {
@@ -497,14 +499,14 @@ public class Transaction : IDisposable
   /// </remarks>
   public void Dispose()
   {
-    if (_released) return;
+    if (IsReleased) return;
 
     GC.SuppressFinalize(this);
 
     if (_library.Disposed)
     {
       // The session released this transaction on its way out; see IsReleased.
-      _released = true;
+      IsReleased = true;
       return;
     }
 
@@ -516,7 +518,7 @@ public class Transaction : IDisposable
     var err = NativeMethods.alpm_trans_release(_library.Handle);
     if (err == 0)
     {
-      _released = true;
+      IsReleased = true;
       _library.CurrentTransaction = null;
       return;
     }
