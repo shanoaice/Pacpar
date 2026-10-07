@@ -32,7 +32,7 @@ public class Alpm : IDisposable
   private readonly Lock _loadedPackagesLock = new();
 
   private readonly RootLifetime _lifetime;
-  private ChildLifetime? _localDatabase;
+  private ChildLifetime? _localDatabaseLifetime;
 
   private int _disposeStarted;
   private int _disposedFlag;
@@ -393,10 +393,13 @@ public class Alpm : IDisposable
   {
     ThrowIfDisposed();
     var databasePtr = NativeMethods.alpm_get_localdb(Handle);
-    _localDatabase ??= _lifetime.CreateChild("the local database");
-    return new Database(databasePtr, _localDatabase);
+    _localDatabaseLifetime ??= _lifetime.CreateChild("the local database");
+    return new Database(databasePtr, _localDatabaseLifetime, () =>
+    {
+      _localDatabaseLifetime = null;
+      _lifetime.Invalidate("Database.Unregister()");
+    });
   }
-
   /// <summary>
   /// Gets the list of registered sync package databases.
   /// </summary>
@@ -429,7 +432,11 @@ public class Alpm : IDisposable
     }
 
     var token = _lifetime.GetLifetimeTokenForHandle(dbPtr, $"the sync database {treename}");
-    database = new Database(dbPtr, token);
+    database = new Database(dbPtr, token, () =>
+    {
+      _lifetime.ForgetHandle(dbPtr);
+      _lifetime.Invalidate("Database.Unregister()");
+    });
     failure = null;
     return true;
   }
@@ -860,8 +867,8 @@ public class Alpm : IDisposable
   /// </remarks>
   internal void InvalidateLocalDatabase(string reason)
   {
-    _localDatabase?.Invalidate(reason);
-    _localDatabase = null;
+    _localDatabaseLifetime?.Invalidate(reason);
+    _localDatabaseLifetime = null;
   }
 
   internal unsafe void UnregisterLoadedPackage(_alpm_pkg_t* pkg, bool freeNative)
@@ -895,7 +902,7 @@ public class Alpm : IDisposable
     // every child stamp - including the ones for packages we are about to alpm_pkg_free - so no
     // wrapper can pass its check while its memory is on the way out.
     _lifetime.Invalidate("Alpm.Dispose()");
-    _localDatabase = null;
+    _localDatabaseLifetime = null;
 
     // Free any undisposed file-loaded packages from this session
     lock (_loadedPackagesLock)

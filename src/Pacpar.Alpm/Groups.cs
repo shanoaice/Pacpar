@@ -83,7 +83,9 @@ public class Group
     if (sessionDomain is null) return new PackageView((_alpm_pkg_t*)ptr, null);
 
     var db = NativeMethods.alpm_pkg_get_db((_alpm_pkg_t*)ptr);
-    var dbLifetime = db is null ? null : sessionDomain.Root.GetLifetimeTokenForHandle(db, "a group member's database");
+    var dbLifetime = (db != null && sessionDomain is RootLifetime root)
+      ? root.GetLifetimeTokenForHandle(db, "a group member's database")
+      : null;
     return new PackageView((_alpm_pkg_t*)ptr, dbLifetime);
   }
 }

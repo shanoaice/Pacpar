@@ -56,9 +56,6 @@ internal abstract class Lifetime
   /// <summary>Human-readable description of the resource, used in exception messages.</summary>
   internal string Target { get; }
 
-  /// <summary>The root domain: this one, or the session this child belongs to.</summary>
-  internal abstract RootLifetime Root { get; }
-
   /// <summary>Whether this domain is the root domain.</summary>
   internal abstract bool IsRoot { get; }
 
@@ -72,7 +69,7 @@ internal abstract class Lifetime
   /// Whether this domain and its root are still unbumped. Used for diagnostics and tests; wrappers
   /// compare stamps instead, because a stamp is what records <i>when</i> it was taken.
   /// </summary>
-  internal bool IsAlive => _generation == 0 && Root.Generation == 0;
+  internal abstract bool IsAlive { get; }
 
   /// <summary>Creates a child domain: a resource this session can release on its own.</summary>
   internal virtual ChildLifetime CreateChild(string target)
@@ -102,7 +99,9 @@ internal abstract class Lifetime
   // ---- Stamps ----
 
   /// <summary>Captures a stamp that becomes invalid when this domain or its root is invalidated.</summary>
-  internal LifetimeStamp Capture() => new(this);
+  internal LifetimeStamp Capture() => CreateStamp();
+
+  private protected abstract LifetimeStamp CreateStamp();
 }
 
 /// <summary>
@@ -122,9 +121,11 @@ internal sealed class RootLifetime : Lifetime
   {
   }
 
-  internal override RootLifetime Root => this;
-
   internal override bool IsRoot => true;
+
+  internal override bool IsAlive => Generation == 0;
+
+  private protected override LifetimeStamp CreateStamp() => new(this, this);
 
   /// <summary>Creates a child domain: a resource this session can release on its own.</summary>
   internal override ChildLifetime CreateChild(string target) => new(_owner, target, this);
@@ -178,9 +179,11 @@ internal sealed class ChildLifetime : Lifetime
     _root = root ?? throw new ArgumentNullException(nameof(root));
   }
 
-  internal override RootLifetime Root => _root;
-
   internal override bool IsRoot => false;
+
+  internal override bool IsAlive => Generation == 0 && _root.Generation == 0;
+
+  private protected override LifetimeStamp CreateStamp() => new(this, _root);
 }
 
 /// <summary>
@@ -199,11 +202,11 @@ internal readonly struct LifetimeStamp
   private readonly RootLifetime _root;
   private readonly long _rootGeneration;
 
-  internal LifetimeStamp(Lifetime resource)
+  internal LifetimeStamp(Lifetime resource, RootLifetime root)
   {
     _resource = resource ?? throw new ArgumentNullException(nameof(resource));
     _resourceGeneration = resource.Generation;
-    _root = resource.Root;
+    _root = root ?? throw new ArgumentNullException(nameof(root));
     _rootGeneration = _root.Generation;
   }
 

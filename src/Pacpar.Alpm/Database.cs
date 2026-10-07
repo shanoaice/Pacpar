@@ -41,15 +41,19 @@ public unsafe class Database
   /// </summary>
   internal readonly ChildLifetime Lifetime;
 
+  private readonly Action? _onUnregistered;
+
   /// <summary>When this wrapper was created, so <see cref="ThrowIfInvalidated"/> can detect a bump.</summary>
   private LifetimeStamp _stamp;
 
   /// <param name="backingStruct">The libalpm-owned database.</param>
   /// <param name="lifetime">The database's domain; all accessors and issued views guard on it.</param>
-  internal Database(_alpm_db_t* backingStruct, ChildLifetime lifetime)
+  /// <param name="onUnregistered">Optional callback invoked when the database is unregistered.</param>
+  internal Database(_alpm_db_t* backingStruct, ChildLifetime lifetime, Action? onUnregistered = null)
   {
     ValidatedPtr = backingStruct;
     Lifetime = lifetime;
+    _onUnregistered = onUnregistered;
     _stamp = lifetime.Capture();
   }
 
@@ -68,8 +72,16 @@ public unsafe class Database
   internal static Database Factory(void* ptr, Lifetime? lifetime)
   {
     ArgumentNullException.ThrowIfNull(lifetime);
+    if (lifetime is not RootLifetime root)
+    {
+      throw new InvalidOperationException("Sync databases must be enumerated against a root session lifetime domain.");
+    }
     var name = NativeString.FromNative((nint)NativeMethods.alpm_db_get_name((_alpm_db_t*)ptr)) ?? "(unknown)";
-    return new Database((_alpm_db_t*)ptr, lifetime.Root.GetLifetimeTokenForHandle(ptr, $"the sync database {name}"));
+    return new Database((_alpm_db_t*)ptr, root.GetLifetimeTokenForHandle(ptr, $"the sync database {name}"), () =>
+    {
+      root.ForgetHandle(ptr);
+      root.Invalidate("Database.Unregister()");
+    });
   }
 
   /// <summary>
@@ -741,11 +753,7 @@ public unsafe class Database
     }
 
     Lifetime.Invalidate("Database.Unregister()");
-    Lifetime.Root.ForgetHandle(dbPtr);
-    // Removing this database also frees its node in the handle's sync-database list, so a retained
-    // list view - which is stamped with the session, not with the database - has to die as well.
-    // Bumping the root is the conservative way to say "the handle's own lists moved".
-    Lifetime.Root.Invalidate("Database.Unregister()");
+    _onUnregistered?.Invoke();
     failure = null;
     return true;
   }

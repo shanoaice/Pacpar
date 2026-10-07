@@ -27,7 +27,6 @@ public sealed unsafe class LifetimeTests
     Assert.True(domain.IsAlive);
     Assert.True(domain.IsRoot);
     Assert.IsType<RootLifetime>(domain);
-    Assert.Same(domain, domain.Root);
     Assert.Equal(0, domain.Generation);
     Assert.Equal("the ALPM handle", domain.Target);
     Assert.Null(domain.InvalidatedBy);
@@ -45,7 +44,6 @@ public sealed unsafe class LifetimeTests
 
     Assert.False(database.IsRoot);
     Assert.IsType<ChildLifetime>(database);
-    Assert.Same(root, database.Root);
     // The hierarchy is exactly two levels, because a stamp only records those two. Building a third
     // would produce a domain that no stamp covers, so it is refused loudly.
     Assert.Throws<InvalidOperationException>(() => database.CreateChild("a view"));
@@ -156,11 +154,9 @@ public sealed unsafe class LifetimeTests
     // database must share a domain, or invalidating one would leave the other's views alive.
     Assert.Same(first, second);
     Assert.Equal("the sync database core", first.Target);
-    Assert.Same(owner, first.Root);
 
     var other = owner.GetLifetimeTokenForHandle((void*)0x5678, "the sync database extra");
     Assert.NotSame(first, other);
-    Assert.Same(owner, other.Root);
   }
 
   [Fact]
