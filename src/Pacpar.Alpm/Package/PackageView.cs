@@ -15,12 +15,19 @@ public sealed unsafe class PackageView : PackageBase
 {
   /// <param name="backingStruct">The libalpm-owned package. Not dereferenced here.</param>
   /// <param name="lifetime">Domain of the context that owns the package memory, if any.</param>
-  internal PackageView(_alpm_pkg_t* backingStruct, Lifetime? lifetime) : base(backingStruct)
+  internal PackageView(_alpm_pkg_t* backingStruct, ChildLifetime? lifetime) : base(backingStruct)
   {
     Lifetime = lifetime?.Capture();
   }
 
-  internal static PackageView Factory(void* ptr, Lifetime? lifetime) => new((_alpm_pkg_t*)ptr, lifetime);
+  internal static PackageView Factory(void* ptr, Lifetime? lifetime)
+  {
+    if (lifetime is RootLifetime)
+    {
+      throw new InvalidOperationException("PackageView cannot be anchored directly to a root lifetime domain; a child domain is required.");
+    }
+    return new((_alpm_pkg_t*)ptr, (ChildLifetime?)lifetime);
+  }
 
   /// <summary>
   /// Finds a package satisfying the specified dependency in a collection of packages.

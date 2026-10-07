@@ -39,14 +39,14 @@ public unsafe class Database
   /// pointer registry (sync databases) or held by a dedicated <see cref="Alpm"/> field (the local
   /// database, which <c>alpm_unregister_all_syncdbs</c> never releases).
   /// </summary>
-  internal readonly Lifetime Lifetime;
+  internal readonly ChildLifetime Lifetime;
 
   /// <summary>When this wrapper was created, so <see cref="ThrowIfInvalidated"/> can detect a bump.</summary>
   private LifetimeStamp _stamp;
 
   /// <param name="backingStruct">The libalpm-owned database.</param>
   /// <param name="lifetime">The database's domain; all accessors and issued views guard on it.</param>
-  internal Database(_alpm_db_t* backingStruct, Lifetime lifetime)
+  internal Database(_alpm_db_t* backingStruct, ChildLifetime lifetime)
   {
     ValidatedPtr = backingStruct;
     Lifetime = lifetime;
@@ -69,7 +69,7 @@ public unsafe class Database
   {
     ArgumentNullException.ThrowIfNull(lifetime);
     var name = NativeString.FromNative((nint)NativeMethods.alpm_db_get_name((_alpm_db_t*)ptr)) ?? "(unknown)";
-    return new Database((_alpm_db_t*)ptr, lifetime.GetLifetimeTokenForHandle(ptr, $"the sync database {name}"));
+    return new Database((_alpm_db_t*)ptr, lifetime.Root.GetLifetimeTokenForHandle(ptr, $"the sync database {name}"));
   }
 
   /// <summary>
@@ -78,7 +78,7 @@ public unsafe class Database
   /// </summary>
   /// <remarks>
   /// <para>
-  /// Use this instead of <see cref="Lifetime.GetLifetimeTokenForHandle"/> whenever libalpm hands back
+  /// Use this instead of <see cref="RootLifetime.GetLifetimeTokenForHandle"/> whenever libalpm hands back
   /// a package the caller's own databases own. The registry deduplicates by native pointer, but it
   /// only covers databases that were registered through it: <see cref="Alpm.GetLocalDatabase"/>
   /// mints its domain directly and never files an entry, so a registry lookup with the local
@@ -99,7 +99,7 @@ public unsafe class Database
   /// view under a freshly minted domain would hide it, and issuing it with none would leave it
   /// unanchored.
   /// </exception>
-  internal static Lifetime ResolveLifetime(IReadOnlyList<Database> databases, _alpm_db_t* dbPtr)
+  internal static ChildLifetime ResolveLifetime(IReadOnlyList<Database> databases, _alpm_db_t* dbPtr)
   {
     foreach (var database in databases)
     {

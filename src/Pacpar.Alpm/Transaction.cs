@@ -98,7 +98,7 @@ public class Transaction : IDisposable
   /// return value and the elements of <see cref="GetAddedPackages"/>/<see cref="GetRemovedPackages"/>)
   /// carries it.
   /// </summary>
-  internal readonly Lifetime Lifetime;
+  internal readonly ChildLifetime Lifetime;
 
   private Transaction(Alpm alpmLibrary)
   {

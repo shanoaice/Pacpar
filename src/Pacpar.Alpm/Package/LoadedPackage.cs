@@ -31,10 +31,10 @@ namespace Pacpar.Alpm;
 public sealed unsafe class LoadedPackage : PackageBase, IDisposable
 {
   private readonly Alpm _alpm;
-  private readonly Lifetime _lifetime;
+  private readonly ChildLifetime _lifetime;
   private nint _rawPackage;
 
-  internal LoadedPackage(Alpm alpm, _alpm_pkg_t* backingStruct, Lifetime lifetime) : base(backingStruct)
+  internal LoadedPackage(Alpm alpm, _alpm_pkg_t* backingStruct, ChildLifetime lifetime) : base(backingStruct)
   {
     _alpm = alpm ?? throw new ArgumentNullException(nameof(alpm));
     _rawPackage = (nint)backingStruct;

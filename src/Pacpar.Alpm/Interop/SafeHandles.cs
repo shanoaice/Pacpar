@@ -17,7 +17,7 @@ internal sealed unsafe class SafeAlpmHandle : SafeHandleZeroOrMinusOneIsInvalid
   // reference, and with it the callback context, which the weak-GCHandle design deliberately keeps
   // collectable. A weak reference is enough: a live view holds its domain strongly, so the target is
   // still there exactly when there is something to invalidate. When it is gone, no view can exist.
-  private WeakReference<Lifetime>? _domain;
+  private WeakReference<RootLifetime>? _domain;
 
   internal SafeAlpmHandle() : base(ownsHandle: true)
   {
@@ -29,7 +29,7 @@ internal sealed unsafe class SafeAlpmHandle : SafeHandleZeroOrMinusOneIsInvalid
   }
 
   /// <summary>Attaches the session's root domain so <see cref="ReleaseHandle"/> can retire its stamps.</summary>
-  internal void OwnDomain(Lifetime domain) => _domain = new WeakReference<Lifetime>(domain);
+  internal void OwnDomain(RootLifetime domain) => _domain = new WeakReference<RootLifetime>(domain);
 
   /// <summary>
   /// Whether the native <c>alpm_release</c> invocation succeeded (returned 0).

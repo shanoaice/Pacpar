@@ -31,9 +31,9 @@ public class AlpmOptions
   // The ALPM handle's root lifetime token. The option collections are thin, per-access views over
   // libalpm's handle state: they carry the root token so every native call they make is guarded,
   // and the lists they hand out retire together with the handle.
-  private readonly Lifetime _lifetime;
+  private readonly RootLifetime _lifetime;
 
-  internal AlpmOptions(SafeAlpmHandle handle, Lifetime lifetime)
+  internal AlpmOptions(SafeAlpmHandle handle, RootLifetime lifetime)
   {
     _handle = handle;
     _lifetime = lifetime;

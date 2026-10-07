@@ -31,8 +31,8 @@ public class Alpm : IDisposable
   private readonly List<nint> _loadedPackages = [];
   private readonly Lock _loadedPackagesLock = new();
 
-  private readonly Lifetime _lifetime;
-  private Lifetime? _localDatabase;
+  private readonly RootLifetime _lifetime;
+  private ChildLifetime? _localDatabase;
 
   private int _disposeStarted;
   private int _disposedFlag;
@@ -40,7 +40,7 @@ public class Alpm : IDisposable
   private Alpm(SafeAlpmHandle handle)
   {
     _handle = handle;
-    _lifetime = Lifetime.CreateRoot(this, "the ALPM handle");
+    _lifetime = RootLifetime.Create(this, "the ALPM handle");
     _handle.OwnDomain(_lifetime);
     Options = new AlpmOptions(_handle, _lifetime);
     BindingConfig = new AlpmBindingConfig();
@@ -192,7 +192,7 @@ public class Alpm : IDisposable
   /// sync-database handle registry all hang off it, and a successful <see cref="Dispose()"/>
   /// retires every wrapper and view issued from this handle in one step.
   /// </summary>
-  internal Lifetime RootLifetime => _lifetime;
+  internal RootLifetime RootLifetime => _lifetime;
 
   /// <summary>
   /// The safe handle that owns this instance's libalpm context.

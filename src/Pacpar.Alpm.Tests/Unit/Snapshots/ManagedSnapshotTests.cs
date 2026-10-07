@@ -235,8 +235,9 @@ public sealed unsafe class ManagedSnapshotTests
       native.packages = members;
 
       // Group's ctor dereferences the native struct and enumerates the member list under the
-      // staleness guard, so it needs a live token - unlike the pure snapshot types above.
-      var lifetime = Lifetime.CreateRoot(new object(), "a test handle");
+      // staleness guard, so it needs a live child database token - unlike the pure snapshot types above.
+      var root = Lifetime.CreateRoot(new object(), "a test handle");
+      var lifetime = root.CreateChild("a test database");
 
       var group = Group.Factory(&native, lifetime);
 
@@ -271,9 +272,9 @@ public sealed unsafe class ManagedSnapshotTests
       native->type_ = _alpm_event_type_t.ALPM_EVENT_SCRIPTLET_INFO;
       native->scriptlet_info.line = line;
 
-      // FromUnion takes the handle's root token, which any package views in the payload are
-      // snapshotted against; this branch carries none.
-      var payload = AlpmEvent.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
+      // FromUnion takes the callback frame token, which any package views in the payload are
+      // anchored to; this branch carries none.
+      var payload = AlpmEvent.FromUnion(native, null);
 
       // Exactly what libalpm does to the union as soon as the callback returns.
       *native = default;
@@ -302,7 +303,7 @@ public sealed unsafe class ManagedSnapshotTests
       native->hook_run.position = 2;
       native->hook_run.total = 5;
 
-      var payload = AlpmEvent.FromUnion(native, Lifetime.CreateRoot(new object(), "a test handle"));
+      var payload = AlpmEvent.FromUnion(native, null);
 
       *native = default;
 

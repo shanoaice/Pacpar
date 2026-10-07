@@ -20,13 +20,20 @@ public class Group
   /// <param name="lifetime">
   /// Token of the database owning the group and its member packages; forwarded to the members.
   /// </param>
-  internal unsafe Group(_alpm_group_t* backingStruct, Lifetime? lifetime)
+  internal unsafe Group(_alpm_group_t* backingStruct, ChildLifetime? lifetime)
   {
     Name = NativeString.FromNative((nint)backingStruct->name)!;
     Packages = [.. AlpmList<PackageView>.Borrow(backingStruct->packages, &PackageView.Factory, lifetime)];
   }
 
-  internal static unsafe Group Factory(void* ptr, Lifetime? lifetime) => new((_alpm_group_t*)ptr, lifetime);
+  internal static unsafe Group Factory(void* ptr, Lifetime? lifetime)
+  {
+    if (lifetime is RootLifetime)
+    {
+      throw new InvalidOperationException("Group member packages cannot be anchored directly to a root lifetime domain; a child database domain is required.");
+    }
+    return new((_alpm_group_t*)ptr, (ChildLifetime?)lifetime);
+  }
 
   // ReSharper disable once MemberCanBePrivate.Global
   public string Name { get; }
@@ -76,7 +83,7 @@ public class Group
     if (sessionDomain is null) return new PackageView((_alpm_pkg_t*)ptr, null);
 
     var db = NativeMethods.alpm_pkg_get_db((_alpm_pkg_t*)ptr);
-    return new PackageView((_alpm_pkg_t*)ptr,
-      db is null ? sessionDomain : sessionDomain.Root.GetLifetimeTokenForHandle(db, "a group member's database"));
+    var dbLifetime = db is null ? null : sessionDomain.Root.GetLifetimeTokenForHandle(db, "a group member's database");
+    return new PackageView((_alpm_pkg_t*)ptr, dbLifetime);
   }
 }

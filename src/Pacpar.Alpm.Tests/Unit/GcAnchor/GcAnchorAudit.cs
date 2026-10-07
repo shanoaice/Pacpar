@@ -655,7 +655,9 @@ internal static class GcAnchorAudit
     constructedType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
       .Any(c => c.GetParameters().Any(p =>
         typeof(SafeHandle).IsAssignableFrom(p.ParameterType)
-        || p.ParameterType.Name.StartsWith("Lifetime", StringComparison.Ordinal)));
+        || typeof(Lifetime).IsAssignableFrom(p.ParameterType)
+        || p.ParameterType.Name.StartsWith("Lifetime", StringComparison.Ordinal)
+        || p.ParameterType.Name.EndsWith("Lifetime", StringComparison.Ordinal)));
 
   private static IEnumerable<string> InstanceFieldNames(Type type)
   {
@@ -706,7 +708,9 @@ internal static class GcAnchorAudit
       foreach (var f in cur.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
       {
         if (typeof(SafeHandle).IsAssignableFrom(f.FieldType)) hasSafeHandle = true;
-        if (f.FieldType.Name.StartsWith("Lifetime", StringComparison.Ordinal))
+        if (typeof(Lifetime).IsAssignableFrom(f.FieldType)
+            || f.FieldType.Name.StartsWith("Lifetime", StringComparison.Ordinal)
+            || f.FieldType.Name.EndsWith("Lifetime", StringComparison.Ordinal))
         {
           if (IsNrtNullable(f)) hasNullableToken = true;
           else hasRootedToken = true;

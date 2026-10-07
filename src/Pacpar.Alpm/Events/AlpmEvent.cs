@@ -24,13 +24,14 @@ public enum PackageOperation : uint
 /// An event reported by libalpm to an event callback handler (<c>alpm_event_t</c>).
 /// </summary>
 /// <remarks>
-/// Event payloads are copied into managed snapshot objects during the callback execution so that
-/// they remain safe to read after the callback returns.
+/// Event payloads carrying package views are borrowed references valid only for the duration of the
+/// callback execution frame. Callers wishing to retain package data after the callback returns must
+/// call <see cref="PackageBase.ToSnapshot"/> to create an independent managed snapshot.
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class AlpmEvent
 {
-  internal static unsafe AlpmEvent FromUnion(_alpm_event_t* backingStruct, Lifetime? lifetime)
+  internal static unsafe AlpmEvent FromUnion(_alpm_event_t* backingStruct, ChildLifetime? lifetime)
   {
     return backingStruct->type_ switch
     {
@@ -108,7 +109,7 @@ public abstract class AlpmEvent
   /// <summary>Triggered when a package operation (install, upgrade, downgrade, or remove) begins.</summary>
   public class PackageOperationStart : AlpmEvent
   {
-    internal unsafe PackageOperationStart(_alpm_event_t* native, Lifetime? lifetime)
+    internal unsafe PackageOperationStart(_alpm_event_t* native, ChildLifetime? lifetime)
     {
       var newpkg = native->package_operation.newpkg;
       var oldpkg = native->package_operation.oldpkg;
@@ -128,7 +129,7 @@ public abstract class AlpmEvent
   /// <summary>Triggered when a package operation completes.</summary>
   public class PackageOperationDone : AlpmEvent
   {
-    internal unsafe PackageOperationDone(_alpm_event_t* native, Lifetime? lifetime)
+    internal unsafe PackageOperationDone(_alpm_event_t* native, ChildLifetime? lifetime)
     {
       var newpkg = native->package_operation.newpkg;
       var oldpkg = native->package_operation.oldpkg;
@@ -187,7 +188,7 @@ public abstract class AlpmEvent
   /// <summary>Triggered when an optional dependency is being removed.</summary>
   public class OptionalDependencyRemoval : AlpmEvent
   {
-    internal unsafe OptionalDependencyRemoval(_alpm_event_t* native, Lifetime? lifetime)
+    internal unsafe OptionalDependencyRemoval(_alpm_event_t* native, ChildLifetime? lifetime)
     {
       OptionalDependency = new Depend(native->optdep_removal.optdep);
       Package = new PackageView(native->optdep_removal.pkg, lifetime);
@@ -226,7 +227,7 @@ public abstract class AlpmEvent
   /// <summary>Triggered when a .pacnew configuration file is created during package extraction.</summary>
   public class PacnewCreated : AlpmEvent
   {
-    internal unsafe PacnewCreated(_alpm_event_t* native, Lifetime? lifetime)
+    internal unsafe PacnewCreated(_alpm_event_t* native, ChildLifetime? lifetime)
     {
       var oldpkg = native->pacnew_created.oldpkg;
       var newpkg = native->pacnew_created.newpkg;
@@ -249,7 +250,7 @@ public abstract class AlpmEvent
   /// <summary>Triggered when a .pacsave backup file is created during package removal.</summary>
   public class PacsaveCreated : AlpmEvent
   {
-    internal unsafe PacsaveCreated(_alpm_event_t* native, Lifetime? lifetime)
+    internal unsafe PacsaveCreated(_alpm_event_t* native, ChildLifetime? lifetime)
     {
       var oldpkg = native->pacsave_created.oldpkg;
       OldPackage = oldpkg == null ? null : new PackageView(oldpkg, lifetime);

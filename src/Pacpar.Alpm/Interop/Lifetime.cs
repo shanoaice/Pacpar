@@ -9,10 +9,10 @@ namespace Pacpar.Alpm;
 /// <remarks>
 /// One domain exists per object that can release native memory on its own:
 /// <list type="bullet">
-/// <item><description>the session, as the root domain (its <see cref="Alpm"/> handle owns everything
+/// <item><description>the session, as the root domain (<see cref="RootLifetime"/>, its <see cref="Alpm"/> handle owns everything
 /// beneath it);</description></item>
-/// <item><description>each sync database, the local database, and each transaction, as child domains
-/// of that session;</description></item>
+/// <item><description>each sync database, the local database, each transaction, and callback execution frames, as child domains
+/// (<see cref="ChildLifetime"/>) of that session;</description></item>
 /// <item><description>each file-loaded package, as a child of the session that loaded it - the
 /// session owns it until a hand-over or <see cref="Alpm.Dispose()"/> releases it.</description></item>
 /// </list>
@@ -30,67 +30,37 @@ namespace Pacpar.Alpm;
 /// </para>
 /// <para>
 /// The hierarchy is exactly two levels deep, which is what libalpm itself offers: a view's validity
-/// depends on its own resource (a database, a transaction, or a loaded package) and on the session
+/// depends on its own resource (a database, a transaction, a loaded package, or a callback frame) and on the session
 /// at the root. Nothing below a package can be released independently of that package.
 /// </para>
 /// </remarks>
-internal sealed class Lifetime
+internal abstract class Lifetime
 {
-  // The root domain. Null on a root; set on a child. The link exists so a stamp can hold both levels
-  // and check them with two comparisons instead of walking a chain.
-  private readonly Lifetime? _root;
-
   // Directly anchors the owner (Alpm or LoadedPackage): one hop from any stamp, so a live view keeps
   // the owner out of the finalizer queue.
-  private readonly object _owner;
+  private protected readonly object _owner;
 
   private long _generation;
   private int _reported;
   private string? _invalidatedBy;
 
-  // Native pointer -> child domain registry, used by root domains only. It deduplicates domains per
-  // native database pointer: two wrappers for the same _alpm_db_t* must share one domain, or
-  // invalidating one would leave the other's views alive.
-  //
-  // Unsynchronized, and that is deliberate rather than an oversight. Nothing here is reachable from a
-  // finalizer thread: the only finalizer in the library is SafeAlpmHandle, and its ReleaseHandle
-  // calls Invalidate - which touches the counter, never this dictionary. Everything else that
-  // touches it (GetLifetimeTokenForHandle, ForgetHandle, InvalidateHandles) is reached only from a
-  // libalpm-interacting call, and those belong to one thread by the contract stated on Alpm.
-  //
-  // A lock would not buy safety. Under concurrent use the first thing to break is libalpm's own
-  // state - the handle, its database list - which no lock here can protect. Guarding the dictionary
-  // while alpm_db_unregister ran unguarded would turn corruption into a crash and change nothing
-  // else, so the invariant is documented instead of enforced: one session, one thread.
-  private Dictionary<nint, Lifetime>? _handles;
-
-  /// <summary>Creates the root domain for <paramref name="owner"/>, held strongly to anchor it.</summary>
-  internal static Lifetime CreateRoot(object owner, string target) => new(owner, target, null);
-
-  private Lifetime(object owner, string target, Lifetime? root)
+  private protected Lifetime(object owner, string target)
   {
     _owner = owner ?? throw new ArgumentNullException(nameof(owner));
-    _root = root;
     Target = target;
   }
 
-  /// <summary>Creates a child domain: a resource this session can release on its own.</summary>
-  /// <remarks>
-  /// Only a root may create children. A stamp records two levels - the resource and the session - so a
-  /// grandchild domain would not be covered by any stamp taken from its parent. libalpm's ownership
-  /// never needs one: every independently releasable resource hangs directly off the handle.
-  /// </remarks>
-  internal Lifetime CreateChild(string target)
-    => _root is null
-      ? new Lifetime(_owner, target, this)
-      : throw new InvalidOperationException(
-        $"'{Target}' is not a root domain; the lifetime hierarchy is exactly two levels deep.");
+  /// <summary>Creates the root domain for <paramref name="owner"/>, held strongly to anchor it.</summary>
+  internal static RootLifetime CreateRoot(object owner, string target) => RootLifetime.Create(owner, target);
 
   /// <summary>Human-readable description of the resource, used in exception messages.</summary>
   internal string Target { get; }
 
   /// <summary>The root domain: this one, or the session this child belongs to.</summary>
-  internal Lifetime Root => _root ?? this;
+  internal abstract RootLifetime Root { get; }
+
+  /// <summary>Whether this domain is the root domain.</summary>
+  internal abstract bool IsRoot { get; }
 
   /// <summary>The first reason passed to <see cref="Invalidate"/>, or <c>null</c> while untouched.</summary>
   internal string? InvalidatedBy => Volatile.Read(ref _invalidatedBy);
@@ -102,7 +72,12 @@ internal sealed class Lifetime
   /// Whether this domain and its root are still unbumped. Used for diagnostics and tests; wrappers
   /// compare stamps instead, because a stamp is what records <i>when</i> it was taken.
   /// </summary>
-  internal bool IsAlive => _generation == 0 && Root._generation == 0;
+  internal bool IsAlive => _generation == 0 && Root.Generation == 0;
+
+  /// <summary>Creates a child domain: a resource this session can release on its own.</summary>
+  internal virtual ChildLifetime CreateChild(string target)
+    => throw new InvalidOperationException(
+      $"'{Target}' is not a root domain; the lifetime hierarchy is exactly two levels deep.");
 
   /// <summary>
   /// Retires every stamp taken from this domain. The first reason wins; later calls only bump.
@@ -128,6 +103,31 @@ internal sealed class Lifetime
 
   /// <summary>Captures a stamp that becomes invalid when this domain or its root is invalidated.</summary>
   internal LifetimeStamp Capture() => new(this);
+}
+
+/// <summary>
+/// A root lifetime domain: belongs to the session (<see cref="Alpm"/>). Only a root domain can create
+/// child domains or manage handle-registered domains.
+/// </summary>
+internal sealed class RootLifetime : Lifetime
+{
+  // Native pointer -> child domain registry, used by root domains only. It deduplicates domains per
+  // native database pointer: two wrappers for the same _alpm_db_t* must share one domain, or
+  // invalidating one would leave the other's views alive.
+  private Dictionary<nint, ChildLifetime>? _handles;
+
+  internal static RootLifetime Create(object owner, string target) => new(owner, target);
+
+  private RootLifetime(object owner, string target) : base(owner, target)
+  {
+  }
+
+  internal override RootLifetime Root => this;
+
+  internal override bool IsRoot => true;
+
+  /// <summary>Creates a child domain: a resource this session can release on its own.</summary>
+  internal override ChildLifetime CreateChild(string target) => new(_owner, target, this);
 
   // ---- Handle Registry (native pointer deduplication) ----
 
@@ -136,7 +136,7 @@ internal sealed class Lifetime
   /// wrapper for the same native pointer shares one domain and one invalidation retires them all.
   /// </summary>
   /// <remarks>Must run on the session's thread; see the note on the registry field.</remarks>
-  internal unsafe Lifetime GetLifetimeTokenForHandle(void* handle, string target)
+  internal unsafe ChildLifetime GetLifetimeTokenForHandle(void* handle, string target)
   {
     _handles ??= [];
     var key = (nint)handle;
@@ -158,18 +158,29 @@ internal sealed class Lifetime
   /// Retires every registered child domain and clears the registry, for the call that releases all of
   /// them at once (<c>alpm_unregister_all_syncdbs</c>).
   /// </summary>
-  /// <remarks>
-  /// This bumps <i>this</i> domain as well: the sync-database list lives on the handle, so the list
-  /// view has to die with its entries. A finalizer never calls this - it enumerates the registry -
-  /// and does not need to: <see cref="Invalidate"/> on the root already retires every child stamp
-  /// through the root comparison.
-  /// </remarks>
-  /// <remarks>Must run on the session's thread; see the note on the registry field.</remarks>
   internal void InvalidateHandles(string invalidatedBy)
   {
     Invalidate(invalidatedBy);
     _handles?.Clear();
   }
+}
+
+/// <summary>
+/// A child lifetime domain: belongs to one database, transaction, loaded package, or callback frame.
+/// Cannot create further child domains (the lifetime hierarchy is exactly two levels deep).
+/// </summary>
+internal sealed class ChildLifetime : Lifetime
+{
+  private readonly RootLifetime _root;
+
+  internal ChildLifetime(object owner, string target, RootLifetime root) : base(owner, target)
+  {
+    _root = root ?? throw new ArgumentNullException(nameof(root));
+  }
+
+  internal override RootLifetime Root => _root;
+
+  internal override bool IsRoot => false;
 }
 
 /// <summary>
@@ -185,7 +196,7 @@ internal readonly struct LifetimeStamp
 {
   private readonly Lifetime _resource;
   private readonly long _resourceGeneration;
-  private readonly Lifetime _root;
+  private readonly RootLifetime _root;
   private readonly long _rootGeneration;
 
   internal LifetimeStamp(Lifetime resource)

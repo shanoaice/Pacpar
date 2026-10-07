@@ -112,7 +112,7 @@ public sealed class Callback
   private bool _detached;
 
   // The ALPM handle's root lifetime token
-  private readonly Lifetime _rootLifetime;
+  private readonly RootLifetime _rootLifetime;
 
   // The handle's binding policy; the payload factories read it while a callback runs.
   private readonly AlpmBindingConfig _binding;
@@ -289,7 +289,7 @@ public sealed class Callback
     }
   }
 
-  internal Callback(SafeAlpmHandle alpmHandle, Lifetime lifetime, AlpmBindingConfig binding)
+  internal Callback(SafeAlpmHandle alpmHandle, RootLifetime lifetime, AlpmBindingConfig binding)
   {
     _handle = alpmHandle;
     _rootLifetime = lifetime;
