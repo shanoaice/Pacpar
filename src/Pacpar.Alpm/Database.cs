@@ -377,11 +377,13 @@ public unsafe class Database
   /// </summary>
   internal bool TryGetUsage(out DatabaseUsage usage, [NotNullWhen(false)] out AlpmFailure? failure)
   {
+    // capture the handle to prevent RawHandle accessor sabotaging errno
+    var handlePtr = RawHandle;
     int rawUsage;
     var err = NativeMethods.alpm_db_get_usage(ValidatedPtr, &rawUsage);
     if (err != 0)
     {
-      var rawErrno = (int)NativeMethods.alpm_errno(RawHandle);
+      var rawErrno = (int)NativeMethods.alpm_errno(handlePtr);
       GC.KeepAlive(this);
       usage = default;
       failure = NativeCall.Failure(rawErrno, "get database usage");
@@ -398,10 +400,12 @@ public unsafe class Database
   /// </summary>
   internal bool TrySetUsage(DatabaseUsage usage, [NotNullWhen(false)] out AlpmFailure? failure)
   {
+    // capture the handle to prevent RawHandle accessor sabotaging errno
+    var handlePtr = RawHandle;
     var err = NativeMethods.alpm_db_set_usage(ValidatedPtr, (int)usage);
     if (err != 0)
     {
-      var rawErrno = (int)NativeMethods.alpm_errno(RawHandle);
+      var rawErrno = (int)NativeMethods.alpm_errno(handlePtr);
       GC.KeepAlive(this);
       failure = NativeCall.Failure(rawErrno, "set database usage");
       return false;
