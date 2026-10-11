@@ -23,6 +23,7 @@ public class Alpm : IDisposable
 {
   // opaque handle to libalpm wrapped in a SafeHandle
   private readonly SafeAlpmHandle _handle;
+
   // Registry tracking file-loaded packages for session-scoped cleanup. The lock is defensive rather
   // than a promise: this list belongs to the session's thread like everything else (see the class
   // remarks), and under concurrent use libalpm's own state would break first. It is cheap - the
@@ -52,6 +53,7 @@ public class Alpm : IDisposable
     {
       throw failure.ToException("Failed to initialize libalpm.");
     }
+
     return handle;
   }
 
@@ -145,12 +147,26 @@ public class Alpm : IDisposable
   /// <summary>
   /// Exposes properties to set libalpm options.
   /// </summary>
-  public AlpmOptions Options { get; }
+  public AlpmOptions Options
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return field;
+    }
+  }
 
   /// <summary>
   /// Exposes properties to configure libalpm callbacks on demand.
   /// </summary>
-  public Callback Callback { get; }
+  public Callback Callback
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return field;
+    }
+  }
 
   /// <summary>
   /// The transaction currently initialized on this handle, or <c>null</c> when there is none.
@@ -166,7 +182,15 @@ public class Alpm : IDisposable
   /// <c>db.lck</c>.
   /// </para>
   /// </remarks>
-  public Transaction? CurrentTransaction { get; internal set; }
+  public Transaction? CurrentTransaction
+  {
+    get
+    {
+      ThrowIfDisposed();
+      return field;
+    }
+    internal set;
+  }
 
   /// <summary>
   /// Whether the handle is fully released. Published with a volatile write at the end of teardown
@@ -307,6 +331,7 @@ public class Alpm : IDisposable
     {
       throw failure.ToException();
     }
+
     return package;
   }
 
@@ -366,6 +391,7 @@ public class Alpm : IDisposable
     {
       throw failure.ToException();
     }
+
     return transaction;
   }
 
@@ -385,9 +411,11 @@ public class Alpm : IDisposable
     {
       throw new InvalidOperationException("The local database is not available on this handle.");
     }
+
     _localDatabaseLifetime ??= _lifetime.CreateChild("the local database");
     return new Database(databasePtr, _localDatabaseLifetime, isLocal: true);
   }
+
   /// <summary>
   /// Gets the list of registered sync package databases.
   /// </summary>
@@ -446,6 +474,7 @@ public class Alpm : IDisposable
     {
       throw failure.ToException();
     }
+
     return database;
   }
 
@@ -531,6 +560,7 @@ public class Alpm : IDisposable
     {
       throw failure.ToException();
     }
+
     return updated;
   }
 
@@ -655,6 +685,7 @@ public class Alpm : IDisposable
         {
           AlpmNativeList.Free(fetchedList, &MemoryManagement.CFreeExtern);
         }
+
         fetchedUrls = null;
         failure = NativeCall.Failure(Handle, "fetch package URLs");
         return false;
@@ -708,6 +739,7 @@ public class Alpm : IDisposable
       {
         remList = AlpmNativeList.BuildPointerList(remove.Select(p => (nint)p.BackingStruct));
       }
+
       if (upgrade is not null)
       {
         upgList = AlpmNativeList.BuildPointerList(upgrade.Select(p => (nint)p.BackingStruct));
@@ -742,6 +774,7 @@ public class Alpm : IDisposable
     {
       throw failure.ToException();
     }
+
     return missing;
   }
 
@@ -783,6 +816,7 @@ public class Alpm : IDisposable
     {
       throw failure.ToException();
     }
+
     return conflicts;
   }
 
@@ -839,6 +873,7 @@ public class Alpm : IDisposable
     {
       throw failure.ToException();
     }
+
     return satisfier;
   }
 
@@ -899,6 +934,7 @@ public class Alpm : IDisposable
       {
         NativeMethods.alpm_pkg_free((_alpm_pkg_t*)ptr);
       }
+
       _loadedPackages.Clear();
     }
 
