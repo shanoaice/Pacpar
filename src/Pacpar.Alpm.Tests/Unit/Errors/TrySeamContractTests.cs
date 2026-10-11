@@ -278,4 +278,19 @@ public sealed class TrySeamContractTests : IDisposable
     Assert.NotNull(failure);
     Assert.Equal(AlpmFailureCode.WrongArguments, failure.Code);
   }
+
+  [Fact]
+  public void TryCheckMd5Sum_NonSyncPackage_FailsWithWrongArguments()
+  {
+    var path = PackageArchive.Create(_packageDirectory, "audit-checkmd5-pkg");
+    var loaded = _environment.Alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+
+    var ok = loaded.TryCheckMd5Sum(out var matches, out var failure);
+
+    Assert.False(ok);
+    Assert.False(matches);
+    Assert.NotNull(failure);
+    Assert.Equal(AlpmFailureCode.WrongArguments, failure.Code);
+    Assert.ThrowsAny<AlpmException>(() => loaded.CheckMd5Sum());
+  }
 }

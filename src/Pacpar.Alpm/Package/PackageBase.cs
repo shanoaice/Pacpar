@@ -120,13 +120,65 @@ public abstract unsafe class PackageBase
   }
 
   /// <summary>
+  /// The failure-returning seam for <see cref="CheckMd5Sum"/>.
+  /// </summary>
+  /// <param name="matches">
+  /// When this method returns <c>true</c>, indicates whether the package archive's MD5 checksum
+  /// matches the expected database entry (<c>true</c>) or is corrupted (<c>false</c>).
+  /// </param>
+  /// <param name="failure">
+  /// The operational error when this method returns <c>false</c>; otherwise <c>null</c>.
+  /// </param>
+  /// <returns>
+  /// <c>true</c> if the integrity check ran to completion;
+  /// <c>false</c> if an operational failure prevented the check from running.
+  /// </returns>
+  internal bool TryCheckMd5Sum(out bool matches, [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    var pkgPtr = BackingStruct;
+    var handlePtr = LibraryHandle;
+
+    var ret = NativeMethods.alpm_pkg_checkmd5sum(pkgPtr);
+    if (ret == 0)
+    {
+      GC.KeepAlive(this);
+      matches = true;
+      failure = null;
+      return true;
+    }
+
+    var rawErrno = (int)NativeMethods.alpm_errno(handlePtr);
+    GC.KeepAlive(this);
+
+    if (rawErrno == (int)_alpm_errno_t.ALPM_ERR_PKG_INVALID ||
+        rawErrno == (int)_alpm_errno_t.ALPM_ERR_PKG_INVALID_CHECKSUM)
+    {
+      matches = false;
+      failure = null;
+      return true;
+    }
+
+    matches = false;
+    failure = NativeCall.Failure(rawErrno, "check md5 sum");
+    return false;
+  }
+
+  /// <summary>
   /// Checks whether the package's MD5 checksum matches the expected value.
   /// </summary>
+  /// <returns>
+  /// <c>true</c> if the checksum matches; <c>false</c> if the package archive is corrupted.
+  /// </returns>
+  /// <exception cref="AlpmException">
+  /// An operational error occurred while checking the checksum (for example, the package did not originate from a sync database).
+  /// </exception>
   public bool CheckMd5Sum()
   {
-    var ok = NativeMethods.alpm_pkg_checkmd5sum(BackingStruct) == 0;
-    GC.KeepAlive(this);
-    return ok;
+    if (!TryCheckMd5Sum(out var matches, out var failure))
+    {
+      throw failure.ToException();
+    }
+    return matches;
   }
 
   /// <summary>
