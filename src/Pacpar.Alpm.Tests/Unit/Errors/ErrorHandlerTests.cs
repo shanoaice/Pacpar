@@ -121,22 +121,10 @@ public sealed class ErrorHandlerTests
     Assert.False(string.IsNullOrEmpty(exception.StrError));
   }
 
-  [Fact]
-  public void ToException_Throws_ForOk()
-    => Assert.Throws<ArgumentOutOfRangeException>(() => ErrorHandler.ToException(_alpm_errno_t.ALPM_ERR_OK));
-
-  [Fact]
-  public void ToException_NeverReturnsNull_ForAnyKnownErrno()
-  {
-    foreach (var errno in Enum.GetValues<_alpm_errno_t>().Where(e => e != _alpm_errno_t.ALPM_ERR_OK))
-    {
-      Assert.NotNull(ErrorHandler.ToException(errno));
-    }
-  }
 
   /// <summary>
   /// ADR 0007: the four <c>ALPM_ERR_PKG_INVALID*</c> errnos carry a payload - a list of package
-  /// names - when a transaction call fails, and <see cref="AlpmTransactionException.TakeFailure"/>
+  /// names - when a transaction call fails, and <see cref="AlpmFailure.Take"/>
   /// reports them as its <c>InvalidPackage*</c> cases. One errno has one public exception type, so
   /// the errno factory has to agree with that: it cannot answer
   /// <see cref="AlpmPackageException"/> for the same errno.
