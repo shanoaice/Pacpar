@@ -34,7 +34,7 @@
   </PropertyGroup>
 
   <Target Name="GenerateBindings">
-    <Exec Command="cargo build -p libalpm-sys-cs" ConsoleToMsBuild="true"/>
+    <Exec Command="cargo build -p libalpm-sys-cs"/>
   </Target>
 
 </Project>
