@@ -257,9 +257,10 @@ public class Transaction : IDisposable
   /// </remarks>
   public void AddPackage(PackageView pkg)
   {
+    var packageName = pkg.Name;
     if (!TryAddPackage(pkg, out var failure))
     {
-      throw failure.ToException($"Failed to add package: {pkg.Name}");
+      throw failure.ToException($"Failed to add package: {packageName}");
     }
   }
 
@@ -311,11 +312,8 @@ public class Transaction : IDisposable
   /// </exception>
   public PackageView AddPackage(LoadedPackage pkg)
   {
-    if (!TryAddPackage(pkg, out var view, out var failure))
-    {
-      throw failure.ToException($"Failed to add package: {pkg.Name}");
-    }
-    return view;
+    var packageName = pkg.Name;
+    return !TryAddPackage(pkg, out var view, out var failure) ? throw failure.ToException($"Failed to add package: {packageName}") : view;
   }
 
   /// <summary>
@@ -344,9 +342,10 @@ public class Transaction : IDisposable
   /// <param name="pkg">The package to remove.</param>
   public void RemovePackage(PackageView pkg)
   {
+    var packageName = pkg.Name;
     if (!TryRemovePackage(pkg, out var failure))
     {
-      throw failure.ToException($"Failed to remove package: {pkg.Name}");
+      throw failure.ToException($"Failed to remove package: {packageName}");
     }
   }
 
