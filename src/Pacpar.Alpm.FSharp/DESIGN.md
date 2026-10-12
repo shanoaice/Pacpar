@@ -613,12 +613,23 @@ The bridge should make each native convention explicit. The following are all of
 
 | C# operation group | Native signal | F# meaning | Bridge shape |
 | --- | --- | --- | --- |
-| create `Alpm` | initialization out-errno and null handle | `Result<AlpmSession, SessionError>` | `TryCreate(..., out value, out failure)` |
+| create `AlpmSession` | initialization out-errno and null handle | `Result<AlpmSession, SessionError>` | `TryCreate(..., out value, out failure)` |
+| `Unlock`, `LogAction` | return code plus handle errno | `Result<unit, SessionError>` | `TryUnlock(out failure)`, `TryLogAction(..., out failure)` |
+| `FetchPackageUrls` | return code plus handle errno; null on error | `Result<IReadOnlyList<string>, NetworkError>` | `TryFetchPackageUrls(..., out fetchedUrls, out failure)` |
+| `CheckDependencies`, `CheckConflicts` | return code plus list payload | `Result<IReadOnlyList<_>, ResolutionError>` | `TryCheckDependencies(..., out missing, out failure)`, `TryCheckConflicts(..., out conflicts, out failure)` |
+| `FindSatisfier` | null pointer as lookup miss vs failure | `Result<PackageView option, QueryError>` | `TryFindSatisfier(..., out satisfier, out failure)` |
 | `LoadPackage`, `GetSignature` | return code plus handle errno | `Result<_, PackageError>` | `TryX(..., out value, out failure)` |
+| `CheckMd5Sum` | return code plus handle errno; mismatch is a boolean answer | `Result<bool, PackageError>` | `TryCheckMd5Sum(out matches, out failure)` |
+| `PackageView.SetReason` | return code plus handle errno | `Result<unit, PackageError>` | `TrySetReason(..., out failure)` |
 | sync database registration/unregistration | pointer/return code plus handle errno | `Result<_, DatabaseError>` | `TryX(..., out value, out failure)` |
 | `GetPackage` / `GetGroup` | null pointer as a lookup miss | `PackageView option` / `Group option` | no failure channel |
 | package/group caches and server lists | null plus ok errno means empty; null plus errno means failure | `Result<seq<_>, QueryError>` | `TryX(..., out value, out failure)` |
-| `Database.Validate` | validity answer plus errno when invalid | `Result<unit, DatabaseError>` | `TryX(..., out failure)` |
+| `Database.Search` | null plus errno on failure; empty list on miss | `Result<IReadOnlyList<PackageView>, QueryError>` | `TrySearch(..., out results, out failure)` |
+| `Database.Update`, `UpdateDatabases` | return code plus handle errno; boolean indicates if updated | `Result<bool, DatabaseError>` | `TryUpdate(..., out updated, out failure)`, `TryUpdateDatabases(..., out updated, out failure)` |
+| `Database.Usage` (get / set) | return code plus handle errno | `Result<DatabaseUsage, DatabaseError>` / `Result<unit, DatabaseError>` | `TryGetUsage(out usage, out failure)`, `TrySetUsage(..., out failure)` |
+| `AddServer` / `RemoveServer` / `SetServers` | return code plus handle errno; remove has a not-present answer | `Result<unit, DatabaseError>` and `Result<bool, DatabaseError>` | `TryAddServer(..., out failure)`, `TryRemoveServer(..., out removed, out failure)`, `TrySetServers(..., out failure)` |
+| `AddCacheServer` / `RemoveCacheServer` / `SetCacheServers` | return code plus handle errno; remove has a not-present answer | `Result<unit, DatabaseError>` and `Result<bool, DatabaseError>` | `TryAddCacheServer(..., out failure)`, `TryRemoveCacheServer(..., out removed, out failure)`, `TrySetCacheServers(..., out failure)` |
+| `Database.Validate` | validity answer plus errno when invalid | `Result<unit, DatabaseError>` | `TryValidate(out failure)` |
 | scalar option setters and option-list add/remove | return code plus handle errno; remove also has a not-present answer | `Result<unit, ConfigurationError>` | `TryX(..., out failure)` and `TryRemove(..., out removed, out failure)` |
 | callback registration/unregistration | return code plus handle errno | `Result<unit, CallbackError>` | `TrySet...(..., out failure)` |
 | transaction begin/add/remove/system-upgrade/interrupt/prepare/commit | return code plus handle errno; prepare/commit also own a failure list | `Result<_, TransactionError>` | `TryX(..., out value, out failure)` with typed payload |
