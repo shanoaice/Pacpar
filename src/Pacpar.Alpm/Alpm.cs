@@ -285,36 +285,27 @@ public class Alpm : IDisposable
     // Paths are long, hence the 256-byte scratch; alpm_pkg_load only reads the string.
     Span<byte> scratch = stackalloc byte[256];
     using var filenameBuf = new Utf8Buffer(filename, scratch);
-    // This is a pointer to a pointer, where libalpm will write the package handle.
-    var pkgOutPtr = (_alpm_pkg_t**)NativeMemory.Alloc((nuint)sizeof(nint));
-    try
+    // Pass the address of a stack local where libalpm will write the package handle.
+    _alpm_pkg_t* rawPkg = null;
+    // The SafeHandle marshaller refcounts the handle for the whole call, so the failure path
+    // below cannot leak a refcount and no keep-alive is needed here.
+    var err = NativeMethods.alpm_pkg_load(Handle, filenameBuf.Ptr, full ? 1 : 0, (int)level, &rawPkg);
+    if (err != 0)
     {
-      // The SafeHandle marshaller refcounts the handle for the whole call, so the failure path
-      // below cannot leak a refcount and no keep-alive is needed here.
-      var err = NativeMethods.alpm_pkg_load(Handle, filenameBuf.Ptr, full ? 1 : 0, (int)level, pkgOutPtr);
-      if (err != 0)
-      {
-        package = null;
-        failure = NativeCall.Failure(Handle, "load package");
-        return false;
-      }
-
-      var rawPkg = *pkgOutPtr;
-      lock (_loadedPackagesLock)
-      {
-        _loadedPackages.Add((nint)rawPkg);
-      }
-
-      var pkgLifetime = _lifetime.CreateChild("a loaded package");
-      package = new LoadedPackage(this, rawPkg, pkgLifetime);
-      failure = null;
-      return true;
+      package = null;
+      failure = NativeCall.Failure(Handle, "load package");
+      return false;
     }
-    finally
+
+    lock (_loadedPackagesLock)
     {
-      // We must free the memory we allocated for the output pointer.
-      NativeMemory.Free(pkgOutPtr);
+      _loadedPackages.Add((nint)rawPkg);
     }
+
+    var pkgLifetime = _lifetime.CreateChild("a loaded package");
+    package = new LoadedPackage(this, rawPkg, pkgLifetime);
+    failure = null;
+    return true;
   }
 
   /// <summary>
