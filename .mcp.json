@@ -7,17 +7,6 @@
       "env": {
         "DOTNET_SOLUTION_PATH": "Pacpar.slnx"
       }
-    },
-    "rider": {
-      "type": "stdio",
-      "env": {
-        "IJ_MCP_SERVER_PROJECT_PATH": "/home/shanoaice/Projects/codeberg/Pacpar",
-        "IJ_MCP_SERVER_PORT": "64482"
-      },
-      "command": "/home/shanoaice/.local/share/JetBrains/Toolbox/apps/rider/bin/rider",
-      "args": [
-        "stdioMcpServer"
-      ]
     }
   }
 }

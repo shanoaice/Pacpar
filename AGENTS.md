@@ -11,11 +11,25 @@
 
 ## C# Code Analysis
 
-Prefer SharpLensMcp tools over native ones:
+SharpLens supports only C# projects.
+Prefer SharpLensMcp tools over native ones for C# code:
 
 - `roslyn:search_symbols` instead of Grep
 - `roslyn:get_method_source` instead of Read
 - `roslyn:find_references` for semantic references
+
+## Rider Tooling
+
+Rider might not be available to all developers or environments.
+Do not assume Rider is always present.
+When Rider MCP is available:
+
+- Use Rider to trigger solution builds and execute run configurations.
+- Use Rider to inspect and navigate F# code in `src/Pacpar.Alpm.FSharp`.
+- Use Rider for interactive debugging and dotTrace profiling.
+- Use Rider for solution-wide namespace adjustments and safe deletion.
+
+When Rider MCP is absent, use standard `dotnet` CLI tools and SharpLens instead.
 
 ## Intermediate Outputs
 
