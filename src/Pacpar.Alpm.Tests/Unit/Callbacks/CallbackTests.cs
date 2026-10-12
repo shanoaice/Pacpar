@@ -259,11 +259,12 @@ public sealed class CallbackTests
     Directory.CreateDirectory(Path.Combine(root, "tmp"));
 
     var alpm = new Alpm(root, dbpath);
-    alpm.Callback.LogHandler = (_, _) => { };
+    var callback = alpm.Callback;
+    callback.LogHandler = (_, _) => { };
 
     alpm.Dispose();
 
-    Assert.False(IsContextHandleAllocated(alpm.Callback),
+    Assert.False(IsContextHandleAllocated(callback),
       "The ctx handle was not freed although alpm_release destroyed the native handle.");
 
     if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
@@ -280,9 +281,10 @@ public sealed class CallbackTests
   private static Callback DisposeAlpmWithAnUnreleasableHandle(string root, string dbpath)
   {
     var alpm = new Alpm(root, dbpath);
+    var callback = alpm.Callback;
     // Registration is presence-driven: without a handler no thunk is registered and the leaked
     // handle never dereferences the ctx. The log thunk is the one teardown would enter.
-    alpm.Callback.LogHandler = (_, _) => { };
+    callback.LogHandler = (_, _) => { };
     _ = alpm.BeginTransaction();
     alpm.CurrentTransaction = null;
     var handle = alpm.Handle;   // captured before Dispose: the getter refuses afterwards
@@ -291,7 +293,7 @@ public sealed class CallbackTests
     Assert.False(handle.ReleaseSucceeded,
       "Test setup must leave alpm_release failing, or the scenario silently becomes the success path.");
 
-    return alpm.Callback;
+    return callback;
   }
 
   // Separate wrapper so the WeakReference is created inside a non-inlined frame: in Debug builds
@@ -365,8 +367,9 @@ public sealed class CallbackTests
     string root, string dbpath)
   {
     var alpm = new Alpm(root, dbpath);
+    var callback = alpm.Callback;
     var received = new List<string>();
-    alpm.Callback.LogHandler = (_, message) => received.Add(message);
+    callback.LogHandler = (_, message) => received.Add(message);
     _ = alpm.BeginTransaction();
     alpm.CurrentTransaction = null;
     var handle = alpm.Handle;   // captured before Dispose: the getter refuses afterwards
@@ -379,7 +382,7 @@ public sealed class CallbackTests
     DriveLogMessage(handle);
     Assert.Contains(received.Skip(count), message => message.Contains("cachedir"));
 
-    return (new WeakReference(alpm.Callback), handle, received);
+    return (new WeakReference(callback), handle, received);
   }
 
   /// <summary>

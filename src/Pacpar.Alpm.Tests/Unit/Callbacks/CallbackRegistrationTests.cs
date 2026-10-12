@@ -94,4 +94,34 @@ public sealed class CallbackRegistrationTests
     Assert.Throws<ObjectDisposedException>(() => callback.ProgressHandler = (_, _, _, _, _) => { });
     Assert.Throws<ObjectDisposedException>(() => callback.LogHandler = (_, _) => { });
   }
+
+  [Fact]
+  public void LeakedHandle_ThrowsAlpmLifetimeException_WhenMutatingHandler()
+  {
+    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-callback-leaked-" + Guid.NewGuid().ToString("n"));
+    var root = Path.Combine(workspace, "root");
+    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
+    Directory.CreateDirectory(root);
+    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
+
+    try
+    {
+      var alpm = new Alpm(root, dbpath);
+      var callback = alpm.Callback;
+      _ = alpm.BeginTransaction();
+      alpm.CurrentTransaction = null; // hide transaction so alpm_release fails
+      alpm.Dispose(); // alpm_release fails; _detached remains false, but root lifetime is invalidated
+
+      Assert.Throws<AlpmLifetimeException>(() => callback.EventHandler = _ => { });
+      Assert.Throws<AlpmLifetimeException>(() => callback.FetchHandler = (_, _, _) => FetchResult.Success);
+      Assert.Throws<AlpmLifetimeException>(() => callback.QuestionHandler = _ => { });
+      Assert.Throws<AlpmLifetimeException>(() => callback.DownloadHandler = (_, _) => { });
+      Assert.Throws<AlpmLifetimeException>(() => callback.ProgressHandler = (_, _, _, _, _) => { });
+      Assert.Throws<AlpmLifetimeException>(() => callback.LogHandler = (_, _) => { });
+    }
+    finally
+    {
+      if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
+    }
+  }
 }

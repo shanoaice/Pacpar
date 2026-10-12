@@ -113,6 +113,7 @@ public sealed class Callback
 
   // The ALPM handle's root lifetime token
   private readonly RootLifetime _rootLifetime;
+  private readonly LifetimeStamp _stamp;
 
   // do not Dispose this before the callback class has been disposed
   // otherwise it will screw up the callbacks
@@ -291,12 +292,14 @@ public sealed class Callback
   {
     _handle = alpmHandle;
     _rootLifetime = lifetime;
+    _stamp = lifetime.Capture();
     _ctxHandle = new WeakGCHandle<Callback>(this);
   }
 
   private void ConfigureGuard()
   {
     ObjectDisposedException.ThrowIf(_detached, this);
+    _stamp.ThrowIfStale();
     if (_invokeDepth != 0)
     {
       throw new InvalidOperationException(
