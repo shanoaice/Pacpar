@@ -1,17 +1,5 @@
-# AGENTS.md
-
-## Project Structure
-
-- `docfx/` — DocFX sources for the documentation website.
-- `src/Pacpar.Alpm` — `libalpm` wrapper. `libalpm-sys-cs/` is a Rust csbindgen helper that generates `NativeMethods.libalpm.g.cs`; edit only its `build.rs`.
-- `src/Pacpar.Alpm.FSharp` — F# wrapper that makes `Pacpar.Alpm` ergonomic for F# users.
-- `src/Pacpar.CLI` — command-line interface.
-- `src/Pacpar.Benchmarks` — BenchmarkDotNet benchmarks: fortified experiments for developers, real-world scenarios for consumers.
-- `Pacpar.slnx` — the solution file. Pass this to every tool that asks for one.
-
 ## C# Code Analysis
 
-SharpLens supports only C# projects.
 Prefer SharpLensMcp tools over native ones for C# code:
 
 - `roslyn:search_symbols` instead of Grep
@@ -20,7 +8,6 @@ Prefer SharpLensMcp tools over native ones for C# code:
 
 ## Rider Tooling
 
-Rider might not be available to all developers or environments.
 Do not assume Rider is always present.
 When Rider MCP is available:
 
@@ -33,22 +20,15 @@ When Rider MCP is absent, use standard `dotnet` CLI tools and SharpLens instead.
 
 ## Intermediate Outputs
 
-- `.dsh-scratch/` — verification code, smoke tests, micro-benchmarks. Never commit.
+- `.dsh-scratch/` — verification code, smoke tests, micro-benchmarks.
 - `.dsh-refs/` — repositories cloned or downloaded for reference.
-- `reports/` — the only folder for markdown work reports. Exception: when a human asks for a maintainer technical document, place the finished form in the matching DocFX chapter instead.
-- Write explanations and reports in readable prose, not terse agent shorthand.
-
-## Testing
-
-- Integration tests manipulate package databases and filesystem trees. Run them only in an isolated container. Never set `PACPAR_ALPM_TEST_ENV=container` on the host.
-- On the host, always exclude them: `dotnet test --filter "FullyQualifiedName!~Integration"` (append `-c Release` for Release).
+- `reports/` — the only folder for markdown work reports, unless explicitly asked otherwise.
 - Use BenchmarkDotNet for all benchmarks. Stopwatch timing is not acceptable.
 
 ## Documentation Lifecycle
 
-- `docs/adr/` holds intermediate ADRs: one decision per file, numbered sequentially. They may overlap or contradict in-flight siblings; cross-reference them by number rather than rewriting them.
-- When the work stabilizes, revise, compact, and merge the related ADRs into the matching `docfx/` chapter, then supersede or remove the originals. A maintainer should read one coherent account.
-- `GLOSSARY.md` is the single source of domain vocabulary. Keep it free of implementation detail and update it as terms settle, not at the end.
+- `docs/adr/` holds intermediate ADRs: one decision per file. They may overlap or contradict in-flight siblings; when that happens, ask.
+- When the work stabilizes, revise, compact, and merge the related ADRs into the matching `docfx/` chapter, then supersede or remove the originals.
 
 ## Output Style
 
