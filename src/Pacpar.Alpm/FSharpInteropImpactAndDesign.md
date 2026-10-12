@@ -95,7 +95,7 @@ Callback invocation is deliberately excluded. The existing `SafeInvoke` behavior
 
 ### 3.7 Error construction
 
-`Exceptions/ErrorHandler.cs` and `Exceptions/AlpmTransactionException.cs` are the main refactoring points. The proposed internal split is:
+`AlpmFailure.cs` and `Exceptions.cs` are the main refactoring points. The proposed internal split is:
 
 ```text
 FailureFactory.FromErrno(...)
