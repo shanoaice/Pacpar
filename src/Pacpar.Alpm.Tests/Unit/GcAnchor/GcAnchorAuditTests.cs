@@ -26,7 +26,7 @@ public sealed class GcAnchorAuditTests
   //      SafeAlpmHandle instead.
   //  +2  the two non-owning "new SafeAlpmHandle(...)" wrappers added in Database..ctor and
   //      PackageBase.LibraryHandle, which wrap a borrowed pointer for the interop boundary.
-  private const int ExpectedHazardSiteCount = 174;
+  private const int ExpectedHazardSiteCount = 234;
 
   private static AnchorAuditResult Audit()
   {
@@ -51,10 +51,8 @@ public sealed class GcAnchorAuditTests
     var result = Audit();
     Assert.NotEmpty(result.Sites);
 
-    // Tripwire only: a jump in the hazard count means new native surface appeared and the anchors
-    // should be re-read, not that anything is wrong.
-    Assert.True(result.Sites.Count >= ExpectedHazardSiteCount,
-      $"hazard site count regressed below the recorded baseline of {ExpectedHazardSiteCount}: {result.Sites.Count}");
+    // Tripwire only: an exact assertion detects any regression or unbudgeted change in the hazard count.
+    Assert.Equal(ExpectedHazardSiteCount, result.Sites.Count);
   }
 
   [Fact]

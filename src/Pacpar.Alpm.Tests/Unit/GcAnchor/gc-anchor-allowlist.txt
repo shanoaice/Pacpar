@@ -17,7 +17,7 @@
 # A stale entry - one that no longer matches any hazard site - also fails the build. Delete it.
 
 
-Alpm.TryInitializeHandle | SafeAlpmHandle ownership | The raw handle returned by alpm_initialize is passed straight into new SafeAlpmHandle(ownsHandle: true); every managed call marshals through that SafeHandle, and SafeAlpmHandle.ReleaseHandle ends the native handle with alpm_release as a critical finalizer. Covers both the alpm_initialize call and the new SafeAlpmHandle construction.
+AlpmSession.TryInitializeHandle | SafeAlpmHandle ownership | The raw handle returned by alpm_initialize is passed straight into new SafeAlpmHandle(ownsHandle: true); every managed call marshals through that SafeHandle, and SafeAlpmHandle.ReleaseHandle ends the native handle with alpm_release as a critical finalizer. Covers both the alpm_initialize call and the new SafeAlpmHandle construction.
 
 
 AlpmDownloadEvent | delegated to caller | FromUnion receives the download-event union by parameter and copies it out eagerly. Its only caller is Callback.DownloadAgent, which runs inside the libalpm download callback whose frame already keeps the handle owner alive.
@@ -59,12 +59,12 @@ PackageView | delegated to caller | Factory(void*, Lifetime?) receives the packa
 
 Transaction | token-carrying construction | AddPackage builds PackageView from the transaction's own non-nullable Lifetime, which is a child of the handle's root token. The view therefore roots the handle that owns the package memory for as long as the caller holds the view.
 
-Alpm.UnregisterLoadedPackage | delegated to caller | the native pointer is a method parameter: the anchoring obligation belongs to the call site
+AlpmSession.UnregisterLoadedPackage | delegated to caller | the native pointer is a method parameter: the anchoring obligation belongs to the call site
 
-Alpm.get_Version | static library call | alpm_version takes no handle and returns a static string pointer valid for the process lifetime.
+AlpmSession.get_Version | static library call | alpm_version takes no handle and returns a static string pointer valid for the process lifetime.
 
-Alpm.get_Capabilities | static library call | alpm_capabilities takes no handle and returns a bitmask of compile-time capabilities.
+AlpmSession.get_Capabilities | static library call | alpm_capabilities takes no handle and returns a bitmask of compile-time capabilities.
 
-Alpm.TryFindSatisfier | token-carrying construction and database lookup | alpm_pkg_get_db and alpm_db_get_name resolve the owning database from the caller's databases, and the constructed PackageView receives that database's child lifetime token.
+AlpmSession.TryFindSatisfier | token-carrying construction and database lookup | alpm_pkg_get_db and alpm_db_get_name resolve the owning database from the caller's databases, and the constructed PackageView receives that database's child lifetime token.
 
 PackageChangelogStream | receiver on stack | PackageChangelogStream holds the owning PackageBase instance, which roots the database or handle lifetime token for the package across changelog read and close operations.
