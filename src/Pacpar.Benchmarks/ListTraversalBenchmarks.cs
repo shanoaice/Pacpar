@@ -1,7 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using Pacpar.Alpm;
 using Pacpar.Alpm.List;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -17,7 +16,7 @@ namespace Pacpar.Benchmarks;
 [IterationCount(12)]
 public class ListTraversalBenchmarks
 {
-  private AlpmHandle _alpm = null!;
+  private AlpmSession _alpm = null!;
   private PackageView _pkg = null!;
   private AlpmList<Depend> _depends = null!;
 

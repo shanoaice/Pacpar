@@ -9,7 +9,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// Locks in the callback safety contract: a user handler that throws must not let the
 /// exception escape an <c>[UnmanagedCallersOnly]</c> thunk (that would terminate the process); it
 /// is reported through <see cref="Callback.HandlerException"/> instead. The callback ctx handle is
-/// owned by <see cref="Alpm"/> and has no public release path.
+/// owned by <see cref="AlpmSession"/> and has no public release path.
 /// </summary>
 public sealed class CallbackTests
 {
@@ -104,7 +104,7 @@ public sealed class CallbackTests
   }
 
   /// <summary>
-  /// Dropping an <see cref="Alpm"/> without disposing it must not root the <see cref="Callback"/>:
+  /// Dropping an <see cref="AlpmSession"/> without disposing it must not root the <see cref="Callback"/>:
   /// the ctx handle is weak, so the handler delegates it keeps alive die with the instance. (The ctx
   /// handle slot itself is not freed on this path - nothing runs <c>Callback.Dispose()</c> during
   /// finalization - which is the accepted leak of the weak-ctx contract; the end-to-end guarantee
@@ -136,7 +136,7 @@ public sealed class CallbackTests
   [MethodImpl(MethodImplOptions.NoInlining)]
   private static WeakReference CreateAlpmWithoutDisposing(string root, string dbpath)
   {
-    var alpm = new Alpm(root, dbpath);
+    var alpm = new AlpmSession(root, dbpath);
     var weak = new WeakReference(alpm.Callback);
 
     // Intentionally not disposed: this exercises SafeAlpmHandle's critical finalizer.
@@ -183,7 +183,7 @@ public sealed class CallbackTests
   /// <summary>
   /// The disposal counterpart of
   /// <see cref="AlpmFinalizer_DoesNotRootTheCallback_WhenTheHandleCouldNotBeReleased"/>: when
-  /// <c>alpm_release</c> fails during <see cref="Alpm.Dispose()"/>, the native handle is what
+  /// <c>alpm_release</c> fails during <see cref="AlpmSession.Dispose()"/>, the native handle is what
   /// leaks - alive, with the callback registrations still in place and the ctx handle value still
   /// in <c>logcb_ctx</c> and friends. The ctx handle slot must therefore stay allocated: freeing it
   /// would let the runtime hand the slot to another GC handle allocation, and
@@ -242,7 +242,7 @@ public sealed class CallbackTests
   }
 
   /// <summary>
-  /// The deterministic success half of <see cref="Alpm.Dispose()"/>: once <c>alpm_release</c>
+  /// The deterministic success half of <see cref="AlpmSession.Dispose()"/>: once <c>alpm_release</c>
   /// destroyed the native handle, nothing can enter a thunk with the ctx value anymore, so the
   /// slot must be returned to the runtime. This is what bounds the
   /// <see cref="AlpmDispose_KeepsTheCallbackContext_WhenTheHandleCouldNotBeReleased"/> leak to
@@ -258,7 +258,7 @@ public sealed class CallbackTests
     Directory.CreateDirectory(Path.Combine(dbpath, "local"));
     Directory.CreateDirectory(Path.Combine(root, "tmp"));
 
-    var alpm = new Alpm(root, dbpath);
+    var alpm = new AlpmSession(root, dbpath);
     var callback = alpm.Callback;
     callback.LogHandler = (_, _) => { };
 
@@ -271,7 +271,7 @@ public sealed class CallbackTests
   }
 
   /// <summary>
-  /// The <see cref="Alpm.Dispose()"/> scenario where release must fail: the transaction it owns is
+  /// The <see cref="AlpmSession.Dispose()"/> scenario where release must fail: the transaction it owns is
   /// hidden from the wrapper, which is the state a consumer's forgotten transaction leaves libalpm
   /// in. The native handle (and its lock) then leak for the life of the process. Returns the
   /// <see cref="Callback"/> strongly so the ctx handle slot can be inspected; use
@@ -280,7 +280,7 @@ public sealed class CallbackTests
   [MethodImpl(MethodImplOptions.NoInlining)]
   private static Callback DisposeAlpmWithAnUnreleasableHandle(string root, string dbpath)
   {
-    var alpm = new Alpm(root, dbpath);
+    var alpm = new AlpmSession(root, dbpath);
     var callback = alpm.Callback;
     // Registration is presence-driven: without a handler no thunk is registered and the leaked
     // handle never dereferences the ctx. The log thunk is the one teardown would enter.
@@ -303,14 +303,14 @@ public sealed class CallbackTests
     => new(DisposeAlpmWithAnUnreleasableHandle(root, dbpath));
 
   /// <summary>
-  /// An <see cref="Alpm"/> whose release must fail: the transaction it owns is hidden from the
+  /// An <see cref="AlpmSession"/> whose release must fail: the transaction it owns is hidden from the
   /// wrapper, which is the state a consumer's forgotten transaction leaves libalpm in. The handle
   /// (and its lock) then leak for the life of the process, which is what this test needs.
   /// </summary>
   [MethodImpl(MethodImplOptions.NoInlining)]
   private static WeakReference CreateAlpmWithAnUnreleasableHandle(string root, string dbpath)
   {
-    var alpm = new Alpm(root, dbpath);
+    var alpm = new AlpmSession(root, dbpath);
     alpm.Callback.LogHandler = (_, _) => { };
     var weak = new WeakReference(alpm.Callback);
     _ = alpm.BeginTransaction();
@@ -366,7 +366,7 @@ public sealed class CallbackTests
   private static (WeakReference Callback, SafeAlpmHandle Handle, List<string> Received) SetUpLeakedLogHandle(
     string root, string dbpath)
   {
-    var alpm = new Alpm(root, dbpath);
+    var alpm = new AlpmSession(root, dbpath);
     var callback = alpm.Callback;
     var received = new List<string>();
     callback.LogHandler = (_, message) => received.Add(message);

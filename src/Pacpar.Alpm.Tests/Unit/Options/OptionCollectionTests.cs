@@ -16,7 +16,7 @@ public sealed class OptionCollectionTests : IDisposable
 {
   private readonly IsolatedAlpmEnvironment _environment = new();
 
-  private ICollection<string> Architectures => _environment.Alpm.Options.Architectures;
+  private ICollection<string> Architectures => _environment.AlpmSession.Options.Architectures;
 
   public void Dispose() => _environment.Dispose();
 
@@ -183,8 +183,8 @@ public sealed class OptionCollectionTests : IDisposable
   [Fact]
   public void ScalarOptions_ThrowAlpmLifetimeException_AfterSessionDisposed()
   {
-    var options = _environment.Alpm.Options;
-    _environment.Alpm.Dispose();
+    var options = _environment.AlpmSession.Options;
+    _environment.AlpmSession.Dispose();
 
     Assert.Throws<AlpmLifetimeException>(() => options.CheckSpace);
     Assert.Throws<AlpmLifetimeException>(() => options.CheckSpace = true);

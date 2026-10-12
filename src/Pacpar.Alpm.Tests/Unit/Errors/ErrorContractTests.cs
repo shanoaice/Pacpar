@@ -17,9 +17,9 @@ public sealed class ErrorContractTests : IDisposable
 
   public void Dispose() => _environment.Dispose();
 
-  private Alpm Alpm => _environment.Alpm;
+  private AlpmSession AlpmSession => _environment.AlpmSession;
 
-  private Database LocalDatabase => _environment.Alpm.GetLocalDatabase();
+  private Database LocalDatabase => _environment.AlpmSession.GetLocalDatabase();
 
   [Fact]
   public void GetLocalDatabase_ReturnsLocalDatabase()
@@ -30,7 +30,7 @@ public sealed class ErrorContractTests : IDisposable
   [Fact]
   public void GetSyncDatabases_ReturnsEmptyList_WhenNoSyncDatabasesRegistered()
   {
-    Assert.Empty(Alpm.GetSyncDatabases());
+    Assert.Empty(AlpmSession.GetSyncDatabases());
   }
 
   [Fact]
@@ -58,7 +58,7 @@ public sealed class ErrorContractTests : IDisposable
   public void GetPackageCache_Throws_WhenLibalpmReportsAnError()
   {
     // A freshly registered sync database has no loaded package cache yet: libalpm sets an errno.
-    var sync = Alpm.RegisterSyncDatabase("core", 0);
+    var sync = AlpmSession.RegisterSyncDatabase("core", 0);
 
     Assert.ThrowsAny<Exception>(() =>
     {
@@ -69,7 +69,7 @@ public sealed class ErrorContractTests : IDisposable
   [Fact]
   public void TryGetPackageCache_ReturnsFalseAndSetsFailure_WhenLibalpmReportsAnError()
   {
-    var sync = Alpm.RegisterSyncDatabase("core", 0);
+    var sync = AlpmSession.RegisterSyncDatabase("core", 0);
 
     var ok = sync.TryGetPackageCache(out var cache, out var failure);
 
@@ -92,23 +92,23 @@ public sealed class ErrorContractTests : IDisposable
   [Fact]
   public void UnsetOptionStrings_AreNull_InsteadOfPretendingToBeSet()
   {
-    Assert.Null(Alpm.Options.LogFile);
-    Assert.Null(Alpm.Options.GpgDirectory);
+    Assert.Null(AlpmSession.Options.LogFile);
+    Assert.Null(AlpmSession.Options.GpgDirectory);
   }
 
   [Fact]
   public void AlwaysSetOptionStrings_AreNotNull()
   {
-    Assert.NotNull(Alpm.Options.Root);
-    Assert.NotNull(Alpm.Options.DatabasePath);
-    Assert.NotNull(Alpm.Options.Lockfile);
+    Assert.NotNull(AlpmSession.Options.Root);
+    Assert.NotNull(AlpmSession.Options.DatabasePath);
+    Assert.NotNull(AlpmSession.Options.Lockfile);
   }
 
   [Fact]
   public void LogFileAndGpgDirectory_ThrowArgumentNullException_WhenNullAssigned()
   {
-    Assert.Throws<ArgumentNullException>(() => Alpm.Options.LogFile = null!);
-    Assert.Throws<ArgumentNullException>(() => Alpm.Options.GpgDirectory = null!);
-    Assert.Throws<ArgumentNullException>(() => Alpm.Options.DatabaseExtension = null!);
+    Assert.Throws<ArgumentNullException>(() => AlpmSession.Options.LogFile = null!);
+    Assert.Throws<ArgumentNullException>(() => AlpmSession.Options.GpgDirectory = null!);
+    Assert.Throws<ArgumentNullException>(() => AlpmSession.Options.DatabaseExtension = null!);
   }
 }

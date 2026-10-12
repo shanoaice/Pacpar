@@ -8,7 +8,7 @@ namespace Pacpar.Alpm;
 ///  Transaction flags
 /// </summary>
 /// <remarks>
-/// <c>0</c> — the value the optional parameter of <see cref="Alpm.BeginTransaction"/> defaults to — is
+/// <c>0</c> — the value the optional parameter of <see cref="AlpmSession.BeginTransaction"/> defaults to — is
 /// libalpm's default mode rather than "no configuration": every dependency, conflict and file-conflict
 /// check runs, hooks and scriptlets are executed, the database is locked and the filesystem is
 /// written. Every member below deviates from that, either as an opt-out
@@ -95,7 +95,7 @@ public class Transaction : IDisposable
   }
 
   private CompletionState _completionState = CompletionState.InProgress;
-  private readonly Alpm _library;
+  private readonly AlpmSession _library;
   private readonly LifetimeStamp _stamp;
   /// <summary>
   /// The transaction's lifetime token, a child of the handle's root token: it is retired both by
@@ -106,14 +106,14 @@ public class Transaction : IDisposable
   /// </summary>
   internal readonly ChildLifetime Lifetime;
 
-  private Transaction(Alpm alpmLibrary)
+  private Transaction(AlpmSession alpmLibrary)
   {
     _library = alpmLibrary;
     _stamp = alpmLibrary.RootLifetime.Capture();
     Lifetime = alpmLibrary.RootLifetime.CreateChild("the transaction");
   }
 
-  internal static bool TryCreate(Alpm alpmLibrary, TransactionFlags flags,
+  internal static bool TryCreate(AlpmSession alpmLibrary, TransactionFlags flags,
     [NotNullWhen(true)] out Transaction? transaction,
     [NotNullWhen(false)] out AlpmFailure? failure)
   {
@@ -147,7 +147,7 @@ public class Transaction : IDisposable
   /// later <c>alpm_release</c> fails with <c>ALPM_ERR_TRANS_NOT_NULL</c> without freeing the handle.
   /// Read <see cref="ReleaseFailure"/> for why.
   /// <para>
-  /// It is <c>true</c> when the owning handle was already disposed instead: <see cref="Alpm"/>
+  /// It is <c>true</c> when the owning handle was already disposed instead: <see cref="AlpmSession"/>
   /// disposes the active transaction before it releases the handle, precisely because
   /// <c>alpm_release</c> refuses to run while one is initialized.
   /// </para>

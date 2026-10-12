@@ -3,7 +3,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// Coverage ledger §4: <see cref="Alpm.Unlock"/> releases the database lock this session holds.
+/// Coverage ledger §4: <see cref="AlpmSession.Unlock"/> releases the database lock this session holds.
 /// </summary>
 /// <remarks>
 /// The lock belongs to the handle, not to the transaction: <c>alpm_trans_init</c> takes it and
@@ -17,7 +17,7 @@ public sealed class UnlockTests
 {
   /// <summary>
   /// The behaviour worth having: a transaction locks the database when it initializes, and
-  /// <see cref="Alpm.Unlock"/> lets that go — descriptor and file — without releasing the transaction.
+  /// <see cref="AlpmSession.Unlock"/> lets that go — descriptor and file — without releasing the transaction.
   /// The file lives at <c>&lt;dbpath&gt;/db.lck</c>, the path libalpm reports from
   /// <c>alpm_option_get_lockfile</c>.
   /// </summary>
@@ -25,13 +25,13 @@ public sealed class UnlockTests
   public void Unlock_ReleasesTheLockThisSessionHolds()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    using (environment.Alpm.BeginTransaction())
+    using (environment.AlpmSession.BeginTransaction())
     {
-      Assert.True(System.IO.File.Exists(environment.Alpm.Options.Lockfile));
+      Assert.True(System.IO.File.Exists(environment.AlpmSession.Options.Lockfile));
 
-      environment.Alpm.Unlock();
+      environment.AlpmSession.Unlock();
 
-      Assert.False(System.IO.File.Exists(environment.Alpm.Options.Lockfile));
+      Assert.False(System.IO.File.Exists(environment.AlpmSession.Options.Lockfile));
     }
   }
 
@@ -44,14 +44,14 @@ public sealed class UnlockTests
   {
     using var environment = new IsolatedAlpmEnvironment();
 
-    var exception = Record.Exception(environment.Alpm.Unlock);
+    var exception = Record.Exception(environment.AlpmSession.Unlock);
 
     Assert.Null(exception);
   }
 
   /// <summary>
   /// A lock file this session did not create stays put. This is the guard that keeps
-  /// <see cref="Alpm.Unlock"/> from unlocking a <i>running</i> session somewhere else: the lock is
+  /// <see cref="AlpmSession.Unlock"/> from unlocking a <i>running</i> session somewhere else: the lock is
   /// nothing but an <c>open(O_CREAT | O_EXCL)</c> file, so deleting it does release another process's
   /// lock, and an empty mode-0 file carries nothing that would tell this session whether that other
   /// process is alive or dead. Cleaning up after a crash is therefore the caller's decision, taken
@@ -61,11 +61,11 @@ public sealed class UnlockTests
   public void Unlock_LeavesALockFileThisSessionDoesNotHold()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var lockPath = environment.Alpm.Options.Lockfile;
+    var lockPath = environment.AlpmSession.Options.Lockfile;
     System.IO.File.WriteAllText(lockPath, "");
     Assert.True(System.IO.File.Exists(lockPath));
 
-    environment.Alpm.Unlock();
+    environment.AlpmSession.Unlock();
 
     Assert.True(System.IO.File.Exists(lockPath));
   }
@@ -74,7 +74,7 @@ public sealed class UnlockTests
   public void Unlock_AfterDispose_ThrowsObjectDisposedException()
   {
     var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
     environment.Dispose();
 
     Assert.Throws<ObjectDisposedException>(alpm.Unlock);

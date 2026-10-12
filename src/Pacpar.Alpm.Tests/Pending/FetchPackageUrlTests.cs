@@ -19,7 +19,7 @@ public sealed class FetchPackageUrlTests
   public void FetchPackageUrls_RoutesTheUrlsThroughTheFetchHandler()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
     var seen = new List<string>();
     alpm.Callback.FetchHandler = (url, _, _) =>
     {
@@ -39,7 +39,7 @@ public sealed class FetchPackageUrlTests
   public void FetchPackageUrls_WithAFailingHandler_SurfacesTheFailure()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
     alpm.Callback.FetchHandler = (_, _, _) => FetchResult.Error;
 
     Assert.ThrowsAny<AlpmException>(() => alpm.FetchPackageUrls([Url, Url]));
@@ -49,7 +49,7 @@ public sealed class FetchPackageUrlTests
   public void FetchPackageUrls_AfterDispose_ThrowsObjectDisposedException()
   {
     var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
     environment.Dispose();
 
     Assert.Throws<ObjectDisposedException>(() => alpm.FetchPackageUrls([Url]));

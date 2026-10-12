@@ -39,7 +39,7 @@ public sealed class TrySeamContractTests : IDisposable
 
     try
     {
-      var ok = Alpm.TryCreate(root, dbpath, out var session, out var failure);
+      var ok = AlpmSession.TryCreate(root, dbpath, out var session, out var failure);
       Assert.True(ok);
       Assert.NotNull(session);
       Assert.Null(failure);
@@ -54,7 +54,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryCreate_Failure_SetsNullSessionAndFailure()
   {
-    var ok = Alpm.TryCreate("/dev/null/not/a/dir", "/dev/null/not/a/dir", out var session, out var failure);
+    var ok = AlpmSession.TryCreate("/dev/null/not/a/dir", "/dev/null/not/a/dir", out var session, out var failure);
     Assert.False(ok);
     Assert.Null(session);
     Assert.NotNull(failure);
@@ -66,7 +66,7 @@ public sealed class TrySeamContractTests : IDisposable
   public void TryLoadPackage_Success_SetsPackageAndNullFailure()
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-load-pkg");
-    var ok = _environment.Alpm.TryLoadPackage(path, full: true, SigLevel.AlpmSigUseDefault, out var pkg, out var failure);
+    var ok = _environment.AlpmSession.TryLoadPackage(path, full: true, SigLevel.AlpmSigUseDefault, out var pkg, out var failure);
 
     Assert.True(ok);
     Assert.NotNull(pkg);
@@ -77,7 +77,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryLoadPackage_Failure_SetsNullPackageAndFailure()
   {
-    var ok = _environment.Alpm.TryLoadPackage("/nonexistent/file.pkg.tar.zst", full: false, SigLevel.AlpmSigUseDefault, out var pkg, out var failure);
+    var ok = _environment.AlpmSession.TryLoadPackage("/nonexistent/file.pkg.tar.zst", full: false, SigLevel.AlpmSigUseDefault, out var pkg, out var failure);
 
     Assert.False(ok);
     Assert.Null(pkg);
@@ -88,7 +88,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryBeginTransaction_Success_SetsTransactionAndNullFailure()
   {
-    var ok = _environment.Alpm.TryBeginTransaction(0, out var tx, out var failure);
+    var ok = _environment.AlpmSession.TryBeginTransaction(0, out var tx, out var failure);
 
     Assert.True(ok);
     Assert.NotNull(tx);
@@ -99,7 +99,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryRegisterSyncDatabase_Success_SetsDatabaseAndNullFailure()
   {
-    var ok = _environment.Alpm.TryRegisterSyncDatabase("core_try", 0, out var db, out var failure);
+    var ok = _environment.AlpmSession.TryRegisterSyncDatabase("core_try", 0, out var db, out var failure);
 
     Assert.True(ok);
     Assert.NotNull(db);
@@ -109,8 +109,8 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryUnregisterAllSyncDatabases_Success_SetsNullFailure()
   {
-    _environment.Alpm.RegisterSyncDatabase("extra_try", 0);
-    var ok = _environment.Alpm.TryUnregisterAllSyncDatabases(out var failure);
+    _environment.AlpmSession.RegisterSyncDatabase("extra_try", 0);
+    var ok = _environment.AlpmSession.TryUnregisterAllSyncDatabases(out var failure);
 
     Assert.True(ok);
     Assert.Null(failure);
@@ -119,7 +119,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryGetPackageCache_LocalDatabase_Success_SetsCacheAndNullFailure()
   {
-    var local = _environment.Alpm.GetLocalDatabase();
+    var local = _environment.AlpmSession.GetLocalDatabase();
     var ok = local.TryGetPackageCache(out var cache, out var failure);
 
     Assert.True(ok);
@@ -130,7 +130,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryGetGroupCache_LocalDatabase_Success_SetsCacheAndNullFailure()
   {
-    var local = _environment.Alpm.GetLocalDatabase();
+    var local = _environment.AlpmSession.GetLocalDatabase();
     var ok = local.TryGetGroupCache(out var cache, out var failure);
 
     Assert.True(ok);
@@ -141,7 +141,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryGetGroupCache_MissingSyncDb_Failure_SetsNullCacheAndFailure()
   {
-    var sync = _environment.Alpm.RegisterSyncDatabase("sync_for_group_test", 0);
+    var sync = _environment.AlpmSession.RegisterSyncDatabase("sync_for_group_test", 0);
     var ok = sync.TryGetGroupCache(out var cache, out var failure);
 
     Assert.False(ok);
@@ -153,7 +153,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryValidate_Success_SetsNullFailure()
   {
-    var local = _environment.Alpm.GetLocalDatabase();
+    var local = _environment.AlpmSession.GetLocalDatabase();
     var ok = local.TryValidate(out var failure);
 
     Assert.True(ok);
@@ -163,7 +163,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryUnregister_Success_SetsNullFailure()
   {
-    var sync = _environment.Alpm.RegisterSyncDatabase("sync_unregister_test", 0);
+    var sync = _environment.AlpmSession.RegisterSyncDatabase("sync_unregister_test", 0);
     var ok = sync.TryUnregister(out var failure);
 
     Assert.True(ok);
@@ -174,8 +174,8 @@ public sealed class TrySeamContractTests : IDisposable
   public void TryPrepare_And_TryCommit_Success_SetsNullFailure()
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-commit-success");
-    using var tx = _environment.Alpm.BeginTransaction();
-    tx.AddPackage(_environment.Alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
+    using var tx = _environment.AlpmSession.BeginTransaction();
+    tx.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
 
     var okPrepare = tx.TryPrepare(out var failurePrepare);
     Assert.True(okPrepare);
@@ -189,7 +189,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryCommit_UnpreparedTransaction_Failure_SetsFailure()
   {
-    using var tx = _environment.Alpm.BeginTransaction();
+    using var tx = _environment.AlpmSession.BeginTransaction();
     var ok = tx.TryCommit(out var failure);
 
     Assert.False(ok);
@@ -200,7 +200,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TrySystemUpgrade_Success_SetsNullFailure()
   {
-    using var tx = _environment.Alpm.BeginTransaction();
+    using var tx = _environment.AlpmSession.BeginTransaction();
     var ok = tx.TrySystemUpgrade(enableDowngrade: false, out var failure);
 
     Assert.True(ok);
@@ -210,7 +210,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryInterrupt_OnIdleTransaction_Failure_SetsFailure()
   {
-    using var tx = _environment.Alpm.BeginTransaction();
+    using var tx = _environment.AlpmSession.BeginTransaction();
     var ok = tx.TryInterrupt(out var failure);
 
     Assert.False(ok);
@@ -222,8 +222,8 @@ public sealed class TrySeamContractTests : IDisposable
   public void TryAddPackage_LoadedPackage_Success_SetsViewAndNullFailure()
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-add-loaded");
-    using var tx = _environment.Alpm.BeginTransaction();
-    var pkg = _environment.Alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+    using var tx = _environment.AlpmSession.BeginTransaction();
+    var pkg = _environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
 
     var ok = tx.TryAddPackage(pkg, out var view, out var failure);
 
@@ -238,17 +238,17 @@ public sealed class TrySeamContractTests : IDisposable
   {
     // Install a package first
     var path = PackageArchive.Create(_packageDirectory, "audit-pkg-to-remove");
-    using (var installer = _environment.Alpm.BeginTransaction())
+    using (var installer = _environment.AlpmSession.BeginTransaction())
     {
-      installer.AddPackage(_environment.Alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
+      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
       installer.Prepare();
       installer.Commit();
     }
 
-    var installed = _environment.Alpm.GetLocalDatabase().GetPackage("audit-pkg-to-remove");
+    var installed = _environment.AlpmSession.GetLocalDatabase().GetPackage("audit-pkg-to-remove");
     Assert.NotNull(installed);
 
-    using var remover = _environment.Alpm.BeginTransaction();
+    using var remover = _environment.AlpmSession.BeginTransaction();
     var ok = remover.TryRemovePackage(installed, out var failure);
 
     Assert.True(ok);
@@ -260,17 +260,17 @@ public sealed class TrySeamContractTests : IDisposable
   {
     // Install a package first
     var path = PackageArchive.Create(_packageDirectory, "audit-installed-add-fail");
-    using (var installer = _environment.Alpm.BeginTransaction())
+    using (var installer = _environment.AlpmSession.BeginTransaction())
     {
-      installer.AddPackage(_environment.Alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
+      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
       installer.Prepare();
       installer.Commit();
     }
 
-    var installed = _environment.Alpm.GetLocalDatabase().GetPackage("audit-installed-add-fail");
+    var installed = _environment.AlpmSession.GetLocalDatabase().GetPackage("audit-installed-add-fail");
     Assert.NotNull(installed);
 
-    using var tx = _environment.Alpm.BeginTransaction();
+    using var tx = _environment.AlpmSession.BeginTransaction();
     // Adding an already-installed package to a transaction is refused with ALPM_ERR_WRONG_ARGS
     var ok = tx.TryAddPackage(installed, out var failure);
 
@@ -283,7 +283,7 @@ public sealed class TrySeamContractTests : IDisposable
   public void TryCheckMd5Sum_NonSyncPackage_FailsWithWrongArguments()
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-checkmd5-pkg");
-    var loaded = _environment.Alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+    var loaded = _environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
 
     var ok = loaded.TryCheckMd5Sum(out var matches, out var failure);
 

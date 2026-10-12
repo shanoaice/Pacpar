@@ -39,8 +39,8 @@ public sealed class LifetimeInvalidationTests : IDisposable
 
   private void Install(string name, string? depend = null)
   {
-    using var transaction = _environment.Alpm.BeginTransaction();
-    transaction.AddPackage(_environment.Alpm.LoadPackage(Archive(name, depend),
+    using var transaction = _environment.AlpmSession.BeginTransaction();
+    transaction.AddPackage(_environment.AlpmSession.LoadPackage(Archive(name, depend),
       full: true, SigLevel.AlpmSigUseDefault));
     transaction.Prepare();
     transaction.Commit();
@@ -49,7 +49,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void LoadedPackageDispose_InvalidatesTheViewsItIssued()
   {
-    var pkg = _environment.Alpm.LoadPackage(Archive("audit-lifetime-dep", depend: "glibc"),
+    var pkg = _environment.AlpmSession.LoadPackage(Archive("audit-lifetime-dep", depend: "glibc"),
       full: true, SigLevel.AlpmSigUseDefault);
 
     var depends = pkg.Depends;
@@ -74,10 +74,10 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void HandOver_InvalidatesTheWrapperAndTheReturnedViewCarriesTheTransaction()
   {
-    var pkg = _environment.Alpm.LoadPackage(Archive("audit-lifetime-handoff"),
+    var pkg = _environment.AlpmSession.LoadPackage(Archive("audit-lifetime-handoff"),
       full: true, SigLevel.AlpmSigUseDefault);
 
-    using var transaction = _environment.Alpm.BeginTransaction();
+    using var transaction = _environment.AlpmSession.BeginTransaction();
     var view = transaction.AddPackage(pkg);
 
     Assert.Equal("audit-lifetime-handoff", view.Name);
@@ -95,9 +95,9 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void HandleDispose_InvalidatesLocalDatabaseViews()
   {
-    var cache = _environment.Alpm.GetLocalDatabase().GetPackageCache();
+    var cache = _environment.AlpmSession.GetLocalDatabase().GetPackageCache();
 
-    _environment.Alpm.Dispose();
+    _environment.AlpmSession.Dispose();
 
     var thrown = Assert.Throws<AlpmLifetimeException>(() => { foreach (var _ in cache) { } });
     Assert.Equal("the ALPM handle", thrown.Target);
@@ -113,7 +113,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
     Install("audit-lifetime-first");
 
     // A view obtained after the first commit, under the fresh token that commit issued.
-    var localDb = _environment.Alpm.GetLocalDatabase();
+    var localDb = _environment.AlpmSession.GetLocalDatabase();
     var held = localDb.GetPackage("audit-lifetime-first");
     Assert.NotNull(held);
     Assert.Equal("audit-lifetime-first", held!.Name);
@@ -131,7 +131,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
     Assert.Throws<AlpmLifetimeException>(() => localDb.GetPackage("audit-lifetime-first"));
 
     // ...while a fresh GetLocalDatabase() starts over with a new token and answers normally.
-    var fresh = _environment.Alpm.GetLocalDatabase();
+    var fresh = _environment.AlpmSession.GetLocalDatabase();
     var reissued = fresh.GetPackage("audit-lifetime-first");
     Assert.NotNull(reissued);
     Assert.Equal("audit-lifetime-first", reissued!.Name);
@@ -140,8 +140,8 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void SyncDatabaseUnregister_Succeeds_AndRetiresTheRetainedSyncDatabaseList()
   {
-    var core = _environment.Alpm.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
-    var retained = _environment.Alpm.GetSyncDatabases();
+    var core = _environment.AlpmSession.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
+    var retained = _environment.AlpmSession.GetSyncDatabases();
     Assert.Single(retained.ToArray());
 
     // Unregister used to throw here, after alpm_db_unregister had already succeeded: the registry
@@ -159,19 +159,19 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void LocalDatabaseUnregister_ThrowsInvalidOperationException()
   {
-    var localDb = _environment.Alpm.GetLocalDatabase();
+    var localDb = _environment.AlpmSession.GetLocalDatabase();
     Assert.Throws<InvalidOperationException>(() => localDb.Unregister());
   }
 
   [Fact]
   public void UnregisterAllSyncDatabases_RetiresTheRetainedSyncDatabaseList()
   {
-    _ = _environment.Alpm.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
-    _ = _environment.Alpm.RegisterSyncDatabase("extra", SigLevel.AlpmSigUseDefault);
-    var retained = _environment.Alpm.GetSyncDatabases();
+    _ = _environment.AlpmSession.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
+    _ = _environment.AlpmSession.RegisterSyncDatabase("extra", SigLevel.AlpmSigUseDefault);
+    var retained = _environment.AlpmSession.GetSyncDatabases();
     Assert.Equal(2, retained.ToArray().Length);
 
-    _environment.Alpm.UnregisterAllSyncDatabases();
+    _environment.AlpmSession.UnregisterAllSyncDatabases();
 
     Assert.Throws<AlpmLifetimeException>(() => retained.ToArray());
   }
@@ -182,7 +182,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
     Install("audit-lifetime-enumerator");
 
     // Taken after the commit, so the cache view carries a live token.
-    var cache = _environment.Alpm.GetLocalDatabase().GetPackageCache();
+    var cache = _environment.AlpmSession.GetLocalDatabase().GetPackageCache();
 
     var enumerator = cache.GetEnumerator();
     Assert.True(enumerator.MoveNext());
@@ -190,7 +190,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
     // Materialize one element, so the enumerator now holds a native node to advance from.
     Assert.False(string.IsNullOrEmpty(enumerator.Current.Name));
 
-    _environment.Alpm.Dispose();
+    _environment.AlpmSession.Dispose();
 
     // Advancing dereferences the freed node's next pointer. Only Current re-validated the token, so
     // without a check in MoveNext this would end the loop silently instead of throwing.

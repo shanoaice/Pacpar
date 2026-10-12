@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Pacpar.Alpm;
 using Pacpar.Alpm.List;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -28,7 +27,7 @@ namespace Pacpar.Benchmarks;
 [IterationCount(10)]
 public class LifetimeCheckBenchmarks
 {
-  private AlpmHandle _alpm = null!;
+  private AlpmSession _alpm = null!;
   private AlpmList<PackageView> _localPkgs = null!;
   private Token _handleToken = null!;
   private Token _localDbToken = null!;

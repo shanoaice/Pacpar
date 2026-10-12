@@ -25,7 +25,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   private readonly string _workspaceRoot;
   private readonly string _root;
   private readonly string _packageDirectory;
-  private readonly Alpm _alpm;
+  private readonly AlpmSession _alpm;
 
   public TransactionFailureTests()
   {
@@ -40,7 +40,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     Directory.CreateDirectory(Path.Combine(_root, "var", "cache", "pacman", "pkg"));
     Directory.CreateDirectory(_packageDirectory);
 
-    _alpm = new Alpm(_root, dbpath);
+    _alpm = new AlpmSession(_root, dbpath);
   }
 
   public void Dispose()

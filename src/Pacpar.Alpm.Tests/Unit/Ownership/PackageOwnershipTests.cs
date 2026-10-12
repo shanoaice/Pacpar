@@ -47,7 +47,7 @@ public sealed class PackageOwnershipTests
   [Fact]
   public void LoadPackageReturnsTheOwningType()
     => Assert.Equal(typeof(LoadedPackage),
-      typeof(Alpm).GetMethod(nameof(Alpm.LoadPackage))!.ReturnType);
+      typeof(AlpmSession).GetMethod(nameof(AlpmSession.LoadPackage))!.ReturnType);
 
   /// <summary>
   /// Handing a package over returns the borrowed view the caller can keep reading, and the two

@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 
@@ -33,7 +32,7 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   }
 
   private static AlpmQuestion.InstallIgnoredPackage QuestionFor(
-    AlpmHandle alpm, _alpm_pkg_t* package, ChildLifetime? lifetime = null)
+    AlpmSession alpm, _alpm_pkg_t* package, ChildLifetime? lifetime = null)
   {
     var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
 
@@ -56,9 +55,9 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   public void Payload_ReadsPackagePropertiesWithinTheCallbackFrame()
   {
     using var pkg = Load("payload-default", file: "usr/bin/probe");
-    var frameLifetime = _environment.Alpm.RootLifetime.CreateChild("test frame");
+    var frameLifetime = _environment.AlpmSession.RootLifetime.CreateChild("test frame");
 
-    var question = QuestionFor(_environment.Alpm, pkg.BackingStruct, frameLifetime);
+    var question = QuestionFor(_environment.AlpmSession, pkg.BackingStruct, frameLifetime);
 
     Assert.Equal("payload-default", question.Package.Name);
     Assert.NotNull(question.Package.Files);
@@ -69,9 +68,9 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   public void Payload_DiesWhenCallbackFrameCompletes()
   {
     using var pkg = Load("payload-frame-dies", file: "usr/bin/probe");
-    var frameLifetime = _environment.Alpm.RootLifetime.CreateChild("test frame");
+    var frameLifetime = _environment.AlpmSession.RootLifetime.CreateChild("test frame");
 
-    var question = QuestionFor(_environment.Alpm, pkg.BackingStruct, frameLifetime);
+    var question = QuestionFor(_environment.AlpmSession, pkg.BackingStruct, frameLifetime);
     Assert.Equal("payload-frame-dies", question.Package.Name);
 
     // Frame ends
@@ -86,11 +85,11 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   public void ExplicitSnapshot_OutlivesThePackageAndTheFrame()
   {
     PackageSnapshot snapshot;
-    var frameLifetime = _environment.Alpm.RootLifetime.CreateChild("test frame");
+    var frameLifetime = _environment.AlpmSession.RootLifetime.CreateChild("test frame");
 
     using (var pkg = Load("payload-detached", file: "usr/bin/probe"))
     {
-      var question = QuestionFor(_environment.Alpm, pkg.BackingStruct, frameLifetime);
+      var question = QuestionFor(_environment.AlpmSession, pkg.BackingStruct, frameLifetime);
       snapshot = question.Package.ToSnapshot(includeFiles: true);
       Assert.Equal("payload-detached", snapshot.Name);
     }
@@ -106,7 +105,7 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   }
 
   private LoadedPackage Load(string name, string file)
-    => _environment.Alpm.LoadPackage(
+    => _environment.AlpmSession.LoadPackage(
       PackageArchive.Create(_packageDirectory, name, file: file),
       full: true,
       SigLevel.AlpmSigUseDefault);

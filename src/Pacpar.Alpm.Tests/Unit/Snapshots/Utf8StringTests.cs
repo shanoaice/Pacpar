@@ -50,7 +50,7 @@ public sealed unsafe class Utf8StringTests
   public void NonAsciiOption_RoundTripsThroughLibalpm()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var architectures = env.Alpm.Options.Architectures;
+    var architectures = env.AlpmSession.Options.Architectures;
 
     architectures.Add(NonAscii);
 

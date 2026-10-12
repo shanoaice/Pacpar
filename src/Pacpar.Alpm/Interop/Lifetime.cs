@@ -9,12 +9,12 @@ namespace Pacpar.Alpm;
 /// <remarks>
 /// One domain exists per object that can release native memory on its own:
 /// <list type="bullet">
-/// <item><description>the session, as the root domain (<see cref="RootLifetime"/>, its <see cref="Alpm"/> handle owns everything
+/// <item><description>the session, as the root domain (<see cref="RootLifetime"/>, its <see cref="AlpmSession"/> handle owns everything
 /// beneath it);</description></item>
 /// <item><description>each sync database, the local database, each transaction, and callback execution frames, as child domains
 /// (<see cref="ChildLifetime"/>) of that session;</description></item>
 /// <item><description>each file-loaded package, as a child of the session that loaded it - the
-/// session owns it until a hand-over or <see cref="Alpm.Dispose()"/> releases it.</description></item>
+/// session owns it until a hand-over or <see cref="AlpmSession.Dispose()"/> releases it.</description></item>
 /// </list>
 /// <para>
 /// A domain owns a monotonically increasing <see cref="Generation"/>. Invalidating it means
@@ -105,7 +105,7 @@ internal abstract class Lifetime
 }
 
 /// <summary>
-/// A root lifetime domain: belongs to the session (<see cref="Alpm"/>). Only a root domain can create
+/// A root lifetime domain: belongs to the session (<see cref="AlpmSession"/>). Only a root domain can create
 /// child domains or manage handle-registered domains.
 /// </summary>
 internal sealed class RootLifetime : Lifetime

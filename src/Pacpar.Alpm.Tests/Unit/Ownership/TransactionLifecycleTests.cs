@@ -20,7 +20,7 @@ public sealed class TransactionLifecycleTests
   public void BeginTransaction_JoinsTheActiveTransaction_WhenTheFlagsMatch()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
 
     var first = alpm.BeginTransaction(Lockless);
     var second = alpm.BeginTransaction(Lockless);
@@ -33,7 +33,7 @@ public sealed class TransactionLifecycleTests
   public void BeginTransaction_DefaultsToTheFullyCheckedMode()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
 
     var transaction = alpm.BeginTransaction();
 
@@ -45,7 +45,7 @@ public sealed class TransactionLifecycleTests
   public void BeginTransaction_WithDifferentFlags_WhileATransactionIsActive_Throws()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
     using var active = alpm.BeginTransaction();
 
     var exception = Assert.Throws<InvalidOperationException>(() => alpm.BeginTransaction(Lockless));
@@ -59,7 +59,7 @@ public sealed class TransactionLifecycleTests
   public void CurrentTransaction_IsCleared_WhenTheTransactionIsDisposed()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
 
     var transaction = alpm.BeginTransaction(Lockless);
     transaction.Dispose();
@@ -70,7 +70,7 @@ public sealed class TransactionLifecycleTests
   public void CurrentTransaction_IsNotCleared_WhenNativeReleaseFails()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
 
     var transaction = alpm.BeginTransaction(Lockless);
 
@@ -100,7 +100,7 @@ public sealed class TransactionLifecycleTests
   public void Dispose_RecordsTheFailure_WhenTheNativeReleaseFails()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
 
     var transaction = alpm.BeginTransaction(Lockless);
     Assert.Null(transaction.ReleaseFailure);
@@ -123,7 +123,7 @@ public sealed class TransactionLifecycleTests
   public void Dispose_LeavesNoFailure_WhenTheReleaseSucceeds()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
 
     var transaction = alpm.BeginTransaction(Lockless);
     Assert.False(transaction.IsReleased);
@@ -138,7 +138,7 @@ public sealed class TransactionLifecycleTests
   public void Dispose_Throws_WhenReleaseFailsAfterSuccessfulCommit()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
 
     var pkgDir = Path.Combine(Path.GetTempPath(), "pacpar-test-" + Guid.NewGuid().ToString("n"));
     Directory.CreateDirectory(pkgDir);
@@ -170,7 +170,7 @@ public sealed class TransactionLifecycleTests
   public void BeginTransaction_AfterTheHandleWasDisposed_ThrowsObjectDisposed()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
     alpm.Dispose();
 
     Assert.Throws<ObjectDisposedException>(() => alpm.BeginTransaction());

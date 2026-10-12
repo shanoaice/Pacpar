@@ -4,7 +4,7 @@ namespace Pacpar.Alpm;
 
 /// <summary>
 /// A package this library loaded from a file with <c>alpm_pkg_load</c>. It owns the package and
-/// releases it on <see cref="Dispose"/>, or when the owning <see cref="Alpm"/> context is disposed.
+/// releases it on <see cref="Dispose"/>, or when the owning <see cref="AlpmSession"/> context is disposed.
 /// </summary>
 /// <remarks>
 /// Ownership can also be handed to a transaction, which takes over the release
@@ -15,10 +15,10 @@ namespace Pacpar.Alpm;
 /// <para>
 /// This public class is deliberately non-finalizable, in accordance with the .NET Framework Design
 /// Guidelines. A wrapper the garbage collector collects without <see cref="Dispose"/> therefore
-/// keeps its package until the session ends: <see cref="Alpm.Dispose()"/> releases every
+/// keeps its package until the session ends: <see cref="AlpmSession.Dispose()"/> releases every
 /// file-loaded package the session still tracks before it releases the handle, and the hand-over to a
 /// transaction leaves the release to <c>alpm_trans_release</c>. Disposing the owning
-/// <see cref="Alpm"/> is what guarantees that all unmanaged memory goes back.
+/// <see cref="AlpmSession"/> is what guarantees that all unmanaged memory goes back.
 /// <para>
 /// That leak is accepted rather than open. Section 8 of the <c>Lifetime and GC Safety</c> chapter
 /// states why no finalizer was added: the guidelines forbid one on a public type, the anchoring
@@ -30,11 +30,11 @@ namespace Pacpar.Alpm;
 /// </remarks>
 public sealed unsafe class LoadedPackage : PackageBase, IDisposable
 {
-  private readonly Alpm _alpm;
+  private readonly AlpmSession _alpm;
   private readonly ChildLifetime _lifetime;
   private nint _rawPackage;
 
-  internal LoadedPackage(Alpm alpm, _alpm_pkg_t* backingStruct, ChildLifetime lifetime) : base(backingStruct)
+  internal LoadedPackage(AlpmSession alpm, _alpm_pkg_t* backingStruct, ChildLifetime lifetime) : base(backingStruct)
   {
     _alpm = alpm ?? throw new ArgumentNullException(nameof(alpm));
     _rawPackage = (nint)backingStruct;

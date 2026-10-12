@@ -9,7 +9,7 @@ public sealed class CallbackRegistrationTests
   public unsafe void InitialHandle_HasNoCallbacksRegistered()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = env.Alpm.Handle;
+    var handle = env.AlpmSession.Handle;
 
     Assert.True(NativeMethods.alpm_option_get_eventcb(handle) == null, "eventcb should not be registered initially");
     Assert.True(NativeMethods.alpm_option_get_fetchcb(handle) == null, "fetchcb should not be registered initially");
@@ -23,8 +23,8 @@ public sealed class CallbackRegistrationTests
   public unsafe void Handlers_RegisterWhenSet_AndUnregisterWhenNull()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = env.Alpm.Handle;
-    var cb = env.Alpm.Callback;
+    var handle = env.AlpmSession.Handle;
+    var cb = env.AlpmSession.Callback;
 
     Assert.True(NativeMethods.alpm_option_get_eventcb(handle) == null);
     cb.EventHandler = _ => { };
@@ -70,10 +70,10 @@ public sealed class CallbackRegistrationTests
 
     using (var environment = new IsolatedAlpmEnvironment())
     {
-      environment.Alpm.Callback.HandlerException = observed.Add;
-      environment.Alpm.Callback.LogHandler = (_, _) =>
+      environment.AlpmSession.Callback.HandlerException = observed.Add;
+      environment.AlpmSession.Callback.LogHandler = (_, _) =>
       {
-        environment.Alpm.Callback.FetchHandler = (_, _, _) => FetchResult.Success;
+        environment.AlpmSession.Callback.FetchHandler = (_, _, _) => FetchResult.Success;
       };
     }
 
@@ -84,7 +84,7 @@ public sealed class CallbackRegistrationTests
   public void DisposedHandle_ThrowsObjectDisposedException_WhenMutatingHandler()
   {
     var environment = new IsolatedAlpmEnvironment();
-    var callback = environment.Alpm.Callback;
+    var callback = environment.AlpmSession.Callback;
     environment.Dispose();
 
     Assert.Throws<ObjectDisposedException>(() => callback.EventHandler = _ => { });
@@ -106,7 +106,7 @@ public sealed class CallbackRegistrationTests
 
     try
     {
-      var alpm = new Alpm(root, dbpath);
+      var alpm = new AlpmSession(root, dbpath);
       var callback = alpm.Callback;
       _ = alpm.BeginTransaction();
       alpm.CurrentTransaction = null; // hide transaction so alpm_release fails

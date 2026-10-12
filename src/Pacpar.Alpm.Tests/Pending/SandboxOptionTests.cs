@@ -18,7 +18,7 @@ public sealed class SandboxOptionTests
   public void Components_DefaultToEnabled()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var options = environment.Alpm.Options;
+    var options = environment.AlpmSession.Options;
 
     Assert.False(options.DisableSandboxFilesystem);
     Assert.False(options.DisableSandboxNetwork);
@@ -30,7 +30,7 @@ public sealed class SandboxOptionTests
   public void Components_RoundTrip()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var options = environment.Alpm.Options;
+    var options = environment.AlpmSession.Options;
 
     options.DisableSandboxFilesystem = true;
     options.DisableSandboxNetwork = true;
@@ -48,7 +48,7 @@ public sealed class SandboxOptionTests
   public void Sandbox_ReportsPartiallyDisabled_WhenOnlySomeComponentsAreDisabled()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var options = environment.Alpm.Options;
+    var options = environment.AlpmSession.Options;
 
     options.DisableSandboxSyscalls = true;
 
@@ -59,7 +59,7 @@ public sealed class SandboxOptionTests
   public void Sandbox_ReportsDisabled_WhenEveryComponentIsDisabled()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var options = environment.Alpm.Options;
+    var options = environment.AlpmSession.Options;
 
     options.DisableSandboxFilesystem = true;
     options.DisableSandboxNetwork = true;
@@ -72,7 +72,7 @@ public sealed class SandboxOptionTests
   public void SandboxUser_StartsNull_AndRoundTrips()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var options = environment.Alpm.Options;
+    var options = environment.AlpmSession.Options;
 
     Assert.Null(options.SandboxUser);
 
@@ -85,7 +85,7 @@ public sealed class SandboxOptionTests
   public void SandboxUser_CanBeResetToNull()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var options = environment.Alpm.Options;
+    var options = environment.AlpmSession.Options;
     options.SandboxUser = "nobody";
 
     options.SandboxUser = null;
@@ -102,7 +102,7 @@ public sealed class SandboxOptionTests
   public void SandboxUser_WithAnUnknownUser_ThrowsArgumentException()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var options = environment.Alpm.Options;
+    var options = environment.AlpmSession.Options;
 
     var exception = Assert.Throws<ArgumentException>(() => options.SandboxUser = "pacpar-no-such-user-9f3a");
 
@@ -114,7 +114,7 @@ public sealed class SandboxOptionTests
   public void DisableDownloadTimeout_RoundTrips()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var options = environment.Alpm.Options;
+    var options = environment.AlpmSession.Options;
 
     Assert.False(options.DisableDownloadTimeout);
 

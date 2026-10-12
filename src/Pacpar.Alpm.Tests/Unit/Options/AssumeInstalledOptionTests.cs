@@ -16,7 +16,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 public sealed unsafe class AssumeInstalledOptionTests : IDisposable
 {
   private readonly string _workspaceRoot;
-  private readonly Alpm _alpm;
+  private readonly AlpmSession _alpm;
 
   public AssumeInstalledOptionTests()
   {
@@ -29,7 +29,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
     Directory.CreateDirectory(Path.Combine(root, "tmp"));
     Directory.CreateDirectory(Path.Combine(root, "var", "cache", "pacman", "pkg"));
 
-    _alpm = new Alpm(root, dbpath);
+    _alpm = new AlpmSession(root, dbpath);
   }
 
   public void Dispose()

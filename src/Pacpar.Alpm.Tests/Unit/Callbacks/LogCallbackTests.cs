@@ -27,7 +27,7 @@ public sealed class LogCallbackTests
 
     using (var environment = new IsolatedAlpmEnvironment())
     {
-      environment.Alpm.Callback.LogHandler = (level, message) => received.Add((level, message));
+      environment.AlpmSession.Callback.LogHandler = (level, message) => received.Add((level, message));
       // Leaving the block disposes the handle, which is when libalpm logs.
     }
 
@@ -52,8 +52,8 @@ public sealed class LogCallbackTests
 
     using (var environment = new IsolatedAlpmEnvironment())
     {
-      environment.Alpm.Callback.LogHandler = (_, _) => throw new InvalidOperationException("log handler failed");
-      environment.Alpm.Callback.HandlerException = observed.Add;
+      environment.AlpmSession.Callback.LogHandler = (_, _) => throw new InvalidOperationException("log handler failed");
+      environment.AlpmSession.Callback.HandlerException = observed.Add;
     }
 
     Assert.Contains(observed, exception => exception.Message == "log handler failed");

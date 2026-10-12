@@ -38,7 +38,7 @@ public sealed class PackageTransferTests : IDisposable
   }
 
   private LoadedPackage Load(string name, string? file = null)
-    => _environment.Alpm.LoadPackage(PackageArchive.Create(_packageDirectory, name, file: file),
+    => _environment.AlpmSession.LoadPackage(PackageArchive.Create(_packageDirectory, name, file: file),
       full: true, SigLevel.AlpmSigUseDefault);
 
   /// <summary>
@@ -50,7 +50,7 @@ public sealed class PackageTransferTests : IDisposable
   public void AddPackage_TransfersOwnership_SoBothDisposalsAreSafe()
   {
     using var package = Load("audit-transfer", file: "usr/bin/probe-file");
-    using var transaction = _environment.Alpm.BeginTransaction();
+    using var transaction = _environment.AlpmSession.BeginTransaction();
 
     var view = transaction.AddPackage(package);
 
@@ -68,7 +68,7 @@ public sealed class PackageTransferTests : IDisposable
   public void AddPackage_ReturnsABorrowedView()
   {
     var package = Load("audit-view");
-    using var transaction = _environment.Alpm.BeginTransaction();
+    using var transaction = _environment.AlpmSession.BeginTransaction();
 
     var view = transaction.AddPackage(package);
 
@@ -88,12 +88,12 @@ public sealed class PackageTransferTests : IDisposable
   public void AddPackage_OfAViewWhoseTransactionWasReleased_Throws()
   {
     PackageView stale;
-    using (var owner = _environment.Alpm.BeginTransaction(NoFlags))
+    using (var owner = _environment.AlpmSession.BeginTransaction(NoFlags))
     {
       stale = owner.AddPackage(Load("audit-stale-view"));
     }
 
-    using var receiver = _environment.Alpm.BeginTransaction(NoFlags);
+    using var receiver = _environment.AlpmSession.BeginTransaction(NoFlags);
 
     Assert.Throws<AlpmLifetimeException>(() => receiver.AddPackage(stale));
   }
@@ -106,7 +106,7 @@ public sealed class PackageTransferTests : IDisposable
   public void AddPackage_RetiresTheWrapperThatWasHandedOver()
   {
     var package = Load("audit-retired");
-    using var transaction = _environment.Alpm.BeginTransaction();
+    using var transaction = _environment.AlpmSession.BeginTransaction();
 
     transaction.AddPackage(package);
 
@@ -128,7 +128,7 @@ public sealed class PackageTransferTests : IDisposable
   public void AddPackage_OfAnAlreadyHandedOverPackage_Throws()
   {
     var package = Load("audit-twice");
-    using var transaction = _environment.Alpm.BeginTransaction();
+    using var transaction = _environment.AlpmSession.BeginTransaction();
     transaction.AddPackage(package);
 
     Assert.Throws<ObjectDisposedException>(() => transaction.AddPackage(package));
@@ -152,17 +152,17 @@ public sealed class PackageTransferTests : IDisposable
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-installed", file: "usr/bin/probe-file");
 
-    using (var installer = _environment.Alpm.BeginTransaction())
+    using (var installer = _environment.AlpmSession.BeginTransaction())
     {
-      installer.AddPackage(_environment.Alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
+      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
       installer.Prepare();
       installer.Commit();
     }
 
-    var installed = _environment.Alpm.GetLocalDatabase().GetPackage("audit-installed");
+    var installed = _environment.AlpmSession.GetLocalDatabase().GetPackage("audit-installed");
     Assert.NotNull(installed);
 
-    using var transaction = _environment.Alpm.BeginTransaction();
+    using var transaction = _environment.AlpmSession.BeginTransaction();
 
     var failure = Assert.Throws<AlpmException>(() => transaction.AddPackage(installed));
 

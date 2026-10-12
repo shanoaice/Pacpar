@@ -113,7 +113,7 @@ public class AlpmRetrieveException(int errno, string? strError = null, string? c
 /// One errno has one public exception type, so the four payload-carrying <c>ALPM_ERR_PKG_INVALID*</c>
 /// errnos are reported as this type from every entry point, not only from a transaction call: as an
 /// <c>InvalidPackage*</c> case when the failing call dumped a list of package names, and as the base
-/// state when it did not (a caller that only asks <see cref="Alpm.GetCurrentError"/> has no list to
+/// state when it did not (a caller that only asks <see cref="AlpmSession.GetCurrentError"/> has no list to
 /// carry). A <c>catch</c> on <see cref="AlpmPackageException"/> does not match them.
 /// </para>
 /// </remarks>

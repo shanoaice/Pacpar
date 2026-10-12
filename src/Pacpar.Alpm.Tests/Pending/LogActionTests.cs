@@ -20,11 +20,11 @@ public sealed class LogActionTests : IDisposable
     if (System.IO.File.Exists(_logPath)) System.IO.File.Delete(_logPath);
   }
 
-  private Alpm CreateAlpmWithLogFile(out IsolatedAlpmEnvironment environment)
+  private AlpmSession CreateAlpmWithLogFile(out IsolatedAlpmEnvironment environment)
   {
     environment = new IsolatedAlpmEnvironment();
-    environment.Alpm.Options.LogFile = _logPath;
-    return environment.Alpm;
+    environment.AlpmSession.Options.LogFile = _logPath;
+    return environment.AlpmSession;
   }
 
   [Fact]

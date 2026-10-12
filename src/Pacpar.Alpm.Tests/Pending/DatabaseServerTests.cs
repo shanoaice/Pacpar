@@ -17,13 +17,13 @@ public sealed class DatabaseServerTests
   private const string Url = "https://example.invalid/$repo/os/$arch";
   private const string OtherUrl = "https://other.invalid/$repo/os/$arch";
 
-  private static Database RegisterSync(Alpm alpm) => alpm.RegisterSyncDatabase("pacpar-test", (SigLevel)0);
+  private static Database RegisterSync(AlpmSession alpm) => alpm.RegisterSyncDatabase("pacpar-test", (SigLevel)0);
 
   [Fact]
   public void Servers_StartEmpty()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     Assert.Empty(db.Servers);
     Assert.Empty(db.CacheServers);
@@ -33,7 +33,7 @@ public sealed class DatabaseServerTests
   public void AddServer_ThenRemoveServer_RoundTrips()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     db.AddServer(Url);
 
@@ -48,7 +48,7 @@ public sealed class DatabaseServerTests
   public void AddServer_DoesNotDeduplicate()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     db.AddServer(Url);
     db.AddServer(Url);
@@ -60,7 +60,7 @@ public sealed class DatabaseServerTests
   public void SetServers_ReplacesTheWholeList()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
     db.AddServer(Url);
 
     db.SetServers([OtherUrl]);
@@ -78,7 +78,7 @@ public sealed class DatabaseServerTests
   public void SetServers_CopiesTheStrings_LibalpmDoesNotAliasOurBuffers()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     db.SetServers([Url, OtherUrl]);
     GC.Collect();
@@ -92,7 +92,7 @@ public sealed class DatabaseServerTests
   public void CacheServers_BehaveTheSameWayAsServers()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     db.AddCacheServer(Url);
     Assert.Equal([Url], db.CacheServers);
@@ -110,7 +110,7 @@ public sealed class DatabaseServerTests
   public void ServersAndCacheServers_AreIndependent()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     db.AddServer(Url);
     db.AddCacheServer(OtherUrl);

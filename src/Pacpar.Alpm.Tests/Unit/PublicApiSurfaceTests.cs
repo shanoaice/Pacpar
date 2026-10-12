@@ -11,7 +11,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// <c>PackageView.Factory(void*, Lifetime?)</c>, so a consumer holding a pointer had to enter an
 /// <c>unsafe</c>
 /// context and name libalpm's binding types to wrap it. Instances are meant to come from
-/// <see cref="Alpm"/>, <see cref="Database"/>, <see cref="Transaction"/> and the types that hang
+/// <see cref="AlpmSession"/>, <see cref="Database"/>, <see cref="Transaction"/> and the types that hang
 /// off them. That surface no longer exposes a raw handle at all: the wrapper reaches libalpm
 /// through <see cref="SafeAlpmHandle"/>, a type-parameterised <c>SafeHandle</c> that owns the
 /// native handle and is what the <c>[LibraryImport]</c> entry points accept.
@@ -70,5 +70,5 @@ public sealed class PublicApiSurfaceTests
     Assert.Empty(leaked);
   }
 
-  private static IEnumerable<Type> ExportedTypes => typeof(Alpm).Assembly.GetExportedTypes();
+  private static IEnumerable<Type> ExportedTypes => typeof(AlpmSession).Assembly.GetExportedTypes();
 }

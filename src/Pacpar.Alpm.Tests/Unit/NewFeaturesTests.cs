@@ -25,14 +25,14 @@ public sealed class NewFeaturesTests : IDisposable
   private PackageView InstallAndGetPackage(string name, string? file = null)
   {
     var archive = PackageArchive.Create(_packageDirectory, name, file: file);
-    using (var transaction = _environment.Alpm.BeginTransaction())
+    using (var transaction = _environment.AlpmSession.BeginTransaction())
     {
-      transaction.AddPackage(_environment.Alpm.LoadPackage(archive, full: true, SigLevel.AlpmSigUseDefault));
+      transaction.AddPackage(_environment.AlpmSession.LoadPackage(archive, full: true, SigLevel.AlpmSigUseDefault));
       transaction.Prepare();
       transaction.Commit();
     }
 
-    var localDb = _environment.Alpm.GetLocalDatabase();
+    var localDb = _environment.AlpmSession.GetLocalDatabase();
     var pkg = localDb.GetPackage(name);
     Assert.NotNull(pkg);
     return pkg!;
@@ -82,7 +82,7 @@ public sealed class NewFeaturesTests : IDisposable
   public void Database_Search_FindsMatchingPackages()
   {
     var pkg = InstallAndGetPackage("test-search-alpha");
-    var localDb = _environment.Alpm.GetLocalDatabase();
+    var localDb = _environment.AlpmSession.GetLocalDatabase();
 
     var results = localDb.Search(["test-search-alpha"]);
     Assert.Contains(results, p => p.Name == "test-search-alpha");
@@ -108,13 +108,13 @@ public sealed class NewFeaturesTests : IDisposable
   public void Alpm_FindSatisfier_FindsMatchingPackageAcrossDatabases()
   {
     var pkg = InstallAndGetPackage("test-dbs-satisfier-target");
-    var localDb = _environment.Alpm.GetLocalDatabase();
+    var localDb = _environment.AlpmSession.GetLocalDatabase();
 
-    var found = _environment.Alpm.FindSatisfier([localDb], "test-dbs-satisfier-target");
+    var found = _environment.AlpmSession.FindSatisfier([localDb], "test-dbs-satisfier-target");
     Assert.NotNull(found);
     Assert.Equal("test-dbs-satisfier-target", found!.Name);
 
-    var notFound = _environment.Alpm.FindSatisfier([localDb], "no-such-pkg");
+    var notFound = _environment.AlpmSession.FindSatisfier([localDb], "no-such-pkg");
     Assert.Null(notFound);
   }
 
@@ -132,10 +132,10 @@ public sealed class NewFeaturesTests : IDisposable
   public void Alpm_FindSatisfier_IssuesViewsUnderTheLocalDatabaseDomain()
   {
     InstallAndGetPackage("test-satisfier-domain-pkg");
-    var localDb = _environment.Alpm.GetLocalDatabase();
+    var localDb = _environment.AlpmSession.GetLocalDatabase();
 
     var viaGetPackage = localDb.GetPackage("test-satisfier-domain-pkg");
-    var viaFindSatisfier = _environment.Alpm.FindSatisfier([localDb], "test-satisfier-domain-pkg");
+    var viaFindSatisfier = _environment.AlpmSession.FindSatisfier([localDb], "test-satisfier-domain-pkg");
     Assert.NotNull(viaGetPackage);
     Assert.NotNull(viaFindSatisfier);
 
@@ -150,7 +150,7 @@ public sealed class NewFeaturesTests : IDisposable
   public void PackageView_GetNewVersion_ReturnsNullWhenNoSyncDatabasesHaveNewer()
   {
     var pkg = InstallAndGetPackage("test-upgrade-check");
-    var syncDb = _environment.Alpm.RegisterSyncDatabase("test-sync-empty", 0);
+    var syncDb = _environment.AlpmSession.RegisterSyncDatabase("test-sync-empty", 0);
 
     var upgrade = pkg.GetNewVersion([syncDb]);
     Assert.Null(upgrade);
@@ -159,7 +159,7 @@ public sealed class NewFeaturesTests : IDisposable
   [Fact]
   public void Database_Update_WithoutServers_FailsAndReportsError()
   {
-    var syncDb = _environment.Alpm.RegisterSyncDatabase("test-sync-update", 0);
+    var syncDb = _environment.AlpmSession.RegisterSyncDatabase("test-sync-update", 0);
 
     var ok = syncDb.TryUpdate(force: false, out var updated, out var failure);
     Assert.False(ok);
@@ -173,7 +173,7 @@ public sealed class NewFeaturesTests : IDisposable
   public void Database_Update_InvalidatesPriorPackageViews()
   {
     var pkg = InstallAndGetPackage("test-invalidation-pkg");
-    var localDb = _environment.Alpm.GetLocalDatabase();
+    var localDb = _environment.AlpmSession.GetLocalDatabase();
 
     // Calling InvalidateViews retires all views issued under localDb
     localDb.InvalidateViews("Database.Update");

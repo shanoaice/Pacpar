@@ -1,6 +1,5 @@
 using BenchmarkDotNet.Attributes;
 using Pacpar.Alpm;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -16,7 +15,7 @@ namespace Pacpar.Benchmarks;
 public class TrySeamBenchmarks
 {
   private string _tempDir = null!;
-  private AlpmHandle _alpm = null!;
+  private AlpmSession _alpm = null!;
   private Database _syncDb = null!;
 
   [GlobalSetup]
@@ -29,7 +28,7 @@ public class TrySeamBenchmarks
     Directory.CreateDirectory(Path.Combine(dbpath, "local"));
     Directory.CreateDirectory(Path.Combine(dbpath, "sync"));
 
-    _alpm = new AlpmHandle(root, dbpath);
+    _alpm = new AlpmSession(root, dbpath);
     _syncDb = _alpm.RegisterSyncDatabase("nonexistent", 0);
   }
 

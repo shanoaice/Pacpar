@@ -4,7 +4,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit;
 
 /// <summary>
-/// The handle's error state must be read from the handle itself. <see cref="Alpm.Errno"/> used to
+/// The handle's error state must be read from the handle itself. <see cref="AlpmSession.Errno"/> used to
 /// return the out-parameter of <c>alpm_initialize</c>, which libalpm writes only when
 /// initialization fails: after a successful init it stayed <c>ALPM_ERR_OK</c> forever, so failures
 /// surfaced as <see cref="NullReferenceException"/> (from <c>throw GetCurrentError()!</c>) or as the
@@ -20,7 +20,7 @@ public sealed class AlpmErrorStateTests
   public void Errno_ReportsTheHandleError_NotTheInitializeOutParameter()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
 
     // A failure libalpm reports through the handle. (This used to be a second BeginTransaction,
     // which is a join of the active transaction now, so the handle stays clean.)
@@ -38,16 +38,16 @@ public sealed class AlpmErrorStateTests
   {
     using var environment = new IsolatedAlpmEnvironment();
 
-    Assert.False(environment.Alpm.Handle.IsInvalid);
-    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_OK, environment.Alpm.Errno);
-    Assert.Null(environment.Alpm.GetCurrentError());
+    Assert.False(environment.AlpmSession.Handle.IsInvalid);
+    Assert.Equal((int)_alpm_errno_t.ALPM_ERR_OK, environment.AlpmSession.Errno);
+    Assert.Null(environment.AlpmSession.GetCurrentError());
   }
 
   [Fact]
   public void Dispose_InvalidatesManagedAccessors()
   {
     var environment = new IsolatedAlpmEnvironment();
-    var alpm = environment.Alpm;
+    var alpm = environment.AlpmSession;
     environment.Dispose();
 
     Assert.Throws<ObjectDisposedException>(() => _ = alpm.Handle);

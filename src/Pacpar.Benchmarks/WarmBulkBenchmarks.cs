@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Pacpar.Alpm;
 using Pacpar.Alpm.List;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -23,7 +22,7 @@ public class WarmBulkBenchmarks
   private const string LocalQuery = "system";
   private const string SyncQuery = "python";
 
-  private AlpmHandle _alpm = null!;
+  private AlpmSession _alpm = null!;
   private AlpmList<PackageView> _localPkgs = null!;
   private AlpmList<PackageView> _syncPkgs = null!;
 

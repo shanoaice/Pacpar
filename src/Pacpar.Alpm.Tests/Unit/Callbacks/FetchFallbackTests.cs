@@ -11,10 +11,10 @@ public sealed class FetchFallbackTests
   public unsafe void FetchPackageUrl_WithoutFetchHandler_UsesInternalDownloader_FailsWithRetrieveFailedEvent()
   {
     using var env = new IsolatedAlpmEnvironment();
-    var handle = env.Alpm.Handle;
+    var handle = env.AlpmSession.Handle;
 
     var events = new List<AlpmEvent>();
-    env.Alpm.Callback.EventHandler = events.Add;
+    env.AlpmSession.Callback.EventHandler = events.Add;
 
     var urlPtr = NativeString.ToNative("http://127.0.0.1:1/x-1.0-1-x86_64.pkg.tar.zst");
     _alpm_list_t* urls = null;

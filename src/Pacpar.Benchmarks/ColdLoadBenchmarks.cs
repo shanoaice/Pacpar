@@ -1,6 +1,5 @@
 using BenchmarkDotNet.Attributes;
 using Pacpar.Alpm;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -17,7 +16,7 @@ namespace Pacpar.Benchmarks;
 [IterationCount(10)]
 public class ColdLoadBenchmarks
 {
-  private AlpmHandle _alpm = null!;
+  private AlpmSession _alpm = null!;
   private Database _localDb = null!;
 
   [IterationSetup]

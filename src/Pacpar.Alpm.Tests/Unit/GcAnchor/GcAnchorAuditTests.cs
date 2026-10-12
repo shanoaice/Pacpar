@@ -34,7 +34,7 @@ public sealed class GcAnchorAuditTests
   }
 
   private static IEnumerable<Type> LibraryTypes() =>
-    typeof(Alpm).Assembly.GetTypes()
+    typeof(AlpmSession).Assembly.GetTypes()
       .Where(t => t.Namespace?.StartsWith("Pacpar.Alpm.Bindings", StringComparison.Ordinal) != true)
       .Where(t => !(t.IsAbstract && t.IsSealed))          // static classes have no owner to anchor
       .Where(t => !typeof(SafeHandle).IsAssignableFrom(t)); // ReleaseHandle owns the handle already

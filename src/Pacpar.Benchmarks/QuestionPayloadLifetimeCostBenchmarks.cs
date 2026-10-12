@@ -3,7 +3,6 @@ using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Pacpar.Alpm;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -66,7 +65,7 @@ public class QuestionPayloadLifetimeCostBenchmarks
   [DllImport("libalpm", EntryPoint = "alpm_pkg_get_db", CallingConvention = CallingConvention.Cdecl)]
   private static extern nint AlpmPkgGetDb(nint pkg);
 
-  private AlpmHandle _alpm = null!;
+  private AlpmSession _alpm = null!;
   private PackageView[] _payload = null!;
   private PackageView _largest = null!;
   private nint[] _packagePointers = null!;

@@ -19,7 +19,7 @@ namespace Pacpar.Alpm;
 /// spelled out again are where libalpm crosses back into consumer code: <see cref="Callback"/>
 /// handlers and the questions raised through <see cref="Callback.QuestionHandler"/>.
 /// </remarks>
-public class Alpm : IDisposable
+public class AlpmSession : IDisposable
 {
   // opaque handle to libalpm wrapped in a SafeHandle
   private readonly SafeAlpmHandle _handle;
@@ -38,7 +38,7 @@ public class Alpm : IDisposable
   private int _disposeStarted;
   private int _disposedFlag;
 
-  private Alpm(SafeAlpmHandle handle)
+  private AlpmSession(SafeAlpmHandle handle)
   {
     _handle = handle;
     _lifetime = RootLifetime.Create(this, "the ALPM handle");
@@ -108,7 +108,7 @@ public class Alpm : IDisposable
   public static Capability Capabilities => (Capability)(uint)NativeMethods.alpm_capabilities();
 
   /// <summary>
-  /// The failure-returning seam for creating an <see cref="Alpm"/> session.
+  /// The failure-returning seam for creating an <see cref="AlpmSession"/> session.
   /// </summary>
   /// <param name="root">The root directory of the installation (e.g. <c>"/"</c>).</param>
   /// <param name="dbpath">The path to the pacman database directory (e.g. <c>"/var/lib/pacman"</c>).</param>
@@ -116,7 +116,7 @@ public class Alpm : IDisposable
   /// <param name="failure">The failure, or <c>null</c> when initialization succeeded.</param>
   /// <returns><c>true</c> if initialization succeeded; otherwise <c>false</c>.</returns>
   internal static bool TryCreate(string root, string dbpath,
-    [NotNullWhen(true)] out Alpm? session,
+    [NotNullWhen(true)] out AlpmSession? session,
     [NotNullWhen(false)] out AlpmFailure? failure)
   {
     if (!TryInitializeHandle(root, dbpath, out var handle, out failure))
@@ -125,17 +125,17 @@ public class Alpm : IDisposable
       return false;
     }
 
-    session = new Alpm(handle);
+    session = new AlpmSession(handle);
     return true;
   }
 
   /// <summary>
-  /// Initializes a new instance of the <see cref="Alpm"/> library handle.
+  /// Initializes a new instance of the <see cref="AlpmSession"/> library handle.
   /// </summary>
   /// <param name="root">The root directory of the installation (e.g. <c>"/"</c>).</param>
   /// <param name="dbpath">The path to the pacman database directory (e.g. <c>"/var/lib/pacman"</c>).</param>
   /// <exception cref="Exception">Thrown if libalpm fails to initialize.</exception>
-  public Alpm(string root, string dbpath) : this(InitializeOrThrow(root, dbpath))
+  public AlpmSession(string root, string dbpath) : this(InitializeOrThrow(root, dbpath))
   {
   }
 

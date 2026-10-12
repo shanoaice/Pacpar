@@ -33,8 +33,8 @@ public sealed class CachedReadInvalidationTests : IDisposable
 
   private void Install(string name)
   {
-    using var transaction = _environment.Alpm.BeginTransaction();
-    transaction.AddPackage(_environment.Alpm.LoadPackage(
+    using var transaction = _environment.AlpmSession.BeginTransaction();
+    transaction.AddPackage(_environment.AlpmSession.LoadPackage(
       PackageArchive.Create(_packageDirectory, name), full: true, SigLevel.AlpmSigUseDefault));
     transaction.Prepare();
     transaction.Commit();
@@ -44,7 +44,7 @@ public sealed class CachedReadInvalidationTests : IDisposable
   public void EveryCachedMember_ThrowsOnceTheSessionIsGone()
   {
     Install("cached-read-pkg");
-    var pkg = _environment.Alpm.GetLocalDatabase().GetPackage("cached-read-pkg")!;
+    var pkg = _environment.AlpmSession.GetLocalDatabase().GetPackage("cached-read-pkg")!;
 
     Assert.Equal("cached-read-pkg", pkg.Name);
     _ = pkg.Filename;
@@ -57,7 +57,7 @@ public sealed class CachedReadInvalidationTests : IDisposable
     _ = pkg.Arch;
     _ = pkg.Base64Signature;
 
-    _environment.Alpm.Dispose();
+    _environment.AlpmSession.Dispose();
 
     Assert.Throws<AlpmLifetimeException>(() => pkg.Name);
     Assert.Throws<AlpmLifetimeException>(() => pkg.Filename);

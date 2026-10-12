@@ -4,7 +4,7 @@ namespace Pacpar.Alpm;
 
 /// <summary>
 /// The only place in this library that reads libalpm's errno to decide what to throw. (<see
-/// cref="Alpm.Errno"/> and <see cref="Alpm.GetCurrentError"/> read it too, but as diagnostics the
+/// cref="AlpmSession.Errno"/> and <see cref="AlpmSession.GetCurrentError"/> read it too, but as diagnostics the
 /// caller asks for explicitly - no control flow in this library depends on them.)
 /// </summary>
 /// <remarks>

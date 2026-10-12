@@ -5,7 +5,6 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Pacpar.Alpm;
 using Pacpar.Alpm.Bindings;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -48,7 +47,7 @@ public unsafe class NativeStringScratchBenchmarks
   /// <summary>Comparisons per Bulk256 invocation.</summary>
   private const int PairCount = 256;
 
-  private AlpmHandle _alpm = null!;
+  private AlpmSession _alpm = null!;
   private string[] _left = null!;
   private string[] _right = null!;
   private PackageVersion[] _leftReal = null!;

@@ -10,7 +10,7 @@ namespace Pacpar.Alpm;
 /// <remarks>
 /// A borrowed handle: libalpm owns the database, this wrapper only reads through it. Every accessor
 /// checks first that the database is still live, so using one after <see cref="Unregister"/>, after
-/// <see cref="Alpm.UnregisterAllSyncDatabases"/> or after the owning <see cref="Alpm"/> was released
+/// <see cref="AlpmSession.UnregisterAllSyncDatabases"/> or after the owning <see cref="AlpmSession"/> was released
 /// throws <see cref="AlpmLifetimeException"/> instead of reading freed memory. Views handed out here
 /// (packages, groups, server lists) die with it the same way.
 /// </remarks>
@@ -36,7 +36,7 @@ public unsafe class Database
 
   /// <summary>
   /// The domain guarding this database and every view issued from it. Registered in the handle's
-  /// pointer registry (sync databases) or held by a dedicated <see cref="Alpm"/> field (the local
+  /// pointer registry (sync databases) or held by a dedicated <see cref="AlpmSession"/> field (the local
   /// database, which <c>alpm_unregister_all_syncdbs</c> never releases).
   /// </summary>
   internal readonly ChildLifetime Lifetime;
@@ -61,15 +61,15 @@ public unsafe class Database
   }
 
   /// <summary>
-  /// Element factory for <see cref="Alpm.GetSyncDatabases"/>: resolves the per-database token from
+  /// Element factory for <see cref="AlpmSession.GetSyncDatabases"/>: resolves the per-database token from
   /// the handle registry keyed by the native pointer, so two wrappers for the same database - and
   /// two enumerations of the same list - share one token and one invalidation.
   /// </summary>
   /// <remarks>
   /// The name is read only when the pointer is not registered yet: on a fresh list the database is
   /// alive and the read is safe. A list obtained <i>before</i> a registry mutation
-  /// (<see cref="Alpm.RegisterSyncDatabase"/>, <see cref="Unregister"/>,
-  /// <see cref="Alpm.UnregisterAllSyncDatabases"/>) can hold nodes those calls freed; re-fetch the
+  /// (<see cref="AlpmSession.RegisterSyncDatabase"/>, <see cref="Unregister"/>,
+  /// <see cref="AlpmSession.UnregisterAllSyncDatabases"/>) can hold nodes those calls freed; re-fetch the
   /// list after mutating the registry instead of re-enumerating a stale one.
   /// </remarks>
   internal static Database Factory(void* ptr, Lifetime? lifetime)
@@ -95,7 +95,7 @@ public unsafe class Database
   /// <para>
   /// Use this instead of <see cref="RootLifetime.GetLifetimeTokenForHandle"/> whenever libalpm hands back
   /// a package the caller's own databases own. The registry deduplicates by native pointer, but it
-  /// only covers databases that were registered through it: <see cref="Alpm.GetLocalDatabase"/>
+  /// only covers databases that were registered through it: <see cref="AlpmSession.GetLocalDatabase"/>
   /// mints its domain directly and never files an entry, so a registry lookup with the local
   /// database's pointer cannot find one and mints a <i>second</i> domain for the same native
   /// database. Every view issued from that duplicate then survives the invalidation of the real

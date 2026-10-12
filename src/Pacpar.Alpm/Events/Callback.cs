@@ -55,7 +55,7 @@ public enum FetchResult
 
 
 /// <summary>
-/// Holds the native callback context (ctx) and the user-facing handlers of an <see cref="Alpm"/>
+/// Holds the native callback context (ctx) and the user-facing handlers of an <see cref="AlpmSession"/>
 /// instance.
 /// </summary>
 /// <remarks>
@@ -85,7 +85,7 @@ public enum FetchResult
 /// Handlers are configuration, not control flow. Mutating a handler from within an active callback
 /// invocation throws <see cref="InvalidOperationException"/> to prevent native use-after-free and NULL
 /// dereference crashes in libalpm's download and dispatch loops. Mutating a handler after the owning
-/// <see cref="Alpm"/> handle has been disposed throws <see cref="ObjectDisposedException"/>.
+/// <see cref="AlpmSession"/> handle has been disposed throws <see cref="ObjectDisposedException"/>.
 /// <para>
 /// Handlers run synchronously on the thread libalpm invokes them from - the thread already running
 /// the transaction, never a thread chosen by this library - and they block libalpm for as long as
@@ -99,7 +99,7 @@ public enum FetchResult
 /// <para>
 /// Every handler invocation is routed through <c>SafeInvoke</c>, which swallows handler exceptions
 /// at the FFI boundary and reports them through <see cref="HandlerException"/> when that observer is
-/// set. The ctx handle is owned by <see cref="Alpm"/>, which releases it only once <c>alpm_release</c>
+/// set. The ctx handle is owned by <see cref="AlpmSession"/>, which releases it only once <c>alpm_release</c>
 /// has returned successfully.
 /// </para>
 /// </remarks>
@@ -527,14 +527,14 @@ public sealed class Callback
 
   /// <summary>
   /// Releases the callback ctx handle. Deliberately <c>internal</c>: the handle is owned by
-  /// <see cref="Alpm"/>, which releases it once <c>alpm_release</c> has returned successfully. A
+  /// <see cref="AlpmSession"/>, which releases it once <c>alpm_release</c> has returned successfully. A
   /// public entry point would let a consumer invalidate the ctx while native code may still call
   /// back.
   /// </summary>
   /// <remarks>
   /// Not called when <c>alpm_release</c> failed: the handle it belongs to is still alive then (it is
   /// what leaked), and its native thunks would dereference this ctx handle - see
-  /// <see cref="Alpm.Dispose()"/>.
+  /// <see cref="AlpmSession.Dispose()"/>.
   /// </remarks>
   internal void Dispose()
   {

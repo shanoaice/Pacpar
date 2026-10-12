@@ -326,9 +326,9 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var oldPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-old"), full: false, SigLevel.AlpmSigUseDefault);
-      using var newPkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-new"), full: false, SigLevel.AlpmSigUseDefault);
-      var db = env.Alpm.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
+      using var oldPkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-old"), full: false, SigLevel.AlpmSigUseDefault);
+      using var newPkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-new"), full: false, SigLevel.AlpmSigUseDefault);
+      var db = env.AlpmSession.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
 
       var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
       try
@@ -338,7 +338,7 @@ public sealed unsafe class ManagedSnapshotTests
         native->replace.oldpkg = oldPkg.BackingStruct;
         native->replace.newpkg = newPkg.BackingStruct;
         native->replace.newdb = db.ValidatedPtr;
-        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var frame = env.AlpmSession.RootLifetime.CreateChild("frame");
         var payload = AlpmQuestion.FromUnion(native, frame);
         *native = default;
 
@@ -371,7 +371,7 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "ignored-pkg"), full: false, SigLevel.AlpmSigUseDefault);
+      using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "ignored-pkg"), full: false, SigLevel.AlpmSigUseDefault);
 
       var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
       try
@@ -379,7 +379,7 @@ public sealed unsafe class ManagedSnapshotTests
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
         native->install_ignorepkg.install = 1;
         native->install_ignorepkg.pkg = pkg.BackingStruct;
-        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var frame = env.AlpmSession.RootLifetime.CreateChild("frame");
         var payload = AlpmQuestion.FromUnion(native, frame);
         *native = default;
 
@@ -410,8 +410,8 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var pkg1 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-one"), full: false, SigLevel.AlpmSigUseDefault);
-      using var pkg2 = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "pkg-two"), full: false, SigLevel.AlpmSigUseDefault);
+      using var pkg1 = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pkg-one"), full: false, SigLevel.AlpmSigUseDefault);
+      using var pkg2 = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pkg-two"), full: false, SigLevel.AlpmSigUseDefault);
 
       var conflictStruct = (_alpm_conflict_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_conflict_t));
       var dependStruct = (_alpm_depend_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_depend_t));
@@ -433,7 +433,7 @@ public sealed unsafe class ManagedSnapshotTests
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_CONFLICT_PKG;
         native->conflict.remove = 1;
         native->conflict.conflict = conflictStruct;
-        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var frame = env.AlpmSession.RootLifetime.CreateChild("frame");
         var payload = AlpmQuestion.FromUnion(native, frame);
         *native = default;
         *conflictStruct = default;
@@ -480,7 +480,7 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "member-list"),
+      using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "member-list"),
         full: false, SigLevel.AlpmSigUseDefault);
       var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
       var members = NativeMethods.alpm_list_add(null, pkg.BackingStruct);
@@ -492,7 +492,7 @@ public sealed unsafe class ManagedSnapshotTests
         native->remove_pkgs.packages = members;
 
         // The REMOVE_PKGS branch wraps the member list under the callback frame lifetime.
-        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var frame = env.AlpmSession.RootLifetime.CreateChild("frame");
         var payload = AlpmQuestion.FromUnion(native, frame);
 
         *native = default;
@@ -555,7 +555,7 @@ public sealed unsafe class ManagedSnapshotTests
 
     try
     {
-      using var pkg = env.Alpm.LoadPackage(PackageArchive.Create(pkgDir, "disarm-pkg"), full: false, SigLevel.AlpmSigUseDefault);
+      using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "disarm-pkg"), full: false, SigLevel.AlpmSigUseDefault);
       var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
 
       try
@@ -563,7 +563,7 @@ public sealed unsafe class ManagedSnapshotTests
         native->type_ = _alpm_question_type_t.ALPM_QUESTION_INSTALL_IGNOREPKG;
         native->install_ignorepkg.install = 0;
         native->install_ignorepkg.pkg = pkg.BackingStruct;
-        var frame = env.Alpm.RootLifetime.CreateChild("frame");
+        var frame = env.AlpmSession.RootLifetime.CreateChild("frame");
         var question = Assert.IsType<AlpmQuestion.InstallIgnoredPackage>(
           AlpmQuestion.FromUnion(native, frame));
 

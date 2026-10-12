@@ -15,7 +15,7 @@ namespace Pacpar.Alpm.Tests.Unit;
 /// </remarks>
 public sealed class StickyErrnoTests
 {
-  private static Database RegisterSync(Alpm alpm) => alpm.RegisterSyncDatabase("pacpar-sticky", (SigLevel)0);
+  private static Database RegisterSync(AlpmSession alpm) => alpm.RegisterSyncDatabase("pacpar-sticky", (SigLevel)0);
 
   /// <summary>
   /// Leaves a non-OK errno on the handle: <c>alpm_db_get_pkg</c> sets
@@ -28,7 +28,7 @@ public sealed class StickyErrnoTests
   public void ServerGetters_DoNotThrow_AfterAFailedQuery()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     LeaveAnErrnoBehind(db);
 
@@ -42,7 +42,7 @@ public sealed class StickyErrnoTests
   public void ServerGetters_ReadTheSame_WhateverFailedBefore()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     var withCleanErrno = db.GetServers().ToArray();
 
@@ -57,20 +57,20 @@ public sealed class StickyErrnoTests
   public void DatabaseGetters_DoNotThrow_WhenAnEarlierCallLeftAnErrno()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    LeaveAnErrnoBehind(environment.Alpm.GetLocalDatabase());
+    LeaveAnErrnoBehind(environment.AlpmSession.GetLocalDatabase());
 
     // alpm_get_localdb and alpm_get_syncdbs have no failure channel at all, so there is nothing for
     // an errno probe to contribute. They reset the handle errno on entry, which is why they happened
     // to look safe - the point is that they no longer depend on that.
-    Assert.NotNull(environment.Alpm.GetLocalDatabase());
-    Assert.Empty(environment.Alpm.GetSyncDatabases());
+    Assert.NotNull(environment.AlpmSession.GetLocalDatabase());
+    Assert.Empty(environment.AlpmSession.GetSyncDatabases());
   }
 
   [Fact]
   public void CacheGetter_StillReportsAFailure_ThatIsOnTheHandle()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var db = RegisterSync(environment.Alpm);
+    var db = RegisterSync(environment.AlpmSession);
 
     // The other half of the rule: alpm_db_get_pkgcache clears pm_errno in its first statement, so a
     // non-OK value read afterwards necessarily belongs to that call and a missing database file must

@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Pacpar.Alpm;
 using Pacpar.Alpm.List;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -54,7 +53,7 @@ public class StructViewBenchmarks
 {
   private const string Query = "system";
 
-  private AlpmHandle _alpm = null!;
+  private AlpmSession _alpm = null!;
   private AlpmList<PackageView> _localPkgs = null!;
 
   /// <summary>The handle's root lifetime token, shared by every entry of that handle.</summary>

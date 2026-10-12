@@ -20,14 +20,14 @@ internal sealed class IsolatedAlpmEnvironment : IDisposable
     Directory.CreateDirectory(Path.Combine(root, "tmp"));
     Directory.CreateDirectory(Path.Combine(root, "var", "cache", "pacman", "pkg"));
 
-    Alpm = new Alpm(root, dbpath);
+    AlpmSession = new AlpmSession(root, dbpath);
   }
 
-  internal Alpm Alpm { get; }
+  internal AlpmSession AlpmSession { get; }
 
   public void Dispose()
   {
-    Alpm.Dispose();
+    AlpmSession.Dispose();
 
     if (Directory.Exists(_workspaceRoot))
     {

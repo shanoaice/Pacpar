@@ -1,5 +1,4 @@
 using Pacpar.Alpm;
-using AlpmHandle = Pacpar.Alpm.Alpm;
 
 namespace Pacpar.Benchmarks;
 
@@ -19,7 +18,7 @@ internal static class BenchEnvironment
     Environment.GetEnvironmentVariable("PACPAR_BENCH_DBPATH") ?? "/var/lib/pacman";
 
   /// <summary>Opens a fresh libalpm handle, failing with a clear message when no database exists.</summary>
-  internal static AlpmHandle Open()
+  internal static AlpmSession Open()
   {
     if (!Directory.Exists(DbPath))
     {
@@ -28,11 +27,11 @@ internal static class BenchEnvironment
         "Run them on an Arch-based system, or set PACPAR_BENCH_DBPATH (and PACPAR_BENCH_ROOT) " +
         "to a valid database. The benchmarks are read-only.");
     }
-    return new AlpmHandle(RootDir, DbPath);
+    return new AlpmSession(RootDir, DbPath);
   }
 
   /// <summary>Registers the first available sync database (<c>extra</c>, then <c>core</c>).</summary>
-  internal static Database RegisterSyncDatabase(AlpmHandle alpm)
+  internal static Database RegisterSyncDatabase(AlpmSession alpm)
   {
     var syncDir = Path.Combine(DbPath, "sync");
     foreach (var name in new[] { "extra", "core" })
