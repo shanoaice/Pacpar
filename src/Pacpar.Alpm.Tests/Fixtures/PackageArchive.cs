@@ -60,6 +60,31 @@ internal static class PackageArchive
     return path;
   }
 
+  internal static void CreateSyncDatabase(string dbpath, string dbName, string pkgName, string groupName)
+  {
+    var syncDir = Path.Combine(dbpath, "sync");
+    Directory.CreateDirectory(syncDir);
+    var dbFile = Path.Combine(syncDir, $"{dbName}.db");
+
+    var desc = new StringBuilder()
+      .AppendLine("%NAME%")
+      .AppendLine(pkgName)
+      .AppendLine()
+      .AppendLine("%VERSION%")
+      .AppendLine(Version)
+      .AppendLine()
+      .AppendLine("%FILENAME%")
+      .AppendLine($"{pkgName}-{Version}-x86_64.pkg.tar")
+      .AppendLine()
+      .AppendLine("%GROUPS%")
+      .AppendLine(groupName)
+      .AppendLine();
+
+    using var stream = File.Create(dbFile);
+    using var writer = new TarWriter(stream, TarEntryFormat.Pax);
+    writer.WriteEntry(TextEntry($"{pkgName}-{Version}/desc", desc.ToString()));
+  }
+
   private static PaxTarEntry TextEntry(string name, string contents)
     => new(TarEntryType.RegularFile, name)
     {

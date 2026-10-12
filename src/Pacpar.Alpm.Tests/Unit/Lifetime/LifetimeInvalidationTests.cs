@@ -196,4 +196,32 @@ public sealed class LifetimeInvalidationTests : IDisposable
     // without a check in MoveNext this would end the loop silently instead of throwing.
     Assert.Throws<AlpmLifetimeException>(() => enumerator.MoveNext());
   }
+
+  [Fact]
+  public void FindGroupPackages_AcrossDatabases_InvalidatesUnregisteredDatabaseMembers()
+  {
+    var dbpath = _environment.AlpmSession.Options.DatabasePath!;
+    PackageArchive.CreateSyncDatabase(dbpath, "repo-a", "pkg-a", "shared-group");
+    PackageArchive.CreateSyncDatabase(dbpath, "repo-b", "pkg-b", "shared-group");
+
+    var dbA = _environment.AlpmSession.RegisterSyncDatabase("repo-a", SigLevel.AlpmSigUseDefault);
+    var dbB = _environment.AlpmSession.RegisterSyncDatabase("repo-b", SigLevel.AlpmSigUseDefault);
+
+    var group = dbA.GetGroup("shared-group");
+    Assert.NotNull(group);
+
+    var syncDbs = _environment.AlpmSession.GetSyncDatabases();
+    var packages = group.FindGroupPackages(syncDbs);
+    Assert.Equal(2, packages.Count);
+
+    var pkgA = packages.First(p => p.Name == "pkg-a");
+    var pkgB = packages.First(p => p.Name == "pkg-b");
+    Assert.Equal("pkg-a", pkgA.Name);
+    Assert.Equal("pkg-b", pkgB.Name);
+
+    // Unregister repo-b: pkg-b's child domain is invalidated
+    dbB.Unregister();
+
+    Assert.Throws<AlpmLifetimeException>(() => pkgB.Name);
+  }
 }
