@@ -26,7 +26,7 @@ public sealed class TransactionLifecycleTests
     var second = alpm.BeginTransaction(Lockless);
 
     Assert.Same(first, second);
-    Assert.Equal(Lockless, second.GetFlags());
+    Assert.Equal(Lockless, second.Flags);
   }
 
   [Fact]
@@ -37,7 +37,7 @@ public sealed class TransactionLifecycleTests
 
     var transaction = alpm.BeginTransaction();
 
-    Assert.Equal(NoFlags, transaction.GetFlags());
+    Assert.Equal(NoFlags, transaction.Flags);
     Assert.Same(transaction, alpm.CurrentTransaction);
   }
 
@@ -52,7 +52,7 @@ public sealed class TransactionLifecycleTests
 
     Assert.Contains("already active", exception.Message);
     Assert.Same(active, alpm.CurrentTransaction);
-    Assert.Equal(NoFlags, active.GetFlags());
+    Assert.Equal(NoFlags, active.Flags);
   }
 
   [Fact]

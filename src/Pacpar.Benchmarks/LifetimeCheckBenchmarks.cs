@@ -39,7 +39,7 @@ public class LifetimeCheckBenchmarks
   public void Setup()
   {
     _alpm = BenchEnvironment.Open();
-    _localPkgs = _alpm.GetLocalDatabase().GetPackageCache();
+    _localPkgs = _alpm.GetLocalDatabase().LoadPackageCache();
 
     // Warm every native lazy load up front, as WarmBulkBenchmarks does: the measured runs then
     // isolate managed cost (and the check) from disk I/O.

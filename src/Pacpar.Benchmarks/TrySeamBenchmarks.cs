@@ -46,11 +46,11 @@ public class TrySeamBenchmarks
   /// The throwing public wrapper: allocates an exception, captures a stack trace, and unwinds.
   /// </summary>
   [Benchmark(Baseline = true)]
-  public bool Throwing_GetPackageCache()
+  public bool Throwing_LoadPackageCache()
   {
     try
     {
-      _ = _syncDb.GetPackageCache();
+      _ = _syncDb.LoadPackageCache();
       return true;
     }
     catch (AlpmDatabaseException)
@@ -63,8 +63,8 @@ public class TrySeamBenchmarks
   /// The internal Try* seam: returns false and an AlpmFailure object without throwing.
   /// </summary>
   [Benchmark]
-  public bool TrySeam_TryGetPackageCache()
+  public bool TrySeam_TryLoadPackageCache()
   {
-    return _syncDb.TryGetPackageCache(out _, out _);
+    return _syncDb.TryLoadPackageCache(out _, out _);
   }
 }

@@ -47,7 +47,7 @@ The public constructor and methods keep their signatures and exceptions. A stati
 
 Add `Try*` paths for:
 
-- `GetPackageCache`, `GetGroupCache`, `GetServers`, and `GetCacheServers`, preserving the rule that `null` plus `ALPM_ERR_OK` is an empty view.
+- `LoadPackageCache`, `LoadGroupCache`, `Servers`, and `CacheServers`, preserving the rule that `null` plus `ALPM_ERR_OK` is an empty view.
 - `Unregister`, which returns a native status code.
 - `Validate`, which reports invalidity with a handle errno.
 

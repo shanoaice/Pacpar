@@ -70,7 +70,7 @@ public class StructViewBenchmarks
   public void Setup()
   {
     _alpm = BenchEnvironment.Open();
-    _localPkgs = _alpm.GetLocalDatabase().GetPackageCache();
+    _localPkgs = _alpm.GetLocalDatabase().LoadPackageCache();
     _ownerToken = new Token("the alpm handle");
 
     // Setup only: materialize the real views once and copy what the entries would cache. The

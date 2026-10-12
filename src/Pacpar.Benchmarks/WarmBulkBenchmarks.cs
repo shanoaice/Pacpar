@@ -31,8 +31,8 @@ public class WarmBulkBenchmarks
   {
     _alpm = BenchEnvironment.Open();
     var localDb = _alpm.GetLocalDatabase();
-    _localPkgs = localDb.GetPackageCache();
-    _syncPkgs = BenchEnvironment.RegisterSyncDatabase(_alpm).GetPackageCache();
+    _localPkgs = localDb.LoadPackageCache();
+    _syncPkgs = BenchEnvironment.RegisterSyncDatabase(_alpm).LoadPackageCache();
 
     // Touch everything once so every native lazy load has already happened.
     foreach (var pkg in _localPkgs)

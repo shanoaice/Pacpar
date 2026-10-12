@@ -73,7 +73,7 @@ public sealed class LifetimeGcPathTests
     {
       var alpm = new AlpmSession(root, dbpath);
       // Stamped with the local database's domain, whose root is the session.
-      var servers = alpm.GetLocalDatabase().GetServers();
+      var servers = alpm.GetLocalDatabase().Servers;
       return (servers, new WeakReference(alpm));
     }
   }

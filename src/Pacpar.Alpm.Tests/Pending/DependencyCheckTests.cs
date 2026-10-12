@@ -17,7 +17,7 @@ public sealed class DependencyCheckTests
   public void CheckDependencies_WithAnEmptyPackageList_ReturnsNothing()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var packages = environment.AlpmSession.GetLocalDatabase().GetPackageCache();
+    var packages = environment.AlpmSession.GetLocalDatabase().LoadPackageCache();
 
     Assert.Empty(environment.AlpmSession.CheckDependencies(packages));
   }
@@ -26,7 +26,7 @@ public sealed class DependencyCheckTests
   public void CheckConflicts_WithAnEmptyPackageList_ReturnsNothing()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var packages = environment.AlpmSession.GetLocalDatabase().GetPackageCache();
+    var packages = environment.AlpmSession.GetLocalDatabase().LoadPackageCache();
 
     Assert.Empty(environment.AlpmSession.CheckConflicts(packages));
   }
@@ -35,7 +35,7 @@ public sealed class DependencyCheckTests
   public void CheckDependencies_AcceptsTheRemoveAndUpgradeLists()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var packages = environment.AlpmSession.GetLocalDatabase().GetPackageCache();
+    var packages = environment.AlpmSession.GetLocalDatabase().LoadPackageCache();
 
     var missing = environment.AlpmSession.CheckDependencies(
       packages, remove: packages, upgrade: packages, reverseDependencies: true);
@@ -51,7 +51,7 @@ public sealed class DependencyCheckTests
   public void CheckConflicts_DoesNotConsumeTheCallersList()
   {
     using var environment = new IsolatedAlpmEnvironment();
-    var packages = environment.AlpmSession.GetLocalDatabase().GetPackageCache();
+    var packages = environment.AlpmSession.GetLocalDatabase().LoadPackageCache();
 
     environment.AlpmSession.CheckConflicts(packages);
 

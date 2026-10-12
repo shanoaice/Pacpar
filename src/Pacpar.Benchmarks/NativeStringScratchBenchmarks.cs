@@ -60,7 +60,7 @@ public unsafe class NativeStringScratchBenchmarks
   public void Setup()
   {
     _alpm = BenchEnvironment.Open();
-    var pkgs = _alpm.GetLocalDatabase().GetPackageCache();
+    var pkgs = _alpm.GetLocalDatabase().LoadPackageCache();
 
     var real = new List<PackageVersion>(PairCount);
     foreach (var pkg in pkgs)

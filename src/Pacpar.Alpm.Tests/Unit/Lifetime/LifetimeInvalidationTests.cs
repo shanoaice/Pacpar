@@ -63,7 +63,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
 
     // ...while the borrowed list, which carries the package's root token, reports the release
     // through AlpmLifetimeException instead of reading the freed dependency list.
-    var thrown = Assert.Throws<AlpmLifetimeException>(() => depends.ToArray());
+    var thrown = Assert.Throws<AlpmLifetimeException>(depends.ToArray);
     Assert.Equal("a loaded package", thrown.Target);
     Assert.Equal("LoadedPackage.Dispose()", thrown.InvalidatedBy);
 
@@ -95,16 +95,21 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void HandleDispose_InvalidatesLocalDatabaseViews()
   {
-    var cache = _environment.AlpmSession.GetLocalDatabase().GetPackageCache();
+    var cache = _environment.AlpmSession.GetLocalDatabase().LoadPackageCache();
 
     _environment.AlpmSession.Dispose();
 
-    var thrown = Assert.Throws<AlpmLifetimeException>(() => { foreach (var _ in cache) { } });
+    var thrown = Assert.Throws<AlpmLifetimeException>(() =>
+    {
+      foreach (var _ in cache)
+      {
+      }
+    });
     Assert.Equal("the ALPM handle", thrown.Target);
     Assert.Equal("Alpm.Dispose()", thrown.InvalidatedBy);
 
     // The token chain also guards ToArray on a stale-but-empty list (null native pointer).
-    Assert.Throws<AlpmLifetimeException>(() => cache.ToArray());
+    Assert.Throws<AlpmLifetimeException>(cache.ToArray);
   }
 
   [Fact]
@@ -134,7 +139,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
     var fresh = _environment.AlpmSession.GetLocalDatabase();
     var reissued = fresh.GetPackage("audit-lifetime-first");
     Assert.NotNull(reissued);
-    Assert.Equal("audit-lifetime-first", reissued!.Name);
+    Assert.Equal("audit-lifetime-first", reissued.Name);
   }
 
   [Fact]
@@ -142,7 +147,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   {
     var core = _environment.AlpmSession.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
     var retained = _environment.AlpmSession.GetSyncDatabases();
-    Assert.Single(retained.ToArray());
+    Assert.Single([.. retained]);
 
     // Unregister used to throw here, after alpm_db_unregister had already succeeded: the registry
     // clean-up read the validated pointer after the domain was invalidated, so the root bump below
@@ -152,15 +157,16 @@ public sealed class LifetimeInvalidationTests : IDisposable
     Assert.Throws<AlpmLifetimeException>(() => core.Name);
 
     // The list view is stamped with the session, so it dies with the node the unregister freed.
-    var thrown = Assert.Throws<AlpmLifetimeException>(() => retained.ToArray());
+    var thrown = Assert.Throws<AlpmLifetimeException>(retained.ToArray);
     Assert.Equal("the ALPM handle", thrown.Target);
     Assert.Equal("Database.Unregister()", thrown.InvalidatedBy);
   }
+
   [Fact]
   public void LocalDatabaseUnregister_ThrowsInvalidOperationException()
   {
     var localDb = _environment.AlpmSession.GetLocalDatabase();
-    Assert.Throws<InvalidOperationException>(() => localDb.Unregister());
+    Assert.Throws<InvalidOperationException>(localDb.Unregister);
   }
 
   [Fact]
@@ -173,7 +179,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
 
     _environment.AlpmSession.UnregisterAllSyncDatabases();
 
-    Assert.Throws<AlpmLifetimeException>(() => retained.ToArray());
+    Assert.Throws<AlpmLifetimeException>(retained.ToArray);
   }
 
   [Fact]
@@ -182,7 +188,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
     Install("audit-lifetime-enumerator");
 
     // Taken after the commit, so the cache view carries a live token.
-    var cache = _environment.AlpmSession.GetLocalDatabase().GetPackageCache();
+    var cache = _environment.AlpmSession.GetLocalDatabase().LoadPackageCache();
 
     var enumerator = cache.GetEnumerator();
     Assert.True(enumerator.MoveNext());

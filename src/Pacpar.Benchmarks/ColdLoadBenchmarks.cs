@@ -32,7 +32,7 @@ public class ColdLoadBenchmarks
   /// <summary>Package cache population (readdir + name/version from directory names) plus one enumeration pass.</summary>
   [Benchmark]
   [RunOncePerIteration]
-  public int Cold_PopulateAndEnumerateCache() => _localDb.GetPackageCache().ToArray().Length;
+  public int Cold_PopulateAndEnumerateCache() => _localDb.LoadPackageCache().ToArray().Length;
 
   /// <summary>Population + name and version reads. Still no file on disk is opened.</summary>
   [Benchmark]
@@ -40,7 +40,7 @@ public class ColdLoadBenchmarks
   public int Cold_PopulateAndReadNameVersion()
   {
     var count = 0;
-    foreach (var pkg in _localDb.GetPackageCache())
+    foreach (var pkg in _localDb.LoadPackageCache())
     {
       _ = pkg.Name;
       _ = pkg.Version.ToString();
@@ -55,7 +55,7 @@ public class ColdLoadBenchmarks
   public int Cold_PopulateAndReadAllMetadata()
   {
     int n = 0;
-    foreach (var pkg in _localDb.GetPackageCache())
+    foreach (var pkg in _localDb.LoadPackageCache())
     {
       _ = pkg.ToSnapshot();
       n++;
@@ -69,7 +69,7 @@ public class ColdLoadBenchmarks
   public long Cold_PopulateAndReadAllFileLists()
   {
     long entries = 0;
-    foreach (var pkg in _localDb.GetPackageCache()) entries += pkg.Files.Count;
+    foreach (var pkg in _localDb.LoadPackageCache()) entries += pkg.Files.Count;
     return entries;
   }
 }

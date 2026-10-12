@@ -34,44 +34,44 @@ public sealed class ErrorContractTests : IDisposable
   }
 
   [Fact]
-  public void GetPackageCache_IsAnEmptyView_WhenTheDatabaseHasNoPackages()
+  public void LoadPackageCache_IsAnEmptyView_WhenTheDatabaseHasNoPackages()
   {
     // Regression: this used to throw ArgumentOutOfRangeException - the null cache came with
     // ALPM_ERR_OK and ToException rejects "ok is not an error".
-    Assert.Empty(LocalDatabase.GetPackageCache());
+    Assert.Empty(LocalDatabase.LoadPackageCache());
   }
 
   [Fact]
-  public void GetGroupCache_IsAnEmptyView_WhenTheDatabaseHasNoGroups()
-    => Assert.Empty(LocalDatabase.GetGroupCache());
+  public void LoadGroupCache_IsAnEmptyView_WhenTheDatabaseHasNoGroups()
+    => Assert.Empty(LocalDatabase.LoadGroupCache());
 
   [Fact]
-  public void GetServers_And_GetCacheServers_AreEmpty_WithoutAnError()
+  public void Servers_And_CacheServers_AreEmpty_WithoutAnError()
   {
     var database = LocalDatabase;
 
-    Assert.Empty(database.GetServers());
-    Assert.Empty(database.GetCacheServers());
+    Assert.Empty(database.Servers);
+    Assert.Empty(database.CacheServers);
   }
 
   [Fact]
-  public void GetPackageCache_Throws_WhenLibalpmReportsAnError()
+  public void LoadPackageCache_Throws_WhenLibalpmReportsAnError()
   {
     // A freshly registered sync database has no loaded package cache yet: libalpm sets an errno.
     var sync = AlpmSession.RegisterSyncDatabase("core", 0);
 
     Assert.ThrowsAny<Exception>(() =>
     {
-      _ = sync.GetPackageCache();
+      _ = sync.LoadPackageCache();
     });
   }
 
   [Fact]
-  public void TryGetPackageCache_ReturnsFalseAndSetsFailure_WhenLibalpmReportsAnError()
+  public void TryLoadPackageCache_ReturnsFalseAndSetsFailure_WhenLibalpmReportsAnError()
   {
     var sync = AlpmSession.RegisterSyncDatabase("core", 0);
 
-    var ok = sync.TryGetPackageCache(out var cache, out var failure);
+    var ok = sync.TryLoadPackageCache(out var cache, out var failure);
 
     Assert.False(ok);
     Assert.Null(cache);

@@ -133,7 +133,7 @@ public sealed class PackageTransferTests : IDisposable
 
     Assert.Throws<ObjectDisposedException>(() => transaction.AddPackage(package));
 
-    Assert.Single(transaction.GetAddedPackages());
+    Assert.Single(transaction.AddedPackages);
   }
 
   /// <summary>
@@ -167,7 +167,7 @@ public sealed class PackageTransferTests : IDisposable
     var failure = Assert.Throws<AlpmException>(() => transaction.AddPackage(installed));
 
     Assert.Equal((int)_alpm_errno_t.ALPM_ERR_WRONG_ARGS, failure.Errno);
-    Assert.Empty(transaction.GetAddedPackages());
+    Assert.Empty(transaction.AddedPackages);
 
     // The transaction borrowed nothing and freed nothing: the package still belongs to the local db.
     Assert.Equal("audit-installed", installed.Name);

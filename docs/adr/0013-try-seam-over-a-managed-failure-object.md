@@ -138,13 +138,13 @@ point resets on entry (ADR 0012). Each twin sits directly above the public metho
 
 | Type | `Try` twin |
 |---|---|
-| `Alpm` | `TryCreate(string root, string dbpath, out Alpm? session, out AlpmFailure? failure)` (static) |
+| `AlpmSession` | `TryCreate(string root, string dbpath, out AlpmSession? session, out AlpmFailure? failure)` (static) |
 | | `TryLoadPackage(string filename, bool full, SigLevel level, out LoadedPackage? package, out AlpmFailure? failure)` |
 | | `TryBeginTransaction(TransactionFlags flags, out Transaction? transaction, out AlpmFailure? failure)` |
 | | `TryRegisterSyncDatabase(string treename, SigLevel level, out Database? database, out AlpmFailure? failure)` |
 | | `TryUnregisterAllSyncDatabases(out AlpmFailure? failure)` |
-| `Database` | `TryGetPackageCache(out AlpmList<PackageView>? cache, out AlpmFailure? failure)` |
-| | `TryGetGroupCache(out AlpmList<Group>? cache, out AlpmFailure? failure)` |
+| `Database` | `TryLoadPackageCache(out AlpmList<PackageView>? cache, out AlpmFailure? failure)` |
+| | `TryLoadGroupCache(out AlpmList<Group>? cache, out AlpmFailure? failure)` |
 | | `TryUnregister(out AlpmFailure? failure)` |
 | | `TryValidate(out AlpmFailure? failure)` |
 | `Transaction` | `TryPrepare(out AlpmFailure? failure)` |
@@ -159,8 +159,8 @@ point resets on entry (ADR 0012). Each twin sits directly above the public metho
 without a `try`/`catch`. It does the native initialize and calls a private constructor; the public
 constructor delegates to the same initialize and throws when it produced a failure.
 
-No twin for `GetLocalDatabase`, `GetSyncDatabases`, `GetPackage`, `GetGroup`, `GetServers`,
-`GetCacheServers`, `GetAddedPackages`, `GetRemovedPackages`, `GetFlags`, `IsValid`, and the option
+No twin for `GetLocalDatabase`, `GetSyncDatabases`, `GetPackage`, `GetGroup`, `Servers`,
+`CacheServers`, `AddedPackages`, `RemovedPackages`, `Flags`, `IsValid`, and the option
 getters: none of them has a failure signal the ADR 0012 discipline allows us to read. `GetPackage`
 and `GetGroup` keep answering a query miss with `null`.
 
@@ -216,8 +216,8 @@ ownership stay in C#.
 **One core, two facades.** Every public method that can fail is `if (!TryX(...)) throw
 failure.ToException(context);`, so the exception path and the `Result` path cannot drift. The
 performance claim behind ADR 0002 still has to be measured: add a BenchmarkDotNet benchmark over a
-host-safe expected-failure workload — register a sync database and call `GetPackageCache`, which
-libalpm fails while setting an errno — comparing `try`/`catch` against `TryGetPackageCache`.
+host-safe expected-failure workload — register a sync database and call `LoadPackageCache`, which
+libalpm fails while setting an errno — comparing `try`/`catch` against `TryLoadPackageCache`.
 
 **Payload ownership has one home.** `AlpmTransactionException.TakeFailure` becomes
 `AlpmFailure.Take`. The four payload-carrying exception cases are still the public form of those

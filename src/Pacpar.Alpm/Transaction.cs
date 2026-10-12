@@ -101,7 +101,7 @@ public class Transaction : IDisposable
   /// The transaction's lifetime token, a child of the handle's root token: it is retired both by
   /// this transaction's own successful release and - through the parent chain - by the handle's
   /// disposal. Every view this transaction issues (the <see cref="AddPackage(LoadedPackage)"/>
-  /// return value and the elements of <see cref="GetAddedPackages"/>/<see cref="GetRemovedPackages"/>)
+  /// return value and the elements of <see cref="AddedPackages"/>/<see cref="RemovedPackages"/>)
   /// carries it.
   /// </summary>
   internal readonly ChildLifetime Lifetime;
@@ -465,36 +465,52 @@ public class Transaction : IDisposable
   /// file-loaded packages it owns, after which this view answers
   /// <see cref="AlpmLifetimeException"/> instead of reading freed memory.
   /// </remarks>
-  public unsafe AlpmList<PackageView> GetAddedPackages()
+  public unsafe AlpmList<PackageView> AddedPackages
   {
-    ThrowIfDisposed();
-    return AlpmList<PackageView>.Borrow(NativeMethods.alpm_trans_get_add(_library.Handle),
-      &PackageView.Factory, Lifetime);
+    get
+    {
+      ThrowIfDisposed();
+      return AlpmList<PackageView>.Borrow(NativeMethods.alpm_trans_get_add(_library.Handle),
+        &PackageView.Factory, Lifetime);
+    }
   }
 
   /// <summary>
-  /// Gets the flags configured for this transaction.
+  /// The flags this transaction was initialized with.
   /// </summary>
-  public TransactionFlags GetFlags()
+  /// <remarks>
+  /// A property: <c>alpm_trans_get_flags</c> hands back a field libalpm already stores, and the
+  /// caller reads it as a description of the transaction rather than as an operation on it. Compare
+  /// <see cref="Database.LoadPackageCache"/>, which libalpm has to work for and is therefore a
+  /// method.
+  /// </remarks>
+  public TransactionFlags Flags
   {
-    ThrowIfDisposed();
-    var flags = (TransactionFlags)NativeMethods.alpm_trans_get_flags(_library.Handle);
-    GC.KeepAlive(_library);
-    GC.KeepAlive(this);
-    return flags;
+    get
+    {
+      ThrowIfDisposed();
+      var flags = (TransactionFlags)NativeMethods.alpm_trans_get_flags(_library.Handle);
+      GC.KeepAlive(_library);
+      GC.KeepAlive(this);
+      return flags;
+    }
   }
+
   /// <summary>
   /// The packages this transaction is going to remove, as a borrowed view.
   /// </summary>
   /// <remarks>
-  /// Like <see cref="GetAddedPackages"/>, the view belongs to the transaction and is retired when
+  /// Like <see cref="AddedPackages"/>, the view belongs to the transaction and is retired when
   /// the transaction is released.
   /// </remarks>
-  public unsafe AlpmList<PackageView> GetRemovedPackages()
+  public unsafe AlpmList<PackageView> RemovedPackages
   {
-    ThrowIfDisposed();
-    return AlpmList<PackageView>.Borrow(NativeMethods.alpm_trans_get_remove(_library.Handle),
-      &PackageView.Factory, Lifetime);
+    get
+    {
+      ThrowIfDisposed();
+      return AlpmList<PackageView>.Borrow(NativeMethods.alpm_trans_get_remove(_library.Handle),
+        &PackageView.Factory, Lifetime);
+    }
   }
 
   /// <summary>

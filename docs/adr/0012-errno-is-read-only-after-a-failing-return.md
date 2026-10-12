@@ -24,14 +24,14 @@ Two shapes are legal, and they are the only two:
    that set no errno becomes `AlpmNativeFailureException` rather than an `ArgumentOutOfRangeException`
    from the errno-to-exception factory.
 2. **The entry point resets errno on entry.** Only then may a null/empty result be interpreted with
-   the handle's errno. `Database.GetPackageCache` and `Database.GetGroupCache` are the two places that
-   do this, through `ThrowIfTheLastCallFailed`; both underlying functions clear `pm_errno` in their
-   first statement.
+   the handle's errno. `Database.LoadPackageCache` and `Database.LoadGroupCache` are the two places
+   that do this, through `ThrowIfTheLastCallFailed`; both underlying functions clear `pm_errno` in
+   their first statement.
 
-`Database.GetServers` and `GetCacheServers` deliberately do **not** consult errno: their underlying
+`Database.Servers` and `Database.CacheServers` deliberately do **not** consult errno: their underlying
 functions never touch it, so a stale value from an earlier failure used to be reported as a failure
 of a successful call. This was measurable: after a package query miss,
-`GetServers()` threw `AlpmPackageException(ALPM_ERR_PKG_NOT_FOUND)`, and the same call succeeded again
+`Servers` threw `AlpmPackageException(ALPM_ERR_PKG_NOT_FOUND)`, and the same call succeeded again
 after any unrelated call that happened to clear the errno.
 
 **Considered options.** Probing errno after every call was the status quo; it is order-dependent and

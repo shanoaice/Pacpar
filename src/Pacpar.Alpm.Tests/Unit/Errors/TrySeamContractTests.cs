@@ -117,10 +117,10 @@ public sealed class TrySeamContractTests : IDisposable
   }
 
   [Fact]
-  public void TryGetPackageCache_LocalDatabase_Success_SetsCacheAndNullFailure()
+  public void TryLoadPackageCache_LocalDatabase_Success_SetsCacheAndNullFailure()
   {
     var local = _environment.AlpmSession.GetLocalDatabase();
-    var ok = local.TryGetPackageCache(out var cache, out var failure);
+    var ok = local.TryLoadPackageCache(out var cache, out var failure);
 
     Assert.True(ok);
     Assert.NotNull(cache);
@@ -128,10 +128,10 @@ public sealed class TrySeamContractTests : IDisposable
   }
 
   [Fact]
-  public void TryGetGroupCache_LocalDatabase_Success_SetsCacheAndNullFailure()
+  public void TryLoadGroupCache_LocalDatabase_Success_SetsCacheAndNullFailure()
   {
     var local = _environment.AlpmSession.GetLocalDatabase();
-    var ok = local.TryGetGroupCache(out var cache, out var failure);
+    var ok = local.TryLoadGroupCache(out var cache, out var failure);
 
     Assert.True(ok);
     Assert.NotNull(cache);
@@ -139,10 +139,10 @@ public sealed class TrySeamContractTests : IDisposable
   }
 
   [Fact]
-  public void TryGetGroupCache_MissingSyncDb_Failure_SetsNullCacheAndFailure()
+  public void TryLoadGroupCache_MissingSyncDb_Failure_SetsNullCacheAndFailure()
   {
     var sync = _environment.AlpmSession.RegisterSyncDatabase("sync_for_group_test", 0);
-    var ok = sync.TryGetGroupCache(out var cache, out var failure);
+    var ok = sync.TryLoadGroupCache(out var cache, out var failure);
 
     Assert.False(ok);
     Assert.Null(cache);

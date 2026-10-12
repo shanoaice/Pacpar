@@ -42,7 +42,7 @@ if (glibc != null)
 }
 
 // 2. High-performance iteration over all installed packages
-foreach (var pkg in localDb.GetPackageCache())
+foreach (var pkg in localDb.LoadPackageCache())
 {
     Console.WriteLine($"{pkg.Name,-30} {pkg.Version}");
 }
@@ -50,7 +50,7 @@ foreach (var pkg in localDb.GetPackageCache())
 
 ## Understanding Lifetime and Snapshots
 
-Packages returned by `GetPackageCache()` or `GetPackage()` are **borrowed views** (`PackageView`). They wrap raw unmanaged pointers and remain valid only while the parent `Alpm` handle is active.
+Packages returned by `LoadPackageCache()` or `GetPackage()` are **borrowed views** (`PackageView`). They wrap raw unmanaged pointers and remain valid only while the parent `AlpmSession` handle is active.
 
 If you need to keep package metadata across scopes or pass it to background threads:
 

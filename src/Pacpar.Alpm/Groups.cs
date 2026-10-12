@@ -8,7 +8,7 @@ namespace Pacpar.Alpm;
 /// </summary>
 /// <remarks>
 /// A managed snapshot: the name and the member list are copied on construction, so a group obtained
-/// from <see cref="Database.GetGroup"/> or <see cref="Database.GetGroupCache"/> stays readable after
+/// from <see cref="Database.GetGroup"/> or <see cref="Database.LoadGroupCache"/> stays readable after
 /// libalpm's group cache moves on. Its members are <see cref="PackageView"/> views, because that is
 /// what a package always is: libalpm owns it and this library reads through its accessors. The
 /// members belong to the database that issued them, so reading one after that database was

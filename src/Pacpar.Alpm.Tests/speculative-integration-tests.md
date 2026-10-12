@@ -45,7 +45,7 @@ To maintain fast developer feedback loops and absolute host safety, tests must b
   2. Configure an official Arch mirror (or a local container-internal HTTP server serving captured snapshot databases).
   3. Register `core` and `extra` sync databases with `SigLevel = ALPM_SIG_DATABASE_ALWAYS`.
   4. Invoke database sync/update.
-  5. **Positive Case**: Ensure `database.GetPackageCache()` loads valid package entries.
+  5. **Positive Case**: Ensure `database.LoadPackageCache()` loads valid package entries.
   6. **Negative Case (Tampered DB)**: Provide a database tarball with an invalid or mismatched `.sig` file. Assert that libalpm fails the transaction and surfaces a typed `AlpmSignatureException` (with `ALPM_ERR_DB_INVALID_SIG` or `ALPM_ERR_SIG_MISSING`).
 - **Key Assertions**:
   - `alpm.Errno` surfaces appropriate signature error codes.

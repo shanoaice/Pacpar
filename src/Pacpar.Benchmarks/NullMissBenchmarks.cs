@@ -29,7 +29,7 @@ public class NullMissBenchmarks
   public void Setup()
   {
     _alpm = BenchEnvironment.Open();
-    foreach (var pkg in _alpm.GetLocalDatabase().GetPackageCache())
+    foreach (var pkg in _alpm.GetLocalDatabase().LoadPackageCache())
     {
       _pkg = pkg;
       break;

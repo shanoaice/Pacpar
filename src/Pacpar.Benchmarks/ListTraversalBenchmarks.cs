@@ -26,7 +26,7 @@ public class ListTraversalBenchmarks
     _alpm = BenchEnvironment.Open();
     int best = -1;
     PackageView? bestPkg = null;
-    foreach (var pkg in _alpm.GetLocalDatabase().GetPackageCache())
+    foreach (var pkg in _alpm.GetLocalDatabase().LoadPackageCache())
     {
       int c = 0;
       foreach (var _ in pkg.Depends) c++;

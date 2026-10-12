@@ -51,7 +51,8 @@ public unsafe class Database
   /// <param name="lifetime">The database's domain; all accessors and issued views guard on it.</param>
   /// <param name="onUnregistered">Optional callback invoked when the database is unregistered.</param>
   /// <param name="isLocal"><c>true</c> if this is the local database; <c>false</c> for sync databases.</param>
-  internal Database(_alpm_db_t* backingStruct, ChildLifetime lifetime, Action? onUnregistered = null, bool isLocal = false)
+  internal Database(_alpm_db_t* backingStruct, ChildLifetime lifetime, Action? onUnregistered = null,
+    bool isLocal = false)
   {
     ValidatedPtr = backingStruct;
     Lifetime = lifetime;
@@ -79,6 +80,7 @@ public unsafe class Database
     {
       throw new InvalidOperationException("Sync databases must be enumerated against a root session lifetime domain.");
     }
+
     var name = NativeString.FromNative((nint)NativeMethods.alpm_db_get_name((_alpm_db_t*)ptr)) ?? "(unknown)";
     return new Database((_alpm_db_t*)ptr, root.GetLifetimeTokenForHandle(ptr, $"the sync database {name}"), () =>
     {
@@ -203,27 +205,36 @@ public unsafe class Database
     {
       throw failure.ToException();
     }
+
     return results;
   }
 
   /// <summary>
-  /// The package cache of this database.
+  /// Loads this database's package cache, or returns the one libalpm has already populated.
   /// </summary>
   /// <remarks>
+  /// A method, not a property, on purpose: libalpm parses the database file the first time this is
+  /// asked for, which is orders of magnitude slower than reading a field. <see cref="Servers"/> is a
+  /// property for the opposite reason - <c>alpm_db_get_servers</c> hands back a list libalpm already
+  /// holds and does no work. Later calls answer from the populated cache and are cheap, but the
+  /// shape has to price the first one, and a property that occasionally costs a full parse is a
+  /// silent lie about what <c>db.PackageCache.Count</c> does.
+  /// <para>
   /// A <c>null</c> native cache with an ok errno is a legitimately empty cache and yields an empty
   /// view; a non-ok errno means loading the cache failed and is thrown. That rule is sound here and
   /// only here, because <c>alpm_db_get_pkgcache</c> clears <c>pm_errno</c> in its first statement -
   /// see <see cref="LastCallFailed"/>. The view is borrowed and never frees the cache (see
   /// <see cref="AlpmList{T}"/>).
+  /// </para>
   /// </remarks>
-  public AlpmList<PackageView> GetPackageCache()
+  public AlpmList<PackageView> LoadPackageCache()
   {
-    if (!TryGetPackageCache(out var cache, out var failure)) throw failure.ToException();
+    if (!TryLoadPackageCache(out var cache, out var failure)) throw failure.ToException();
     return cache;
   }
 
   /// <summary>
-  /// The failure-returning seam for <see cref="GetPackageCache"/>.
+  /// The failure-returning seam for <see cref="PackageCache"/>.
   /// </summary>
   /// <param name="cache">The borrowed view, or <c>null</c> when the call failed.</param>
   /// <param name="failure">The failure, or <c>null</c> when the call succeeded.</param>
@@ -253,31 +264,27 @@ public unsafe class Database
   /// The servers configured for this database; empty when none are set.
   /// </summary>
   /// <remarks>The list is borrowed from the database and is never freed by the view.</remarks>
-  public AlpmStringList GetServers()
+  public AlpmStringList Servers
   {
-    var servers = NativeMethods.alpm_db_get_servers(ValidatedPtr);
-    return new AlpmStringList(servers, Lifetime);
+    get
+    {
+      var servers = NativeMethods.alpm_db_get_servers(ValidatedPtr);
+      return new AlpmStringList(servers, Lifetime);
+    }
   }
-
-  /// <summary>
-  /// The servers configured for this database; empty when none are set.
-  /// </summary>
-  public AlpmStringList Servers => GetServers();
 
   /// <summary>
   /// The cache servers configured for this database; empty when none are set.
   /// </summary>
   /// <remarks>The list is borrowed from the database and is never freed by the view.</remarks>
-  public AlpmStringList GetCacheServers()
+  public AlpmStringList CacheServers
   {
-    var servers = NativeMethods.alpm_db_get_cache_servers(ValidatedPtr);
-    return new AlpmStringList(servers, Lifetime);
+    get
+    {
+      var servers = NativeMethods.alpm_db_get_cache_servers(ValidatedPtr);
+      return new AlpmStringList(servers, Lifetime);
+    }
   }
-
-  /// <summary>
-  /// The cache servers configured for this database; empty when none are set.
-  /// </summary>
-  public AlpmStringList CacheServers => GetCacheServers();
 
   /// <summary>
   /// Finds a package group by name within this database.
@@ -294,16 +301,17 @@ public unsafe class Database
   }
 
   /// <summary>
-  /// The group cache of this database. See <see cref="GetPackageCache"/> for the null/errno rule.
+  /// Loads this database's group cache, or returns the one libalpm has already populated. See
+  /// <see cref="LoadPackageCache"/> for the null/errno rule and for why this is a method.
   /// </summary>
-  public AlpmList<Group> GetGroupCache()
+  public AlpmList<Group> LoadGroupCache()
   {
-    if (!TryGetGroupCache(out var cache, out var failure)) throw failure.ToException();
+    if (!TryLoadGroupCache(out var cache, out var failure)) throw failure.ToException();
     return cache;
   }
 
   /// <summary>
-  /// The failure-returning seam for <see cref="GetGroupCache"/>. See
+  /// The failure-returning seam for <see cref="GroupCache"/>. See
   /// <see cref="TryGetPackageCache"/> for the shape and for why this entry point may read the errno.
   /// </summary>
   internal bool TryGetGroupCache([NotNullWhen(true)] out AlpmList<Group>? cache,
@@ -333,7 +341,7 @@ public unsafe class Database
   /// This is only valid after an entry point that resets <c>pm_errno</c> at entry, because only then
   /// is a non-ok value guaranteed to come from that call. <c>alpm_db_get_pkgcache</c> and
   /// <c>alpm_db_get_groupcache</c> both do; the two server getters deliberately do not, which is why
-  /// <see cref="GetServers"/> and <see cref="GetCacheServers"/> cannot use this and must treat a null
+  /// <see cref="Servers"/> and <see cref="CacheServers"/> cannot use this and must treat a null
   /// list as "none configured" whatever the handle's errno happens to say. Anything that reports
   /// failure through its return value goes through <see cref="NativeCall"/> instead.
   /// <para>
@@ -389,6 +397,7 @@ public unsafe class Database
       failure = NativeCall.Failure(rawErrno, "get database usage");
       return false;
     }
+
     GC.KeepAlive(this);
     usage = (DatabaseUsage)(uint)rawUsage;
     failure = null;
@@ -410,6 +419,7 @@ public unsafe class Database
       failure = NativeCall.Failure(rawErrno, "set database usage");
       return false;
     }
+
     GC.KeepAlive(this);
     failure = null;
     return true;
@@ -503,6 +513,7 @@ public unsafe class Database
     {
       throw failure.ToException();
     }
+
     return removed;
   }
 
@@ -622,6 +633,7 @@ public unsafe class Database
     {
       throw failure.ToException();
     }
+
     return removed;
   }
 
@@ -723,6 +735,7 @@ public unsafe class Database
     {
       throw failure.ToException();
     }
+
     return updated;
   }
 
@@ -847,6 +860,7 @@ public unsafe class Database
       throw failure.ToException();
     }
   }
+
   /// <summary>
   /// Throws <see cref="AlpmLifetimeException"/> when this database was released; the guard every
   /// public accessor runs before dereferencing <c>backingStruct</c>.

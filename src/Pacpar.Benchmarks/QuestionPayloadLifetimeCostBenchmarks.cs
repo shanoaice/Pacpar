@@ -77,7 +77,7 @@ public class QuestionPayloadLifetimeCostBenchmarks
   public void Setup()
   {
     _alpm = BenchEnvironment.Open();
-    _payload = [.. _alpm.GetLocalDatabase().GetPackageCache().Take(PayloadSize)];
+    _payload = [.. _alpm.GetLocalDatabase().LoadPackageCache().Take(PayloadSize)];
     _packagePointers = new nint[_payload.Length];
     _rootToken = new Token("the ALPM handle");
     _registry = [];
@@ -86,7 +86,7 @@ public class QuestionPayloadLifetimeCostBenchmarks
     // which is the best cheap proxy for the longest file list. Copying that list is what the
     // "with files" variant buys, and it is the one part of a snapshot no question handler needs.
     _largest = _payload[0];
-    foreach (var pkg in _alpm.GetLocalDatabase().GetPackageCache())
+    foreach (var pkg in _alpm.GetLocalDatabase().LoadPackageCache())
     {
       if (pkg.InstalledSize > _largest.InstalledSize) _largest = pkg;
     }

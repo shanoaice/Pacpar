@@ -34,8 +34,8 @@ public sealed class StickyErrnoTests
 
     // Before the fix this threw AlpmPackageException: PKG_NOT_FOUND, from a call that in fact
     // succeeded. The list itself was always correct; only the errno probe was wrong.
-    Assert.Empty(db.GetServers());
-    Assert.Empty(db.GetCacheServers());
+    Assert.Empty(db.Servers);
+    Assert.Empty(db.CacheServers);
   }
 
   [Fact]
@@ -44,10 +44,10 @@ public sealed class StickyErrnoTests
     using var environment = new IsolatedAlpmEnvironment();
     var db = RegisterSync(environment.AlpmSession);
 
-    var withCleanErrno = db.GetServers().ToArray();
+    var withCleanErrno = db.Servers.ToArray();
 
     LeaveAnErrnoBehind(db);
-    var withStaleErrno = db.GetServers().ToArray();
+    var withStaleErrno = db.Servers.ToArray();
 
     // The result must be a function of the database, not of the handle's error history.
     Assert.Equal(withCleanErrno, withStaleErrno);
@@ -75,7 +75,7 @@ public sealed class StickyErrnoTests
     // The other half of the rule: alpm_db_get_pkgcache clears pm_errno in its first statement, so a
     // non-OK value read afterwards necessarily belongs to that call and a missing database file must
     // still surface instead of turning into an empty cache.
-    Assert.ThrowsAny<Exception>(() => db.GetPackageCache());
+    Assert.ThrowsAny<Exception>(() => db.LoadPackageCache());
   }
 
   [Fact]
