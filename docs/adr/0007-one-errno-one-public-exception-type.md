@@ -14,7 +14,7 @@ payload-carrying subclasses are canonical and classification moves to match them
 exactly one public exception type whichever entry point reports it.
 
 The cost is explicit and accepted now, before the v1 stability promise: a caller doing
-`catch (AlpmPackageException)` around `Alpm.GetCurrentError()` stops matching for these four. The
+`catch (AlpmPackageException)` around `AlpmSession.GetCurrentError()` stops matching for these four. The
 alternative is a failure bridge ([ADR 0002](./0002-fsharp-error-boundary.md)) that cannot express one
 failure code per errno at all.
 

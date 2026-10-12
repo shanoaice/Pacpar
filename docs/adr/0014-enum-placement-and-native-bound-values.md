@@ -136,7 +136,5 @@ does not read `None` as an empty flag set.
   Record the native name in a comment on each member.
 - Where consumers need a stable vocabulary, add a semantic enum of our own and map to it — the ADR
   0009 pattern — rather than editing the projection.
-- The remaining FDG 4.8 gaps on bound enums are naming, not values: `SigLevel.AlpmSigPackage` and
-  `TransactionFlags.AlpmTransFlagNodeps` repeat the type name, and
-  `PackageValidation.ALPM_PKG_VALIDATION_UNKNOWN` is not PascalCase. Renaming members does not
-  touch the values, so it stays available. This ADR does not decide it.
+- Member names take the FDG casing and drop the repeated type prefix; the native constant goes into
+  the `<summary>`. Type names keep the native singular form. See *Member names* above.

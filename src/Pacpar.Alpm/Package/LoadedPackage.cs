@@ -19,13 +19,13 @@ namespace Pacpar.Alpm;
 /// file-loaded package the session still tracks before it releases the handle, and the hand-over to a
 /// transaction leaves the release to <c>alpm_trans_release</c>. Disposing the owning
 /// <see cref="AlpmSession"/> is what guarantees that all unmanaged memory goes back.
+/// </para>
 /// <para>
-/// That leak is accepted rather than open. Section 8 of the <c>Lifetime and GC Safety</c> chapter
+/// That leak is accepted rather than open. Section 8.1 of the <c>Lifetime and GC Safety</c> chapter
 /// states why no finalizer was added: the guidelines forbid one on a public type, the anchoring
 /// chain anchors the session rather than the package - so a borrow such as
 /// <see cref="PackageBase.Depends"/> would be freed underneath it - and a finalizer cannot promise
 /// to run before <c>alpm_release</c>.
-/// </para>
 /// </para>
 /// </remarks>
 public sealed unsafe class LoadedPackage : PackageBase, IDisposable

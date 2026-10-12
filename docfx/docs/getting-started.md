@@ -8,24 +8,25 @@ Add a project reference to `Pacpar.Alpm`:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="..\Pacpar.Alpm\Pacpar.Alpm.csproj" />
+  <ProjectReference Include="Pacpar.Alpm" Version="1.0.0" />
 </ItemGroup>
 ```
 
-Make sure the native `libalpm.so` library (provided by the `pacman` package on Arch Linux and derivatives) is present on your system library path.
+Make sure you have libalpm installed on you machine. If you are on Arch Linux or any distro that uses pacman as a package manager, you already do.  
+If you want to read the MTree info of local packages, you will also need libarchive. libarchive is a dependency of pacman on Arch Linux, so you should also probably have them.
 
-## Initializing an ALPM Handle
+## Initializing an ALPM Session
 
-The primary entry point is the `Alpm` class, which manages an unmanaged `alpm_handle_t`:
+The primary entry point is the `AlpmSession` class:
 
 ```csharp
 using Pacpar.Alpm;
 
 // Initialize an ALPM handle with the system root and default database path
-using var alpm = new Alpm(root: "/", dbpath: "/var/lib/pacman");
+using var alpm = new AlpmSession(root: "/", dbpath: "/var/lib/pacman");
 ```
 
-`Alpm` implements `IDisposable`. Always dispose the instance when finished, or wrap it in a `using` declaration.
+`AlpmSession` implements `IDisposable`. Always dispose the instance when finished, or wrap it in a `using` declaration.
 
 ## Querying the Local Database
 
@@ -57,7 +58,7 @@ If you need to keep package metadata across scopes or pass it to background thre
 ```csharp
 PackageSnapshot snapshot;
 
-using (var alpm = new Alpm("/", "/var/lib/pacman"))
+using (var alpm = new AlpmSession("/", "/var/lib/pacman"))
 {
     var localDb = alpm.GetLocalDatabase();
     var pkg = localDb.GetPackage("linux")!;
@@ -70,4 +71,4 @@ using (var alpm = new Alpm("/", "/var/lib/pacman"))
 Console.WriteLine($"Retained Linux version: {snapshot.Version}");
 ```
 
-For in-depth details on how borrowed views and lifetime safety are guaranteed, see the [Lifetime and GC Safety Reference](lifetime-and-gc-safety.md).
+For in-depth details on how borrowed views and lifetime safety are guaranteed, see the [Lifetime and GC Safety Reference](design-docs/lifetime-and-gc-safety.md).

@@ -132,7 +132,7 @@ public partial class AlpmSession : IDisposable
   /// </summary>
   /// <param name="root">The root directory of the installation (e.g. <c>"/"</c>).</param>
   /// <param name="dbpath">The path to the pacman database directory (e.g. <c>"/var/lib/pacman"</c>).</param>
-  /// <exception cref="Exception">Thrown if libalpm fails to initialize.</exception>
+  /// <exception cref="AlpmException">Thrown if libalpm fails to initialize.</exception>
   public AlpmSession(string root, string dbpath) : this(InitializeOrThrow(root, dbpath))
   {
   }
@@ -251,7 +251,13 @@ public partial class AlpmSession : IDisposable
   /// <summary>
   /// Gets the textual description of the last error reported by libalpm on this handle.
   /// </summary>
-  /// <returns>A string describing the current error, or <c>null</c> if none.</returns>
+  /// <returns>
+  /// A string describing the current error. Measured against libalpm 16.0.1: <c>alpm_strerror</c>
+  /// answers every code it has no entry for with <c>"unexpected error"</c>, and the ok code is one
+  /// of those, so a healthy handle reads <c>"unexpected error"</c> rather than <c>null</c>. To ask
+  /// whether there is an error at all, read <see cref="Errno"/> or call
+  /// <see cref="GetCurrentError"/>, which answers <c>null</c> when there is none.
+  /// </returns>
   public unsafe string? GetCurrentErrorString()
   {
     ThrowIfDisposed();
@@ -277,7 +283,7 @@ public partial class AlpmSession : IDisposable
   /// <param name="full">Whether to load all package metadata eagerly into memory.</param>
   /// <param name="level">The signature verification requirements for loading the package.</param>
   /// <returns>A <see cref="LoadedPackage"/> representing the package file.</returns>
-  /// <exception cref="Exception">Thrown if libalpm fails to load or parse the package archive.</exception>
+  /// <exception cref="AlpmException">Thrown if libalpm fails to load or parse the package archive.</exception>
   public unsafe LoadedPackage LoadPackage(string filename, bool full, SigLevel level)
   {
     if (!TryLoadPackage(filename, full, level, out var package, out var failure))
@@ -555,7 +561,7 @@ public partial class AlpmSession : IDisposable
     // file-loaded packages and alpm_release below that frees the rest. Bumping the root retires
     // every child stamp - including the ones for packages we are about to alpm_pkg_free - so no
     // wrapper can pass its check while its memory is on the way out.
-    _lifetime.Invalidate("Alpm.Dispose()");
+    _lifetime.Invalidate("AlpmSession.Dispose()");
     _localDatabaseLifetime = null;
 
     // Free any undisposed file-loaded packages from this session

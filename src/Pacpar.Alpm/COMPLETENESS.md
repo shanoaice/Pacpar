@@ -6,7 +6,7 @@ behind a pick (priority debates, design discussions) belongs in `docs/adr/`, not
 
 **Target binding:** `Pacpar.Alpm` (`src/Pacpar.Alpm`)
 **Native baseline:** `libalpm` 16.0.1 (pacman 7.0.0). Check the installed build at runtime with
-`Alpm.Version` and `Alpm.Capabilities` rather than trusting this number.
+`AlpmSession.Version` and `AlpmSession.Capabilities` rather than trusting this number.
 **Last recount:** 2026-10-05.
 
 ---
@@ -89,16 +89,16 @@ rediscover, so it is recorded next to the API it constrains.
 
 | libalpm API | Managed surface | Status | Measured constraint |
 | :--- | :--- | :---: | :--- |
-| `alpm_version` | `Alpm.Version` | done | Takes no handle; safe before `alpm_initialize`. |
-| `alpm_capabilities` | `Alpm.Capabilities` | done | Bitmask; undeclared bits pass through (see `VersionAndCapabilitiesTests`). |
-| `alpm_unlock` | `Alpm.Unlock` / `TryUnlock` | done | Releases the lock **this session** holds: `close(lockfd)` then `unlink`. With nothing locked libalpm returns success without touching anything. Stale locks are not its business — the lock is an `open(O_CREAT\|O_EXCL)` file with no holder information, so removing one is a caller decision made with `System.IO.File`. |
-| `alpm_logaction` | `Alpm.LogAction` / `TryLogAction` | done | Variadic; the wrapper escapes `%` to `%%` so `vfprintf` consumes no argument. Measured: it does not invoke the registered log callback, contrary to `alpm.h`. |
-| `alpm_fetch_pkgurl` | `Alpm.FetchPackageUrls` / `TryFetchPackageUrls` | done | Caller owns the returned strings (`malloc`ed). On failure libalpm frees the list itself and nulls the out parameter, so the wrapper must not free it again. |
-| `alpm_checkdeps` | `Alpm.CheckDependencies` | done | Caller owns the `alpm_depmissing_t` list; freed after materialising managed snapshots. |
-| `alpm_checkconflicts` | `Alpm.CheckConflicts` | done | Same ownership shape as `alpm_checkdeps`. |
+| `alpm_version` | `AlpmSession.Version` | done | Takes no handle; safe before `alpm_initialize`. |
+| `alpm_capabilities` | `AlpmSession.Capabilities` | done | Bitmask; undeclared bits pass through (see `VersionAndCapabilitiesTests`). |
+| `alpm_unlock` | `AlpmSession.Unlock` / `TryUnlock` | done | Releases the lock **this session** holds: `close(lockfd)` then `unlink`. With nothing locked libalpm returns success without touching anything. Stale locks are not its business — the lock is an `open(O_CREAT\|O_EXCL)` file with no holder information, so removing one is a caller decision made with `System.IO.File`. |
+| `alpm_logaction` | `AlpmSession.LogAction` / `TryLogAction` | done | Variadic; the wrapper escapes `%` to `%%` so `vfprintf` consumes no argument. Measured: it does not invoke the registered log callback, contrary to `alpm.h`. |
+| `alpm_fetch_pkgurl` | `AlpmSession.FetchPackageUrls` / `TryFetchPackageUrls` | done | Caller owns the returned strings (`malloc`ed). On failure libalpm frees the list itself and nulls the out parameter, so the wrapper must not free it again. |
+| `alpm_checkdeps` | `AlpmSession.CheckDependencies` | done | Caller owns the `alpm_depmissing_t` list; freed after materialising managed snapshots. |
+| `alpm_checkconflicts` | `AlpmSession.CheckConflicts` | done | Same ownership shape as `alpm_checkdeps`. |
 | `alpm_find_satisfier` | `PackageView.FindSatisfier` | done | Returns the caller's own view so it keeps that view's domain. |
-| `alpm_find_dbs_satisfier` | `Alpm.FindSatisfier` | done | The owning domain resolves among the caller's `Database` wrappers, never through the handle registry — see `Database.ResolveLifetime`. |
-| `alpm_db_update` | `Database.Update`, `Alpm.UpdateDatabases` | done | Invalidate the database's views *before* the call, so views die even when the update fails. Takes and releases the handle lock internally. Documented return 1 ("already up to date") only happens with a custom fetch callback; the curl path returns 0 for "current" as well. Refuses the local database. |
+| `alpm_find_dbs_satisfier` | `AlpmSession.FindSatisfier` | done | The owning domain resolves among the caller's `Database` wrappers, never through the handle registry — see `Database.ResolveLifetime`. |
+| `alpm_db_update` | `Database.Update`, `AlpmSession.UpdateDatabases` | done | Invalidate the database's views *before* the call, so views die even when the update fails. Takes and releases the handle lock internally. Documented return 1 ("already up to date") only happens with a custom fetch callback; the curl path returns 0 for "current" as well. Refuses the local database. |
 | `alpm_db_search` | `Database.Search` | done | Caller owns the returned list; the package pointers stay with the database. |
 | `alpm_db_get_usage` / `alpm_db_set_usage` | `Database.Usage` | done | Values match `alpm.h` (1/2/4/8, all = 15). |
 | `alpm_db_add_server`, `alpm_db_remove_server`, `alpm_db_set_servers` | `Database.AddServer`, `RemoveServer`, `SetServers` | done | The bulk setter replaces the list, so it invalidates the database's views. |
@@ -138,7 +138,7 @@ A consumer building a package manager on `Pacpar.Alpm` has to provide these itse
 - **Configuration parsing** (`pacman.conf`, `Include`, repo sections) — libalpm has no parser;
   configure the handle imperatively.
 - **Signal handling and rollback** — trap `SIGINT`/`SIGTERM`, call `Transaction.Interrupt()`, then
-  release the lock. In C# the equivalent is `Console.CancelKeyPress` plus `Alpm.Unlock()` on the way
+  release the lock. In C# the equivalent is `Console.CancelKeyPress` plus `AlpmSession.Unlock()` on the way
   out.
 - **Terminal UI** — download progress, transaction progress, interactive questions.
 - **Command orchestration** — target resolution, group expansion, conflict resolution, download

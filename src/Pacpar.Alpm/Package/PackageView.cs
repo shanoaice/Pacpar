@@ -106,7 +106,7 @@ public sealed unsafe partial class PackageView : PackageBase
 
       var dbPtr = NativeMethods.alpm_pkg_get_db(newPkgPtr);
       // Resolved among the caller's wrappers rather than the handle registry, for the same reason
-      // Alpm.TryFindSatisfier does: see Database.ResolveLifetime.
+      // AlpmSession.TryFindSatisfier does: see Database.ResolveLifetime.
       return new PackageView(newPkgPtr, Database.ResolveLifetime(dbs, dbPtr));
     }
     finally

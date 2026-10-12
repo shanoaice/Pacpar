@@ -37,7 +37,7 @@ after any unrelated call that happened to clear the errno.
 **Considered options.** Probing errno after every call was the status quo; it is order-dependent and
 was rejected. Never probing was also rejected: `alpm_db_get_pkgcache` reports a missing or corrupt
 database file through errno, and dropping the check would turn that into a silently empty cache.
-`Alpm.Errno` and `Alpm.GetCurrentError` remain public for diagnostics, but no control flow in the
+`AlpmSession.Errno` and `AlpmSession.GetCurrentError` remain public for diagnostics, but no control flow in the
 library depends on them.
 
 **Consequences.** "Which libalpm functions reset errno" stops being knowledge the wrapper needs: the

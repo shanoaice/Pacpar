@@ -87,13 +87,13 @@ public sealed unsafe class LifetimeTests
     var database = root.CreateChild("the local database");
     var stamp = database.Capture();
 
-    root.Invalidate("Alpm.Dispose()");
+    root.Invalidate("AlpmSession.Dispose()");
 
     // Nothing was pushed into the database domain: the stamp compares against the root's generation
     // and finds it changed. That is what lets a finalizer retire everything with one increment.
     var thrown = Assert.Throws<AlpmLifetimeException>(stamp.ThrowIfStale);
     Assert.Equal("the ALPM handle", thrown.Target);
-    Assert.Equal("Alpm.Dispose()", thrown.InvalidatedBy);
+    Assert.Equal("AlpmSession.Dispose()", thrown.InvalidatedBy);
     Assert.False(database.IsAlive);
   }
 
@@ -188,7 +188,7 @@ public sealed unsafe class LifetimeTests
     var extraDomain = owner.GetLifetimeTokenForHandle(extra, "the sync database extra");
     var coreStamp = coreDomain.Capture();
 
-    owner.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
+    owner.InvalidateHandles("AlpmSession.UnregisterAllSyncDatabases()");
 
     // The sync-database list lives on the handle, so the root is bumped too: the list view has to die
     // with its entries. Every child stamp dies through the root comparison.
@@ -197,7 +197,7 @@ public sealed unsafe class LifetimeTests
     Assert.False(extraDomain.IsAlive);
 
     var thrown = Assert.Throws<AlpmLifetimeException>(coreStamp.ThrowIfStale);
-    Assert.Equal("Alpm.UnregisterAllSyncDatabases()", thrown.InvalidatedBy);
+    Assert.Equal("AlpmSession.UnregisterAllSyncDatabases()", thrown.InvalidatedBy);
 
     // The registry was cleared, so a recycled address starts over with a live domain.
     var fresh = owner.GetLifetimeTokenForHandle(core, "the sync database core");
@@ -210,12 +210,12 @@ public sealed unsafe class LifetimeTests
   {
     var owner = Root();
 
-    owner.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
+    owner.InvalidateHandles("AlpmSession.UnregisterAllSyncDatabases()");
 
     // Deliberate change from the token tree: unregistering every sync database alters the handle's own
     // list, so the handle-level view dies too instead of surviving a change to the list it wraps.
     Assert.False(owner.IsAlive);
-    Assert.Equal("Alpm.UnregisterAllSyncDatabases()", owner.InvalidatedBy);
+    Assert.Equal("AlpmSession.UnregisterAllSyncDatabases()", owner.InvalidatedBy);
   }
 
   [Fact]

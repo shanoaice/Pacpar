@@ -17,7 +17,7 @@ Mechanically this is one line. `csbindgen`'s class accessibility is configured i
 the generator instead of by editing generated output — which is also the one file in that helper
 project that may be edited at all.
 
-**Consequences.** Every public member that currently names a binding type has to change: `Alpm.Errno`,
+**Consequences.** Every public member that currently names a binding type has to change: `AlpmSession.Errno`,
 `AlpmException.Errno`, and the public exception constructors that take `_alpm_errno_t`. The public
 error surface should adopt the stable `AlpmFailureCode` plus numeric native code vocabulary that
 [ADR 0003](./0003-stable-failure-codes-for-fsharp.md) already defines. `PublicApiSurfaceTests` can
@@ -33,7 +33,7 @@ Landed. What the change actually turned out to require:
   The hand-written `bindings/NativeMethods.SafeHandle.cs` partial had to match, since partial
   declarations may not disagree about accessibility.
 - **The public error surface moved to `int`**, following [ADR 0009](./0009-public-errors-expose-a-numeric-native-code.md)
-  rather than introducing `AlpmFailureCode` here: `Alpm.Errno`, `AlpmException.Errno` and the public
+  rather than introducing `AlpmFailureCode` here: `AlpmSession.Errno`, `AlpmException.Errno` and the public
   exception constructors now take and return the raw `int`. The semantic-code half of ADR 0003 stays
   with the F# bridge, which does not exist yet; inventing the enum now would freeze a shape with no
   consumer. Messages keep the readable `ALPM_ERR_*` name through a new `ErrorHandler.NameOf(int)`.

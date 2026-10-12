@@ -1,17 +1,12 @@
 # Lifetime and GC Safety
 
-> **Document status**: Maintainer reference for the landed design.
-> **Audience**: Library maintainers and reviewers.
-> **Supersedes**: the earlier "Root-Anchored Lifetime Token Tree" specification and the separate
-> GC.KeepAlive analysis. Both described a design that no longer exists in the code.
-
 ## 1. Two hazards, two answers
 
 The wrapper borrows memory that `libalpm` owns. Two failures can make a borrow read freed memory.
 
-| Hazard | Example | Answer |
-|---|---|---|
-| **Premature release**: managed code releases the native memory while a wrapper still reads it. | A caller keeps a package view, unregisters the database, then reads the view. | Lifetime domains and stamps (sections 3 and 4). |
+| Hazard                                                                                                                                                             | Example                                                                                | Answer                                                  |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|---------------------------------------------------------|
+| **Premature release**: managed code releases the native memory while a wrapper still reads it.                                                                     | A caller keeps a package view, unregisters the database, then reads the view.          | Lifetime domains and stamps (sections 3 and 4).         |
 | **Premature finalization**: the JIT stops reporting an owner as live during a native call, the GC finalizes it, and the finalizer frees the memory under the call. | A getter loads the pointer, calls `alpm_pkg_get_size`, and never touches `this` again. | GC anchoring (section 5) plus the IL audit (section 6). |
 
 The first hazard is a contract problem. The library answers it with a mechanism that cannot be
@@ -22,13 +17,13 @@ call site, backed by a static audit.
 
 Only a few managed types own native memory. Everything else borrows from one of them.
 
-| Type | Kind | What it holds | Released by |
-|---|---|---|---|
-| `Alpm` | owner | the `alpm_handle_t` inside a `SafeAlpmHandle` | `Dispose`, or the handle's finalizer |
-| `Database` | owner | an `alpm_db_t*` owned by a session or by the database registry | `libalpm`, on unregister or handle release |
-| `Transaction` | owner | the active `alpm_trans_t` on the handle | `Dispose` (`alpm_trans_release`) |
-| `LoadedPackage` | owner | an `alpm_pkg_t*` loaded from a file | `Dispose`, the hand-over to a transaction, or the sweep in `Alpm.Dispose()` |
-| `PackageView`, `FileList`, `Group`, `AlpmList<T>` | view | a native pointer plus a stamp | never; they only borrow |
+| Type                                              | Kind  | What it holds                                                  | Released by                                                                 |
+|---------------------------------------------------|-------|----------------------------------------------------------------|-----------------------------------------------------------------------------|
+| `AlpmSession`                                     | owner | the `alpm_handle_t` inside a `SafeAlpmHandle`                  | `Dispose`, or the handle's finalizer                                        |
+| `Database`                                        | owner | an `alpm_db_t*` owned by a session or by the database registry | `libalpm`, on unregister or handle release                                  |
+| `Transaction`                                     | owner | the active `alpm_trans_t` on the handle                        | `Dispose` (`alpm_trans_release`)                                            |
+| `LoadedPackage`                                   | owner | an `alpm_pkg_t*` loaded from a file                            | `Dispose`, the hand-over to a transaction, or the sweep in `AlpmSession.Dispose()` |
+| `PackageView`, `FileList`, `Group`, `AlpmList<T>` | view  | a native pointer plus a stamp                                  | never; they only borrow                                                     |
 
 A view never owns memory. A view must therefore know when its borrow has become invalid, and that is
 what a stamp records.
@@ -39,7 +34,7 @@ A **domain** (`Lifetime`) is one object libalpm can release on its own. Each dom
 monotonically increasing generation counter and a strong reference to the managed owner, which is the
 GC anchor.
 
-- A **root** domain belongs to a session (`Alpm`) or to a file-loaded package.
+- A **root** domain belongs to a session (`AlpmSession`) or to a file-loaded package.
 - A **child** domain belongs to one database or to one transaction. `CreateChild` refuses to build a
   third level, because no stamp would cover it.
 
@@ -56,9 +51,9 @@ would not be.
 
 Every `libalpm` call that frees memory a view could borrow falls into one of two scopes.
 
-| Scope | Events |
-|---|---|
-| **Session** | `alpm_release`; `alpm_unregister_all_syncdbs`; a commit, which rewrites the local database cache and can free individual local packages |
+| Scope            | Events                                                                                                                                                                                  |
+|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Session**      | `alpm_release`; `alpm_unregister_all_syncdbs`; a commit, which rewrites the local database cache and can free individual local packages                                                 |
 | **One resource** | `alpm_db_unregister`, `alpm_db_update`, the lazy cache rebuild, and the server-list setters (a database); `alpm_trans_release` (a transaction); `alpm_pkg_free` (a file-loaded package) |
 
 Nothing below a package can be released on its own. The file list is an inline struct inside the
@@ -73,15 +68,15 @@ Invalidate **before** the native call that frees, never after. An early incremen
 still-valid view report failure, which is the safe direction. A late increment leaves a window in
 which a view still passes its check.
 
-| Operation | What it invalidates |
-|---|---|
-| `Alpm.Dispose()` | the root domain, before the handle is released |
-| `SafeAlpmHandle.ReleaseHandle` | the root domain, before `alpm_release` |
-| `Transaction.Commit()` | the root domain, before `alpm_trans_commit` |
-| `Transaction.Dispose()` | the transaction domain, before `alpm_trans_release` |
-| `Database.Unregister()` | the database domain and the root domain, because removing a database frees its node in the handle's list |
-| `Alpm.UnregisterAllSyncDatabases()` | the root domain, and it clears the per-pointer registry |
-| `LoadedPackage.Dispose()` and the hand-over | that package's own domain |
+| Operation                                   | What it invalidates                                                                                      |
+|---------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| `AlpmSession.Dispose()`                     | the root domain, before the handle is released                                                           |
+| `SafeAlpmHandle.ReleaseHandle`              | the root domain, before `alpm_release`                                                                   |
+| `Transaction.Commit()`                      | the root domain, before `alpm_trans_commit`                                                              |
+| `Transaction.Dispose()`                     | the transaction domain, before `alpm_trans_release`                                                      |
+| `Database.Unregister()`                     | the database domain and the root domain, because removing a database frees its node in the handle's list |
+| `AlpmSession.UnregisterAllSyncDatabases()`  | the root domain, and it clears the per-pointer registry                                                  |
+| `LoadedPackage.Dispose()` and the hand-over | that package's own domain                                                                                |
 
 Two consequences are deliberate. A commit invalidates every view in the session, not only local
 database views. Unregistering one database also invalidates session-level list views. Both trade
@@ -112,7 +107,7 @@ Two properties follow.
 **The one exception is a cached member.** `field ??=` returns the cached value without evaluating its
 right-hand side, so the guarded accessor never runs on a later read. Every caching member therefore
 carries an explicit `ThrowIfDisposed()` before it returns. `PackageBase.Name` and ten other members
-do this, and a test pins the behaviour.
+do this, and a test pins the behavior.
 
 ## 5. GC anchoring
 
@@ -125,7 +120,7 @@ Two rules keep the chain intact.
 1. A domain stores its owner strongly. If it stored it weakly, a view could outlive its owner.
 2. A view stores its stamp by value. A struct field is a real reference, so the chain survives.
 
-**The finalizer hook is a second line of defence.** `SafeAlpmHandle.ReleaseHandle` retires the root
+**The finalizer hook is a second line of defense.** `SafeAlpmHandle.ReleaseHandle` retires the root
 domain before it calls `alpm_release`. The handle holds that domain **weakly**: a strong reference
 would root the session through the domain's owner, and with it the callback context that the
 weak-GCHandle design deliberately keeps collectable. A weak reference is enough, because a live view
@@ -137,15 +132,15 @@ holds its domain strongly; when no view exists, there is nothing to invalidate.
 native memory through a managed owner. A site is safe only when a validator proves a mechanism, and
 the audit fails the build on any site that claims nothing.
 
-| Mechanism | Meaning |
-|---|---|
-| `KeepAlive` | `GC.KeepAlive(owner)` follows the call on every path |
+| Mechanism             | Meaning                                                                        |
+|-----------------------|--------------------------------------------------------------------------------|
+| `KeepAlive`           | `GC.KeepAlive(owner)` follows the call on every path                           |
 | `SafeHandleParameter` | the P/Invoke takes a `SafeHandle`, so the marshaller refcounts it for the call |
-| `AddRefRelease` | the call sits inside a `DangerousAddRef` / `DangerousRelease` region |
-| `ReceiverOnStack` | `this` is live after the call and transitively owns the memory |
-| `SyncCallbackFrame` | the anchor is the managed caller of a synchronous libalpm callback |
-| `DelegatedToCaller` | the pointer arrives as a parameter, so the caller owns the obligation |
-| `CarriesOwnAnchor` | the constructed object receives the owner's stamp and anchors itself |
+| `AddRefRelease`       | the call sits inside a `DangerousAddRef` / `DangerousRelease` region           |
+| `ReceiverOnStack`     | `this` is live after the call and transitively owns the memory                 |
+| `SyncCallbackFrame`   | the anchor is the managed caller of a synchronous libalpm callback             |
+| `DelegatedToCaller`   | the pointer arrives as a parameter, so the caller owns the obligation          |
+| `CarriesOwnAnchor`    | the constructed object receives the owner's stamp and anchors itself           |
 
 Verdicts are three-valued: `Safe`, `NeedsReview`, and `Unsafe`. A `NeedsReview` verdict means the
 mechanism holds but its contract is a property of control flow or of the type graph, which IL
@@ -197,7 +192,7 @@ until the session ends. Three paths reclaim it, in the order a caller should pre
 1. `LoadedPackage.Dispose()`, normally through `using`. This is the only path that retires the
    package at a point the caller chose.
 2. The hand-over to a transaction. `alpm_trans_release` frees what it was given.
-3. `Alpm.Dispose()`, which sweeps the session's registry of file-loaded packages **before** it
+3. `AlpmSession.Dispose()`, which sweeps the session's registry of file-loaded packages **before** it
    releases the handle.
 
 The leak is therefore bounded by the session, not by the process, and it costs one package per
@@ -220,7 +215,7 @@ forgetting `Dispose`.
    finalizer and that borrow can be freed underneath it: the leak becomes a use-after-free. Closing
    that gap means giving the package domain an owner of its own, which changes the invariant §5 is
    built on.
-3. **Ordering.** `Alpm.Dispose()` frees loaded packages before `alpm_release`, on the session's
+3. **Ordering.** `AlpmSession.Dispose()` frees loaded packages before `alpm_release`, on the session's
    thread. A finalizer gives up both properties: the free happens whenever the GC reaches it,
    possibly after `alpm_release`, and `alpm_pkg_free` documents that it sets `pm_errno` on failure,
    which suggests it touches the handle. A session that is itself dropped to the GC has no ordering

@@ -5,11 +5,6 @@ using Pacpar.Alpm.Options;
 namespace Pacpar.Alpm;
 
 /// <summary>
-/// Options for the ALPM library.
-/// Options of array type are queried and modified through properties exposed as <see cref="ICollection{T}"/>s.
-/// Options of scalar type are queried and modified through properties with overridden accessors that calls underlying ALPM functions.
-/// </summary>
-/// <summary>
 /// Represents the aggregate state of the libalpm sandbox.
 /// </summary>
 /// <remarks>
@@ -29,6 +24,12 @@ public enum SandboxState
   Disabled = 2,
 }
 
+/// <summary>
+/// Options for the ALPM library.
+/// Options of array type are queried and modified through properties exposed as <see cref="ICollection{T}"/>s.
+/// Options of scalar type are queried and modified through properties whose accessors call the
+/// underlying ALPM functions.
+/// </summary>
 public unsafe class AlpmOptions
 {
   private readonly SafeAlpmHandle _handle;

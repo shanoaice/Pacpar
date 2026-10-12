@@ -139,7 +139,7 @@ public partial class AlpmSession
       return false;
     }
 
-    _lifetime.InvalidateHandles("Alpm.UnregisterAllSyncDatabases()");
+    _lifetime.InvalidateHandles("AlpmSession.UnregisterAllSyncDatabases()");
     failure = null;
     return true;
   }
@@ -373,7 +373,7 @@ public partial class AlpmSession
 
       var dbPtr = NativeMethods.alpm_pkg_get_db(pkgPtr);
       // Resolved among the wrappers the caller handed in, not through the handle registry: the local
-      // database is never registered there (see Alpm.GetLocalDatabase), and a registry lookup would
+      // database is never registered there (see AlpmSession.GetLocalDatabase), and a registry lookup would
       // therefore mint a second domain for it. See Database.ResolveLifetime for what rides on this.
       var dbLifetime = Database.ResolveLifetime(dbList, dbPtr);
       satisfier = new PackageView(pkgPtr, dbLifetime);

@@ -593,7 +593,7 @@ internal static class GcAnchorAudit
       }
 
       // The pointer may instead come from a parameterless instance accessor on `this`, such as
-      // `Alpm.Handle`, which reads the SafeHandle field inside its own body. Following that one hop
+      // `AlpmSession.Handle`, which reads the SafeHandle field inside its own body. Following that one hop
       // keeps provenance; `newobj` never matches because it resolves to a ConstructorInfo.
       if (instructions[j].MethodToken == 0) continue;
       var target = Resolve(module, instructions[j].MethodToken);

@@ -106,7 +106,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
       }
     });
     Assert.Equal("the ALPM handle", thrown.Target);
-    Assert.Equal("Alpm.Dispose()", thrown.InvalidatedBy);
+    Assert.Equal("AlpmSession.Dispose()", thrown.InvalidatedBy);
 
     // The token chain also guards ToArray on a stale-but-empty list (null native pointer).
     Assert.Throws<AlpmLifetimeException>(cache.ToArray);

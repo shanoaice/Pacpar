@@ -134,11 +134,11 @@ To maintain fast developer feedback loops and absolute host safety, tests must b
 
 ### Scenario 6: Unprivileged Sandboxed Downloader (`SandboxUser`)
 
-- **Objective**: Verify `Alpm.Options.SandboxUser` drops root privileges to an unprivileged user (e.g. `nobody` or `pacman`) when performing downloads.
+- **Objective**: Verify `AlpmSession.Options.SandboxUser` drops root privileges to an unprivileged user (e.g. `nobody` or `pacman`) when performing downloads.
 - **Why Container is Required**:
   - Requires Linux capability `CAP_SETUID` and `CAP_SETGID` to drop privileges, and system users defined in `/etc/passwd`.
 - **Test Workflow**:
-  1. In container, set `Alpm.Options.SandboxUser = "nobody"`.
+  1. In container, set `AlpmSession.Options.SandboxUser = "nobody"`.
   2. Initiate download of a remote package or database URL.
   3. Intercept download process or examine downloaded file ownership in cache directory.
   4. Verify that child processes spawned by libalpm run under the UID of `nobody`.

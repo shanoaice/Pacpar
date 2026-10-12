@@ -133,7 +133,7 @@ public sealed class NewFeaturesTests : IDisposable
 
   /// <summary>
   /// The bug this guards: resolving the owning domain through the handle registry mints a second
-  /// domain for the local database, because <c>Alpm.GetLocalDatabase</c> creates its domain directly
+  /// domain for the local database, because <c>AlpmSession.GetLocalDatabase</c> creates its domain directly
   /// and never registers the pointer (<c>Lifetime</c> keeps one domain per native database for exactly
   /// this reason). Views issued from the duplicate are not retired when the database's real domain is.
   /// </summary>
