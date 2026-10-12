@@ -68,3 +68,7 @@ AlpmSession.get_Capabilities | static library call | alpm_capabilities takes no 
 AlpmSession.TryFindSatisfier | token-carrying construction and database lookup | alpm_pkg_get_db and alpm_db_get_name resolve the owning database from the caller's databases, and the constructed PackageView receives that database's child lifetime token.
 
 PackageChangelogStream | receiver on stack | PackageChangelogStream holds the owning PackageBase instance, which roots the database or handle lifetime token for the package across changelog read and close operations.
+
+MtreeEntry | delegated to caller | FromNative takes a borrowed pointer to an archive_entry and copies path, mode, size, mtime, uid, gid, symlink and digest out eagerly into a managed record.
+
+PackageMtreeReader | receiver on stack | PackageMtreeReader holds the owning PackageBase instance, which roots the database or handle lifetime token for the package across mtree read and close operations.

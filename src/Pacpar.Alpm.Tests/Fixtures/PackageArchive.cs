@@ -26,7 +26,7 @@ internal static class PackageArchive
   /// <param name="conflict">Optional <c>conflict</c> entry.</param>
   /// <param name="file">Optional file the package owns, for example <c>usr/bin/probe-file</c>.</param>
   internal static string Create(string directory, string name, string arch = "x86_64", string? depend = null,
-    string? conflict = null, string? file = null)
+    string? conflict = null, string? file = null, string? mtree = null)
   {
     var info = new StringBuilder()
       .AppendLine($"pkgname = {name}")
@@ -49,6 +49,21 @@ internal static class PackageArchive
     {
       writer.WriteEntry(TextEntry(".PKGINFO", info.ToString()));
 
+      if (mtree != null)
+      {
+        using var gzStream = new MemoryStream();
+        using (var gz = new System.IO.Compression.GZipStream(gzStream, System.IO.Compression.CompressionMode.Compress, leaveOpen: true))
+        using (var gzWriter = new StreamWriter(gz, new UTF8Encoding(false)))
+        {
+          gzWriter.Write(mtree);
+        }
+        var gzBytes = gzStream.ToArray();
+        var mtreeEntry = new PaxTarEntry(TarEntryType.RegularFile, ".MTREE")
+        {
+          DataStream = new MemoryStream(gzBytes)
+        };
+        writer.WriteEntry(mtreeEntry);
+      }
       if (file != null)
       {
         writer.WriteEntry(new PaxTarEntry(TarEntryType.Directory, "usr/"));

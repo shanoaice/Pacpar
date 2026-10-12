@@ -26,7 +26,9 @@ public sealed class GcAnchorAuditTests
   //      SafeAlpmHandle instead.
   //  +2  the two non-owning "new SafeAlpmHandle(...)" wrappers added in Database..ctor and
   //      PackageBase.LibraryHandle, which wrap a borrowed pointer for the interop boundary.
-  private const int ExpectedHazardSiteCount = 234;
+  //  +1  the errno read in PackageMtreeReader.MoveNext's failure branch (alpm_pkg_mtree_next
+  //      returns -1 without setting pm_errno): anchored by GC.KeepAlive(_package) before the throw.
+  private const int ExpectedHazardSiteCount = 249;
 
   private static AnchorAuditResult Audit()
   {

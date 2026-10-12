@@ -111,14 +111,14 @@ rediscover, so it is recorded next to the API it constrains.
 | `alpm_option_get/set_disable_dl_timeout` | `AlpmOptions.DisableDownloadTimeout` | done | Native type is `unsigned short`. |
 | `alpm_option_get/set_disable_sandbox_filesystem`, `_network`, `_syscalls` | `AlpmOptions.DisableSandboxFilesystem`, `DisableSandboxNetwork`, `DisableSandboxSyscalls` | done | The native aggregate `alpm_option_get_disable_sandbox` counts only filesystem and syscalls and ignores network; the wrapper's `Sandbox` composite counts all three, so the two can disagree. |
 | `alpm_option_get/set_sandboxuser` | `AlpmOptions.SandboxUser` | done | Return 1 means `getpwnam` found no such user, not a malformed string. |
+| `alpm_pkg_mtree_open`, `alpm_pkg_mtree_next`, `alpm_pkg_mtree_close` | `PackageBase.GetMtree`, `TryGetMtree`, `PackageMtreeReader` | done | Reads `<dbpath>/local/<pkg>/mtree`; returns `null` when absent or non-local. `PackageMtreeReader` owns archive handle cleanup. |
 
-## 5. Not wrapped yet (31)
+## 5. Not wrapped yet (30)
 
 Priority follows pacman usage and whether a consumer can work around it.
 
 | Function | pacman caller | Tier | Recommendation |
 | :--- | :--- | :--- | :--- |
-| `alpm_pkg_mtree_open`, `alpm_pkg_mtree_next`, `alpm_pkg_mtree_close` | `src/pacman/check.c` (`check_pkg_full`) | High | The manifest of what a package was supposed to install: mode, uid/gid, size, mtime, symlink target and sha256 per file — everything `alpm_pkg_get_files()` does not carry, and the only baseline `pacman -Qkk` can compare an installed tree against. Constraints to honour: it reads `<dbpath>/local/<pkg>/mtree` and returns NULL when that file is absent, and every other backend (sync databases, file-loaded packages) returns NULL, so the API is local-database-only; `archive_entry` is borrowed and dies on the next `next`, so entries must be copied like `PackageFile`; the archive handle needs the same owned-handle treatment the changelog stream is still missing. |
 | `alpm_pkg_check_pgp_signature`, `alpm_db_check_pgp_signature`, `alpm_siglist_cleanup` | `src/pacman/package.c` | Medium | Signature verification. Needs a managed `SignatureList` that owns the cleanup. |
 | `alpm_decode_signature`, `alpm_extract_keyid` | `src/pacman/package.c` | Medium | Signature decoding and key extraction. |
 | `alpm_dep_from_string`, `alpm_dep_compute_string`, `alpm_dep_free` | `src/pacman/conf.c`, `src/pacman/callback.c` | Medium | `Depend.Parse` / `ToString`; freeing stays with the managed wrapper. |

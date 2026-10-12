@@ -24,6 +24,7 @@ internal sealed class IsolatedAlpmEnvironment : IDisposable
   }
 
   internal AlpmSession AlpmSession { get; }
+  internal string WorkspaceRoot => _workspaceRoot;
 
   public void Dispose()
   {

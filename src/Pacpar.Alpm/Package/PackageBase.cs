@@ -652,6 +652,65 @@ public abstract unsafe class PackageBase
     return reader.ReadToEnd();
   }
 
+  /// <summary>
+  /// The failure-returning seam for <see cref="GetMtree"/>.
+  /// </summary>
+  /// <param name="mtree">
+  /// When this method returns <c>true</c>, carries a reader streaming the package's mtree entries,
+  /// or <c>null</c> if the package carries no mtree manifest.
+  /// </param>
+  /// <param name="failure">
+  /// The operational error when this method returns <c>false</c>; otherwise <c>null</c>.
+  /// </param>
+  /// <returns>
+  /// <c>true</c> if the mtree file was opened successfully or was absent;
+  /// <c>false</c> if an operational error occurred while opening the archive.
+  /// </returns>
+  internal bool TryGetMtree(out PackageMtreeReader? mtree, [NotNullWhen(false)] out AlpmFailure? failure)
+  {
+    ThrowIfDisposed();
+    var handlePtr = LibraryHandle;
+    var archive = NativeMethods.alpm_pkg_mtree_open(BackingStruct);
+    if (archive == null)
+    {
+      var rawErrno = (int)NativeMethods.alpm_errno(handlePtr);
+      GC.KeepAlive(this);
+      if (rawErrno == 0)
+      {
+        mtree = null;
+        failure = null;
+        return true;
+      }
+      mtree = null;
+      failure = NativeCall.Failure(rawErrno, "open package mtree");
+      return false;
+    }
+
+    GC.KeepAlive(this);
+    mtree = new PackageMtreeReader(this, archive);
+    failure = null;
+    return true;
+  }
+
+  /// <summary>
+  /// Opens the package's mtree manifest (<c>.MTREE</c>) and returns a reader streaming its entries,
+  /// or returns <c>null</c> if the package has no mtree file (such as for sync database packages).
+  /// </summary>
+  /// <remarks>
+  /// Only packages from the local database carry an mtree manifest. The returned reader is
+  /// single-use: a second enumeration yields no entries. Disposing the reader (or exiting a
+  /// <c>foreach</c> loop) closes the native archive reader. Dispose it before the session ends;
+  /// see <see cref="PackageMtreeReader"/> for the lifetime rules.
+  /// </remarks>
+  public PackageMtreeReader? GetMtree()
+  {
+    if (!TryGetMtree(out var mtree, out var failure))
+    {
+      throw failure.ToException();
+    }
+    return mtree;
+  }
+
   [DoesNotReturn]
   private static void ThrowSignatureFailure(int rawErrno)
   {
