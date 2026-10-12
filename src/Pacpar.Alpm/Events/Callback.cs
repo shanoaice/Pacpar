@@ -370,6 +370,7 @@ public sealed class Callback
       if (value == null)
       {
         ThrowIfError(NativeMethods.alpm_option_set_questioncb(_handle, null, null));
+        field = null;
         return;
       }
 
