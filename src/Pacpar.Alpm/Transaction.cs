@@ -12,77 +12,87 @@ namespace Pacpar.Alpm;
 /// libalpm's default mode rather than "no configuration": every dependency, conflict and file-conflict
 /// check runs, hooks and scriptlets are executed, the database is locked and the filesystem is
 /// written. Every member below deviates from that, either as an opt-out
-/// (<c>NODEPS</c>, <c>NOCONFLICTS</c>, <c>NOSAVE</c>, <c>NOLOCK</c>, <c>DBONLY</c>, …) or as an
-/// explicit opt-in (<c>CASCADE</c>, <c>RECURSE</c>, <c>ALLDEPS</c>, …), so a caller who does not want
-/// one of those deviations has nothing to pass.
+/// (<see cref="NoDeps"/>, <see cref="NoConflicts"/>, <see cref="NoSave"/>, <see cref="NoLock"/>,
+/// <see cref="DbOnly"/>, …) or as an explicit opt-in (<see cref="Cascade"/>, <see cref="Recurse"/>,
+/// <see cref="AllDeps"/>, …), so a caller who does not want one of those deviations has nothing to
+/// pass.
+/// <para>
+/// The member names drop the <c>AlpmTransFlag</c> prefix, and each member records the constant it
+/// projects. ADR 0014.
+/// </para>
 /// </remarks>
 [Flags]
 public enum TransactionFlags : uint
 {
   /// <summary>
-  ///  Ignore dependency checks.
+  ///  Ignore dependency checks (<c>ALPM_TRANS_FLAG_NODEPS</c>).
   /// </summary>
-  AlpmTransFlagNodeps = 1,
+  NoDeps = 1,
   /// <summary>
-  ///  Delete files even if they are tagged as backup.
+  ///  Delete files even if they are tagged as backup (<c>ALPM_TRANS_FLAG_NOSAVE</c>).
   /// </summary>
-  AlpmTransFlagNosave = 4,
+  NoSave = 4,
   /// <summary>
-  ///  Ignore version numbers when checking dependencies.
+  ///  Ignore version numbers when checking dependencies (<c>ALPM_TRANS_FLAG_NODEPVERSION</c>).
   /// </summary>
-  AlpmTransFlagNodepversion = 8,
+  NoDepVersion = 8,
   /// <summary>
-  ///  Remove also any packages depending on a package being removed.
+  ///  Remove also any packages depending on a package being removed (<c>ALPM_TRANS_FLAG_CASCADE</c>).
   /// </summary>
-  AlpmTransFlagCascade = 16,
+  Cascade = 16,
   /// <summary>
-  ///  Remove packages and their unneeded deps (not explicitly installed).
+  ///  Remove packages and their unneeded deps (not explicitly installed)
+  ///  (<c>ALPM_TRANS_FLAG_RECURSE</c>).
   /// </summary>
-  AlpmTransFlagRecurse = 32,
+  Recurse = 32,
   /// <summary>
-  ///  Modify database but do not commit changes to the filesystem.
+  ///  Modify database but do not commit changes to the filesystem (<c>ALPM_TRANS_FLAG_DBONLY</c>).
   /// </summary>
-  AlpmTransFlagDbonly = 64,
+  DbOnly = 64,
   /// <summary>
-  ///  Do not run hooks during a transaction
+  ///  Do not run hooks during a transaction (<c>ALPM_TRANS_FLAG_NOHOOKS</c>).
   /// </summary>
-  AlpmTransFlagNohooks = 128,
+  NoHooks = 128,
   /// <summary>
-  ///  Use ALPM_PKG_REASON_DEPEND when installing packages.
+  ///  Use <see cref="PackageReason.Dependency"/> when installing packages
+  ///  (<c>ALPM_TRANS_FLAG_ALLDEPS</c>).
   /// </summary>
-  AlpmTransFlagAlldeps = 256,
+  AllDeps = 256,
   /// <summary>
-  ///  Only download packages and do not actually install.
+  ///  Only download packages and do not actually install (<c>ALPM_TRANS_FLAG_DOWNLOADONLY</c>).
   /// </summary>
-  AlpmTransFlagDownloadonly = 512,
+  DownloadOnly = 512,
   /// <summary>
-  ///  Do not execute install scriptlets after installing.
+  ///  Do not execute install scriptlets after installing (<c>ALPM_TRANS_FLAG_NOSCRIPTLET</c>).
   /// </summary>
-  AlpmTransFlagNoscriptlet = 1024,
+  NoScriptlet = 1024,
   /// <summary>
-  ///  Ignore dependency conflicts.
+  ///  Ignore dependency conflicts (<c>ALPM_TRANS_FLAG_NOCONFLICTS</c>).
   /// </summary>
-  AlpmTransFlagNoconflicts = 2048,
+  NoConflicts = 2048,
   /// <summary>
-  ///  Do not install a package if it is already installed and up to date.
+  ///  Do not install a package if it is already installed and up to date
+  ///  (<c>ALPM_TRANS_FLAG_NEEDED</c>).
   /// </summary>
-  AlpmTransFlagNeeded = 8192,
+  Needed = 8192,
   /// <summary>
-  ///  Use ALPM_PKG_REASON_EXPLICIT when installing packages.
+  ///  Use <see cref="PackageReason.Explicit"/> when installing packages
+  ///  (<c>ALPM_TRANS_FLAG_ALLEXPLICIT</c>).
   /// </summary>
-  AlpmTransFlagAllexplicit = 16384,
+  AllExplicit = 16384,
   /// <summary>
-  ///  Do not remove a package if it is needed by another one.
+  ///  Do not remove a package if it is needed by another one (<c>ALPM_TRANS_FLAG_UNNEEDED</c>).
   /// </summary>
-  AlpmTransFlagUnneeded = 32768,
+  Unneeded = 32768,
   /// <summary>
-  ///  Remove also explicitly installed unneeded deps (use with ALPM_TRANS_FLAG_RECURSE).
+  ///  Remove also explicitly installed unneeded deps (use with <see cref="Recurse"/>)
+  ///  (<c>ALPM_TRANS_FLAG_RECURSEALL</c>).
   /// </summary>
-  AlpmTransFlagRecurseall = 65536,
+  RecurseAll = 65536,
   /// <summary>
-  ///  Do not lock the database during the operation.
+  ///  Do not lock the database during the operation (<c>ALPM_TRANS_FLAG_NOLOCK</c>).
   /// </summary>
-  AlpmTransFlagNolock = 131072,
+  NoLock = 131072,
 }
 
 public partial class Transaction : IDisposable

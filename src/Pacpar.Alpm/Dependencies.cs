@@ -5,24 +5,28 @@ using Pacpar.Alpm.List;
 namespace Pacpar.Alpm;
 
 /// <summary>The version comparison a dependency uses (libalpm's <c>_alpm_depmod_t</c>).</summary>
+/// <remarks>
+/// A projection of libalpm's own numbering, which starts at 1, so there is no zero member.
+/// ADR 0014.
+/// </remarks>
 public enum DepMod : uint
 {
-  /// <summary>Any version satisfies the dependency.</summary>
+  /// <summary>Any version satisfies the dependency (<c>ALPM_DEP_MOD_ANY</c>).</summary>
   Any = 1,
 
-  /// <summary>=</summary>
+  /// <summary>= (<c>ALPM_DEP_MOD_EQ</c>).</summary>
   Equal = 2,
 
-  /// <summary>&gt;=</summary>
+  /// <summary>&gt;= (<c>ALPM_DEP_MOD_GE</c>).</summary>
   GreaterOrEqual = 3,
 
-  /// <summary>&lt;=</summary>
+  /// <summary>&lt;= (<c>ALPM_DEP_MOD_LE</c>).</summary>
   LessOrEqual = 4,
 
-  /// <summary>&gt;</summary>
+  /// <summary>&gt; (<c>ALPM_DEP_MOD_GT</c>).</summary>
   Greater = 5,
 
-  /// <summary>&lt;</summary>
+  /// <summary>&lt; (<c>ALPM_DEP_MOD_LT</c>).</summary>
   Less = 6
 }
 

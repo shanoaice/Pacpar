@@ -62,7 +62,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   /// </remarks>
   private void AddTo(Transaction transaction, string path)
   {
-    var package = _alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+    var package = _alpm.LoadPackage(path, full: true, SigLevel.UseDefault);
     transaction.AddPackage(package);
   }
 
@@ -210,8 +210,8 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     var path = PackageArchive.Create(_packageDirectory, "audit-dup-target");
     using var transaction = _alpm.BeginTransaction();
 
-    using var pkg1 = _alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
-    using var pkg2 = _alpm.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+    using var pkg1 = _alpm.LoadPackage(path, full: true, SigLevel.UseDefault);
+    using var pkg2 = _alpm.LoadPackage(path, full: true, SigLevel.UseDefault);
 
     // First add succeeds; transaction takes ownership.
     var ok1 = transaction.TryAddPackage(pkg1, out var view1, out var failure1);

@@ -5,6 +5,26 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
+/// <summary>
+/// Compile-time capabilities of libalpm.
+/// </summary>
+/// <remarks>
+/// A projection of libalpm's own <c>alpm_capability_t</c> bit values, so the numbering is libalpm's
+/// and there is no zero member: libalpm defines none. ADR 0014.
+/// </remarks>
+[Flags]
+public enum Capability : uint
+{
+  /// <summary>Localization support (<c>ALPM_CAPABILITY_NLS</c>).</summary>
+  Nls = 1 << 0,
+
+  /// <summary>Ability to download packages and databases (<c>ALPM_CAPABILITY_DOWNLOADER</c>).</summary>
+  Downloader = 1 << 1,
+
+  /// <summary>Package and database signature checking (<c>ALPM_CAPABILITY_SIGNATURES</c>).</summary>
+  Signatures = 1 << 2,
+}
+
 // ReSharper disable once ClassNeverInstantiated.Global
 /// <summary>
 /// A live session with libalpm: the root object that owns the native handle and is the entry point

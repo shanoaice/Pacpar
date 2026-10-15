@@ -108,5 +108,5 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
     => _environment.AlpmSession.LoadPackage(
       PackageArchive.Create(_packageDirectory, name, file: file),
       full: true,
-      SigLevel.AlpmSigUseDefault);
+      SigLevel.UseDefault);
 }

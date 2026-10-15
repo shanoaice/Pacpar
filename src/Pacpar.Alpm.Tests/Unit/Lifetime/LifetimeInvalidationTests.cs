@@ -41,7 +41,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   {
     using var transaction = _environment.AlpmSession.BeginTransaction();
     transaction.AddPackage(_environment.AlpmSession.LoadPackage(Archive(name, depend),
-      full: true, SigLevel.AlpmSigUseDefault));
+      full: true, SigLevel.UseDefault));
     transaction.Prepare();
     transaction.Commit();
   }
@@ -50,7 +50,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   public void LoadedPackageDispose_InvalidatesTheViewsItIssued()
   {
     var pkg = _environment.AlpmSession.LoadPackage(Archive("audit-lifetime-dep", depend: "glibc"),
-      full: true, SigLevel.AlpmSigUseDefault);
+      full: true, SigLevel.UseDefault);
 
     var depends = pkg.Depends;
     var copied = depends.ToArray();
@@ -75,7 +75,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   public void HandOver_InvalidatesTheWrapperAndTheReturnedViewCarriesTheTransaction()
   {
     var pkg = _environment.AlpmSession.LoadPackage(Archive("audit-lifetime-handoff"),
-      full: true, SigLevel.AlpmSigUseDefault);
+      full: true, SigLevel.UseDefault);
 
     using var transaction = _environment.AlpmSession.BeginTransaction();
     var view = transaction.AddPackage(pkg);
@@ -145,7 +145,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void SyncDatabaseUnregister_Succeeds_AndRetiresTheRetainedSyncDatabaseList()
   {
-    var core = _environment.AlpmSession.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
+    var core = _environment.AlpmSession.RegisterSyncDatabase("core", SigLevel.UseDefault);
     var retained = _environment.AlpmSession.GetSyncDatabases();
     Assert.Single([.. retained]);
 
@@ -172,8 +172,8 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void UnregisterAllSyncDatabases_RetiresTheRetainedSyncDatabaseList()
   {
-    _ = _environment.AlpmSession.RegisterSyncDatabase("core", SigLevel.AlpmSigUseDefault);
-    _ = _environment.AlpmSession.RegisterSyncDatabase("extra", SigLevel.AlpmSigUseDefault);
+    _ = _environment.AlpmSession.RegisterSyncDatabase("core", SigLevel.UseDefault);
+    _ = _environment.AlpmSession.RegisterSyncDatabase("extra", SigLevel.UseDefault);
     var retained = _environment.AlpmSession.GetSyncDatabases();
     Assert.Equal(2, retained.ToArray().Length);
 
@@ -210,8 +210,8 @@ public sealed class LifetimeInvalidationTests : IDisposable
     PackageArchive.CreateSyncDatabase(dbpath, "repo-a", "pkg-a", "shared-group");
     PackageArchive.CreateSyncDatabase(dbpath, "repo-b", "pkg-b", "shared-group");
 
-    var dbA = _environment.AlpmSession.RegisterSyncDatabase("repo-a", SigLevel.AlpmSigUseDefault);
-    var dbB = _environment.AlpmSession.RegisterSyncDatabase("repo-b", SigLevel.AlpmSigUseDefault);
+    var dbA = _environment.AlpmSession.RegisterSyncDatabase("repo-a", SigLevel.UseDefault);
+    var dbB = _environment.AlpmSession.RegisterSyncDatabase("repo-b", SigLevel.UseDefault);
 
     var group = dbA.GetGroup("shared-group");
     Assert.NotNull(group);

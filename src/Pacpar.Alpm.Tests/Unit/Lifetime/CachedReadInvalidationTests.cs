@@ -35,7 +35,7 @@ public sealed class CachedReadInvalidationTests : IDisposable
   {
     using var transaction = _environment.AlpmSession.BeginTransaction();
     transaction.AddPackage(_environment.AlpmSession.LoadPackage(
-      PackageArchive.Create(_packageDirectory, name), full: true, SigLevel.AlpmSigUseDefault));
+      PackageArchive.Create(_packageDirectory, name), full: true, SigLevel.UseDefault));
     transaction.Prepare();
     transaction.Commit();
   }

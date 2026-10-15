@@ -4,19 +4,39 @@ using Pacpar.Alpm.Bindings;
 namespace Pacpar.Alpm;
 
 /// <summary>When a hook runs (libalpm's <c>_alpm_hook_when_t</c>).</summary>
+/// <remarks>
+/// A projection of libalpm's own numbering, which starts at 1, so there is no zero member.
+/// ADR 0014.
+/// </remarks>
 public enum HookWhen : uint
 {
+  /// <summary>Before the transaction runs (<c>ALPM_HOOK_PRE_TRANSACTION</c>).</summary>
   PreTransaction = 1,
+
+  /// <summary>After the transaction runs (<c>ALPM_HOOK_POST_TRANSACTION</c>).</summary>
   PostTransaction = 2
 }
 
 /// <summary>The operation a package event describes (libalpm's <c>_alpm_package_operation_t</c>).</summary>
+/// <remarks>
+/// A projection of libalpm's own numbering, which starts at 1, so there is no zero member.
+/// ADR 0014.
+/// </remarks>
 public enum PackageOperation : uint
 {
+  /// <summary>The package is being installed (<c>ALPM_PACKAGE_INSTALL</c>).</summary>
   Install = 1,
+
+  /// <summary>The package is being upgraded (<c>ALPM_PACKAGE_UPGRADE</c>).</summary>
   Upgrade = 2,
+
+  /// <summary>The package is being reinstalled (<c>ALPM_PACKAGE_REINSTALL</c>).</summary>
   Reinstall = 3,
+
+  /// <summary>The package is being downgraded (<c>ALPM_PACKAGE_DOWNGRADE</c>).</summary>
   Downgrade = 4,
+
+  /// <summary>The package is being removed (<c>ALPM_PACKAGE_REMOVE</c>).</summary>
   Remove = 5
 }
 

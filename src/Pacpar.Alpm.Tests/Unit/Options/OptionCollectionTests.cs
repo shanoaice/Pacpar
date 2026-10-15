@@ -192,7 +192,7 @@ public sealed class OptionCollectionTests : IDisposable
     Assert.Throws<AlpmLifetimeException>(() => options.DatabasePath);
     Assert.Throws<AlpmLifetimeException>(() => options.Root);
     Assert.Throws<AlpmLifetimeException>(() => options.DefaultSigLevel);
-    Assert.Throws<AlpmLifetimeException>(() => options.DefaultSigLevel = SigLevel.AlpmSigPackage);
+    Assert.Throws<AlpmLifetimeException>(() => options.DefaultSigLevel = SigLevel.Package);
     Assert.Throws<AlpmLifetimeException>(() => options.LocalFileSigLevel);
     Assert.Throws<AlpmLifetimeException>(() => options.RemoteFileSigLevel);
     Assert.Throws<AlpmLifetimeException>(() => options.ParallelDownloads);

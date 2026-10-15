@@ -12,6 +12,11 @@ namespace Pacpar.Alpm;
 /// <summary>
 /// Represents the aggregate state of the libalpm sandbox.
 /// </summary>
+/// <remarks>
+/// Not a projection of any libalpm enum: it is this library's summary of the three
+/// <c>alpm_option_get_disable_sandbox_*</c> flags, which is why it carries a zero member of its
+/// own. ADR 0014.
+/// </remarks>
 public enum SandboxState
 {
   /// <summary>All sandbox components are enabled.</summary>

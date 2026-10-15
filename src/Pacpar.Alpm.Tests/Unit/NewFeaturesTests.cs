@@ -28,7 +28,7 @@ public sealed class NewFeaturesTests : IDisposable
     var archive = PackageArchive.Create(_packageDirectory, name, file: file, mtree: mtree);
     using (var transaction = _environment.AlpmSession.BeginTransaction())
     {
-      transaction.AddPackage(_environment.AlpmSession.LoadPackage(archive, full: true, SigLevel.AlpmSigUseDefault));
+      transaction.AddPackage(_environment.AlpmSession.LoadPackage(archive, full: true, SigLevel.UseDefault));
       transaction.Prepare();
       transaction.Commit();
     }

@@ -66,7 +66,7 @@ public sealed class TrySeamContractTests : IDisposable
   public void TryLoadPackage_Success_SetsPackageAndNullFailure()
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-load-pkg");
-    var ok = _environment.AlpmSession.TryLoadPackage(path, full: true, SigLevel.AlpmSigUseDefault, out var pkg, out var failure);
+    var ok = _environment.AlpmSession.TryLoadPackage(path, full: true, SigLevel.UseDefault, out var pkg, out var failure);
 
     Assert.True(ok);
     Assert.NotNull(pkg);
@@ -77,7 +77,7 @@ public sealed class TrySeamContractTests : IDisposable
   [Fact]
   public void TryLoadPackage_Failure_SetsNullPackageAndFailure()
   {
-    var ok = _environment.AlpmSession.TryLoadPackage("/nonexistent/file.pkg.tar.zst", full: false, SigLevel.AlpmSigUseDefault, out var pkg, out var failure);
+    var ok = _environment.AlpmSession.TryLoadPackage("/nonexistent/file.pkg.tar.zst", full: false, SigLevel.UseDefault, out var pkg, out var failure);
 
     Assert.False(ok);
     Assert.Null(pkg);
@@ -175,7 +175,7 @@ public sealed class TrySeamContractTests : IDisposable
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-commit-success");
     using var tx = _environment.AlpmSession.BeginTransaction();
-    tx.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
+    tx.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault));
 
     var okPrepare = tx.TryPrepare(out var failurePrepare);
     Assert.True(okPrepare);
@@ -223,7 +223,7 @@ public sealed class TrySeamContractTests : IDisposable
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-add-loaded");
     using var tx = _environment.AlpmSession.BeginTransaction();
-    var pkg = _environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+    var pkg = _environment.AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault);
 
     var ok = tx.TryAddPackage(pkg, out var view, out var failure);
 
@@ -240,7 +240,7 @@ public sealed class TrySeamContractTests : IDisposable
     var path = PackageArchive.Create(_packageDirectory, "audit-pkg-to-remove");
     using (var installer = _environment.AlpmSession.BeginTransaction())
     {
-      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
+      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault));
       installer.Prepare();
       installer.Commit();
     }
@@ -262,7 +262,7 @@ public sealed class TrySeamContractTests : IDisposable
     var path = PackageArchive.Create(_packageDirectory, "audit-installed-add-fail");
     using (var installer = _environment.AlpmSession.BeginTransaction())
     {
-      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
+      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault));
       installer.Prepare();
       installer.Commit();
     }
@@ -283,7 +283,7 @@ public sealed class TrySeamContractTests : IDisposable
   public void TryCheckMd5Sum_NonSyncPackage_FailsWithWrongArguments()
   {
     var path = PackageArchive.Create(_packageDirectory, "audit-checkmd5-pkg");
-    var loaded = _environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault);
+    var loaded = _environment.AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault);
 
     var ok = loaded.TryCheckMd5Sum(out var matches, out var failure);
 

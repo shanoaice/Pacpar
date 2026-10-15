@@ -5,6 +5,32 @@ using Pacpar.Alpm.List;
 namespace Pacpar.Alpm;
 
 /// <summary>
+/// Flags indicating allowed operations on a package database.
+/// </summary>
+/// <remarks>
+/// A projection of libalpm's own <c>alpm_db_usage_t</c> bit values, so the numbering is libalpm's
+/// and there is no zero member: libalpm defines none. ADR 0014.
+/// </remarks>
+[Flags]
+public enum DatabaseUsage : uint
+{
+  /// <summary>Enable database synchronization (<c>ALPM_DB_USAGE_SYNC</c>).</summary>
+  Sync = 1 << 0,
+
+  /// <summary>Enable package search (<c>ALPM_DB_USAGE_SEARCH</c>).</summary>
+  Search = 1 << 1,
+
+  /// <summary>Enable package installation (<c>ALPM_DB_USAGE_INSTALL</c>).</summary>
+  Install = 1 << 2,
+
+  /// <summary>Enable package upgrade (<c>ALPM_DB_USAGE_UPGRADE</c>).</summary>
+  Upgrade = 1 << 3,
+
+  /// <summary>All operations enabled (<c>ALPM_DB_USAGE_ALL</c>).</summary>
+  All = Sync | Search | Install | Upgrade,
+}
+
+/// <summary>
 /// A package database: the local database or a registered sync tree.
 /// </summary>
 /// <remarks>

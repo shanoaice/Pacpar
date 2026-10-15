@@ -38,7 +38,7 @@ internal static class BenchEnvironment
     {
       if (File.Exists(Path.Combine(syncDir, name + ".db")))
       {
-        return alpm.RegisterSyncDatabase(name, SigLevel.AlpmSigPackageOptional);
+        return alpm.RegisterSyncDatabase(name, SigLevel.PackageOptional);
       }
     }
     throw new InvalidOperationException(

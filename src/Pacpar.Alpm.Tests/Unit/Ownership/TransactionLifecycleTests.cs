@@ -14,7 +14,7 @@ public sealed class TransactionLifecycleTests
 {
   /// <summary>No flags: every check on, database locked, filesystem written.</summary>
   private const TransactionFlags NoFlags = 0;
-  private const TransactionFlags Lockless = TransactionFlags.AlpmTransFlagNolock;
+  private const TransactionFlags Lockless = TransactionFlags.NoLock;
 
   [Fact]
   public void BeginTransaction_JoinsTheActiveTransaction_WhenTheFlagsMatch()
@@ -145,7 +145,7 @@ public sealed class TransactionLifecycleTests
     try
     {
       var pkgPath = PackageArchive.Create(pkgDir, "audit-commit-ok");
-      using var loaded = alpm.LoadPackage(pkgPath, full: true, SigLevel.AlpmSigUseDefault);
+      using var loaded = alpm.LoadPackage(pkgPath, full: true, SigLevel.UseDefault);
 
       var transaction = alpm.BeginTransaction();
       transaction.AddPackage(loaded);

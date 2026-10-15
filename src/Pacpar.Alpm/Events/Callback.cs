@@ -6,17 +6,39 @@ using Pacpar.Alpm.Bindings;
 namespace Pacpar.Alpm;
 
 /// <summary>The phase a progress callback reports (libalpm's <c>_alpm_progress_t</c>).</summary>
+/// <remarks>
+/// A projection of libalpm's own numbering, which happens to start at 0 here. ADR 0014.
+/// </remarks>
 public enum ProgressType : uint
 {
+  /// <summary>Packages are being added (<c>ALPM_PROGRESS_ADD_START</c>).</summary>
   AddStart = 0,
+
+  /// <summary>Packages are being upgraded (<c>ALPM_PROGRESS_UPGRADE_START</c>).</summary>
   UpgradeStart = 1,
+
+  /// <summary>Packages are being downgraded (<c>ALPM_PROGRESS_DOWNGRADE_START</c>).</summary>
   DowngradeStart = 2,
+
+  /// <summary>Packages are being reinstalled (<c>ALPM_PROGRESS_REINSTALL_START</c>).</summary>
   ReinstallStart = 3,
+
+  /// <summary>Packages are being removed (<c>ALPM_PROGRESS_REMOVE_START</c>).</summary>
   RemoveStart = 4,
+
+  /// <summary>File conflicts are being checked (<c>ALPM_PROGRESS_CONFLICTS_START</c>).</summary>
   ConflictsStart = 5,
+
+  /// <summary>Disk space is being checked (<c>ALPM_PROGRESS_DISKSPACE_START</c>).</summary>
   DiskSpaceStart = 6,
+
+  /// <summary>Package integrity is being checked (<c>ALPM_PROGRESS_INTEGRITY_START</c>).</summary>
   IntegrityStart = 7,
+
+  /// <summary>Package targets are being loaded (<c>ALPM_PROGRESS_LOAD_START</c>).</summary>
   LoadStart = 8,
+
+  /// <summary>The keyring is being checked (<c>ALPM_PROGRESS_KEYRING_START</c>).</summary>
   KeyringStart = 9
 }
 
@@ -29,9 +51,16 @@ public enum ProgressType : uint
 [Flags]
 public enum LogLevel : uint
 {
+  /// <summary>An error message (<c>ALPM_LOG_ERROR</c>).</summary>
   Error = 1,
+
+  /// <summary>A warning message (<c>ALPM_LOG_WARNING</c>).</summary>
   Warning = 2,
+
+  /// <summary>A debug message (<c>ALPM_LOG_DEBUG</c>).</summary>
   Debug = 4,
+
+  /// <summary>A function-call trace message (<c>ALPM_LOG_FUNCTION</c>).</summary>
   Function = 8
 }
 
@@ -40,6 +69,10 @@ public enum LogLevel : uint
 /// Replaces the bare <c>int</c> of <c>alpm_cb_fetch</c>, whose contract is "0 on success, 1 if the
 /// file exists and is identical, -1 on error" (alpm.h). Any other value is not something libalpm
 /// defines, so returning an arbitrary number should not be expressible.
+/// <para>
+/// Unlike the enums above, this one is not a projection of a native enum: it is this library's
+/// rendering of a documented contract, which is why it carries a zero member of its own. ADR 0014.
+/// </para>
 /// </remarks>
 public enum FetchResult
 {

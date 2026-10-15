@@ -39,7 +39,7 @@ public sealed class PackageTransferTests : IDisposable
 
   private LoadedPackage Load(string name, string? file = null)
     => _environment.AlpmSession.LoadPackage(PackageArchive.Create(_packageDirectory, name, file: file),
-      full: true, SigLevel.AlpmSigUseDefault);
+      full: true, SigLevel.UseDefault);
 
   /// <summary>
   /// The shape that used to abort. Both <c>using</c> declarations run their <c>Dispose</c> at the end
@@ -154,7 +154,7 @@ public sealed class PackageTransferTests : IDisposable
 
     using (var installer = _environment.AlpmSession.BeginTransaction())
     {
-      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.AlpmSigUseDefault));
+      installer.AddPackage(_environment.AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault));
       installer.Prepare();
       installer.Commit();
     }
