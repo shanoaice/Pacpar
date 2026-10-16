@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Options;
 
 /// <summary>
 /// Regression tests for the option collection template: <c>Clear()</c> must not

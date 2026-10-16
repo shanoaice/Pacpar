@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Session;
 
 /// <summary>
 /// Coverage ledger §4: libalpm's own version and compile-time capabilities.

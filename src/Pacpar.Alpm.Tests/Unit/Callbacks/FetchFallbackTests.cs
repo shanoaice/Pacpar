@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 
 public sealed class FetchFallbackTests
 {

@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Bindings;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Errors;
 
 public sealed class ErrorHandlerTests
 {

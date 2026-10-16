@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Options;
 
 /// <summary>
 /// Coverage ledger §4: the sandbox options.

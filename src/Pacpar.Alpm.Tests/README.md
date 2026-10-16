@@ -13,7 +13,10 @@ Every folder under `Unit/` is one topic and one namespace: a file's namespace is
 - `Unit/GcAnchor/` — the IL audit that every read of unmanaged memory names its anchor, plus the
   IL decoder it runs on.
 - `Unit/Interop/` — drift between the hand-written `[LibraryImport]` layer and the generated one.
-- `Unit/Lifetime/` — lifetimes: the domains and stamps themselves, and the sites that invalidate them.
+- `Unit/ObjectLifetime/` — the domains and stamps themselves, the sites that invalidate them, and
+  the path a dropped session takes through the GC. Named `ObjectLifetime` rather than `Lifetime`
+  because a namespace named after a type in `Pacpar.Alpm` shadows that type inside every test
+  namespace: the folder would have made `Lifetime` resolve to a namespace.
 - `Unit/Options/` — the option collections and the options the collections do not cover.
 - `Unit/Ownership/` — which side owns a package, a list or a transaction.
 - `Unit/Packages/` — reading a package: files, mtree, changelog, dependency resolution.

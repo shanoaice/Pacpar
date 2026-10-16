@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Databases;
 
 /// <summary>
 /// Coverage ledger §4: server and cache-server administration on a sync

@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.List;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Ownership;
 
 /// <summary>
 /// Locks in the list ownership contract: borrowed views can never free (and therefore are not

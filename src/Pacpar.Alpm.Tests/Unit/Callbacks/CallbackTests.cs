@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 
 /// <summary>
 /// Locks in the callback safety contract: a user handler that throws must not let the

@@ -1,7 +1,7 @@
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Ownership;
 
 /// <summary>
 /// Covers the ownership hand-over of <see cref="Transaction.AddPackage(LoadedPackage)"/>: libalpm

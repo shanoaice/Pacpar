@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Session;
 
 /// <summary>
 /// Coverage ledger §4: <see cref="AlpmSession.Unlock"/> releases the database lock this session holds.

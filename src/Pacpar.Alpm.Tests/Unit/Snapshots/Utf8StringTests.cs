@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 
 /// <summary>
 /// libalpm's string contract is UTF-8, so both the marshalling helpers and one

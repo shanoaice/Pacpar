@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Interop;
 
 /// <summary>
 /// Guards the hand-written <c>[LibraryImport]</c> layer in

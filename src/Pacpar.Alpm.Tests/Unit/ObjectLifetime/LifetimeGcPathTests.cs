@@ -1,6 +1,6 @@
 using Pacpar.Alpm.List;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.ObjectLifetime;
 
 /// <summary>
 /// The two things that can happen when a caller drops a session without disposing it.

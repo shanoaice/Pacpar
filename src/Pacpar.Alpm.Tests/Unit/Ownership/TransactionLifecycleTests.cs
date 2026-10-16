@@ -1,7 +1,7 @@
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Ownership;
 
 /// <summary>
 /// The handle's one-transaction-at-a-time contract as the wrapper presents it: an active transaction

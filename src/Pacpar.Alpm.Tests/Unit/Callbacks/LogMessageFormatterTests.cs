@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 
 /// <summary>
 /// Locks in the <c>va_list</c> forwarding contract behind <see cref="LogMessageFormatter"/>:

@@ -1,7 +1,7 @@
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Errors;
 
 /// <summary>
 /// Covers the transaction failure contract: <see cref="Transaction.Prepare"/> and

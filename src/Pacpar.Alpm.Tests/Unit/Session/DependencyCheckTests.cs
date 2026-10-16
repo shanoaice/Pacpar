@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Session;
 
 /// <summary>
 /// Coverage ledger §4: <c>alpm_checkdeps</c> / <c>alpm_checkconflicts</c>.

@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.ObjectLifetime;
 
 /// <summary>
 /// End-to-end coverage of the invalidation sites the lifetime-token design specifies: releasing a

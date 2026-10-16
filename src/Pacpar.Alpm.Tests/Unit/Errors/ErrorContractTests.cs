@@ -1,7 +1,7 @@
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Errors;
 
 /// <summary>
 /// Locks in the low-risk half of the error-signal rules:

@@ -1,7 +1,7 @@
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Errors;
 
 /// <summary>
 /// The handle's error state must be read from the handle itself. <see cref="AlpmSession.Errno"/> used to

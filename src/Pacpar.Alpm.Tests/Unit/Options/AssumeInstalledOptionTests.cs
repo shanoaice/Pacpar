@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Options;
 
 /// <summary>
 /// Covers the non-string branch of the option-collection template now that

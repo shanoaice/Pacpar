@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.ObjectLifetime;
 
 /// <summary>
 /// A cached read must still report that its owner is gone.

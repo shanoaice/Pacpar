@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Errors;
 
 /// <summary>
 /// libalpm's errno is sticky per handle, and whether a given entry point resets it on entry varies

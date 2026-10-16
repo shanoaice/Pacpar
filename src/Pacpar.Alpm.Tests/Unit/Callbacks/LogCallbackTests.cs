@@ -1,6 +1,6 @@
 using Pacpar.Alpm.Tests.Fixtures;
 
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 
 /// <summary>
 /// The log callback is the one handler whose payload libalpm does not expand for us, so

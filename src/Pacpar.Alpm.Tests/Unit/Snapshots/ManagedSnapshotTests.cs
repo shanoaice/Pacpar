@@ -3,6 +3,7 @@ using System.Text;
 using Pacpar.Alpm.Bindings;
 using Pacpar.Alpm.Tests.Fixtures;
 
+
 namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 
 /// <summary>

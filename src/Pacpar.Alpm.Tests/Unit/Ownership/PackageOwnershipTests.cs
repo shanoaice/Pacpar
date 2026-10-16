@@ -1,4 +1,4 @@
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.Ownership;
 
 /// <summary>
 /// Ownership is expressed by the type, not by a <c>bool</c> argument.

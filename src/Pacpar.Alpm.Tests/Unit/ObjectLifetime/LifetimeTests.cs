@@ -1,4 +1,4 @@
-namespace Pacpar.Alpm.Tests.Unit;
+namespace Pacpar.Alpm.Tests.Unit.ObjectLifetime;
 
 /// <summary>
 /// Managed coverage of the lifetime domains and stamps: root anchoring, the two-level check, the
