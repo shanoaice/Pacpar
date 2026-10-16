@@ -102,34 +102,64 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when dependency checking begins.</summary>
-  public sealed class CheckDepsStart : AlpmEvent;
+  public sealed class CheckDepsStart : AlpmEvent
+  {
+    internal CheckDepsStart() { }
+  }
 
   /// <summary>Triggered when dependency checking completes.</summary>
-  public sealed class CheckDepsDone : AlpmEvent;
+  public sealed class CheckDepsDone : AlpmEvent
+  {
+    internal CheckDepsDone() { }
+  }
 
   /// <summary>Triggered when file conflict checking begins.</summary>
-  public sealed class FileConflictsStart : AlpmEvent;
+  public sealed class FileConflictsStart : AlpmEvent
+  {
+    internal FileConflictsStart() { }
+  }
 
   /// <summary>Triggered when file conflict checking completes.</summary>
-  public sealed class FileConflictsDone : AlpmEvent;
+  public sealed class FileConflictsDone : AlpmEvent
+  {
+    internal FileConflictsDone() { }
+  }
 
   /// <summary>Triggered when dependency resolution begins.</summary>
-  public sealed class ResolveDepsStart : AlpmEvent;
+  public sealed class ResolveDepsStart : AlpmEvent
+  {
+    internal ResolveDepsStart() { }
+  }
 
   /// <summary>Triggered when dependency resolution completes.</summary>
-  public sealed class ResolveDepsDone : AlpmEvent;
+  public sealed class ResolveDepsDone : AlpmEvent
+  {
+    internal ResolveDepsDone() { }
+  }
 
   /// <summary>Triggered when inter-package conflict checking begins.</summary>
-  public sealed class InterConflictsStart : AlpmEvent;
+  public sealed class InterConflictsStart : AlpmEvent
+  {
+    internal InterConflictsStart() { }
+  }
 
   /// <summary>Triggered when inter-package conflict checking completes.</summary>
-  public sealed class InterConflictsDone : AlpmEvent;
+  public sealed class InterConflictsDone : AlpmEvent
+  {
+    internal InterConflictsDone() { }
+  }
 
   /// <summary>Triggered when transaction processing begins.</summary>
-  public sealed class TransactionStart : AlpmEvent;
+  public sealed class TransactionStart : AlpmEvent
+  {
+    internal TransactionStart() { }
+  }
 
   /// <summary>Triggered when transaction processing completes.</summary>
-  public sealed class TransactionDone : AlpmEvent;
+  public sealed class TransactionDone : AlpmEvent
+  {
+    internal TransactionDone() { }
+  }
 
   /// <summary>Triggered when a package operation (install, upgrade, downgrade, or remove) begins.</summary>
   public sealed class PackageOperationStart : AlpmEvent
@@ -172,16 +202,28 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when package integrity checking begins.</summary>
-  public sealed class IntegrityStart : AlpmEvent;
+  public sealed class IntegrityStart : AlpmEvent
+  {
+    internal IntegrityStart() { }
+  }
 
   /// <summary>Triggered when package integrity checking completes.</summary>
-  public sealed class IntegrityDone : AlpmEvent;
+  public sealed class IntegrityDone : AlpmEvent
+  {
+    internal IntegrityDone() { }
+  }
 
   /// <summary>Triggered when package loading begins.</summary>
-  public sealed class LoadStart : AlpmEvent;
+  public sealed class LoadStart : AlpmEvent
+  {
+    internal LoadStart() { }
+  }
 
   /// <summary>Triggered when package loading completes.</summary>
-  public sealed class LoadDone : AlpmEvent;
+  public sealed class LoadDone : AlpmEvent
+  {
+    internal LoadDone() { }
+  }
 
   /// <summary>Carries output from an install or remove scriptlet.</summary>
   public sealed class ScriptletInfo : AlpmEvent
@@ -196,19 +238,34 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when package file retrieval begins.</summary>
-  public sealed class RetrieveStart : AlpmEvent;
+  public sealed class RetrieveStart : AlpmEvent
+  {
+    internal RetrieveStart() { }
+  }
 
   /// <summary>Triggered when package file retrieval completes successfully.</summary>
-  public sealed class RetrieveDone : AlpmEvent;
+  public sealed class RetrieveDone : AlpmEvent
+  {
+    internal RetrieveDone() { }
+  }
 
   /// <summary>Triggered when package file retrieval fails.</summary>
-  public sealed class RetrieveFailed : AlpmEvent;
+  public sealed class RetrieveFailed : AlpmEvent
+  {
+    internal RetrieveFailed() { }
+  }
 
   /// <summary>Triggered when disk space checking begins.</summary>
-  public sealed class DiskSpaceStart : AlpmEvent;
+  public sealed class DiskSpaceStart : AlpmEvent
+  {
+    internal DiskSpaceStart() { }
+  }
 
   /// <summary>Triggered when disk space checking completes.</summary>
-  public sealed class DiskSpaceDone : AlpmEvent;
+  public sealed class DiskSpaceDone : AlpmEvent
+  {
+    internal DiskSpaceDone() { }
+  }
 
   /// <summary>Triggered when an optional dependency is being removed.</summary>
   public sealed class OptionalDependencyRemoval : AlpmEvent
@@ -238,16 +295,28 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when keyring verification or initialization begins.</summary>
-  public sealed class KeyringStart : AlpmEvent;
+  public sealed class KeyringStart : AlpmEvent
+  {
+    internal KeyringStart() { }
+  }
 
   /// <summary>Triggered when keyring verification or initialization completes.</summary>
-  public sealed class KeyringDone : AlpmEvent;
+  public sealed class KeyringDone : AlpmEvent
+  {
+    internal KeyringDone() { }
+  }
 
   /// <summary>Triggered when downloading a PGP key begins.</summary>
-  public sealed class KeyDownloadStart : AlpmEvent;
+  public sealed class KeyDownloadStart : AlpmEvent
+  {
+    internal KeyDownloadStart() { }
+  }
 
   /// <summary>Triggered when downloading a PGP key completes.</summary>
-  public sealed class KeyDownloadDone : AlpmEvent;
+  public sealed class KeyDownloadDone : AlpmEvent
+  {
+    internal KeyDownloadDone() { }
+  }
 
   /// <summary>Triggered when a .pacnew configuration file is created during package extraction.</summary>
   public sealed class PacnewCreated : AlpmEvent

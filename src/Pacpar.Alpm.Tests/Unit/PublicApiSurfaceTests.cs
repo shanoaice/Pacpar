@@ -70,5 +70,30 @@ public sealed class PublicApiSurfaceTests
     Assert.Empty(leaked);
   }
 
+  /// <summary>
+  /// The three callback unions are closed: <c>FromUnion</c> is the only producer of a payload, so no
+  /// payload may be constructible by a consumer.
+  /// </summary>
+  /// <remarks>
+  /// Most payloads always carried an <c>internal</c> constructor. The ones written as
+  /// <c>public sealed class CheckDepsStart : AlpmEvent;</c> did not declare one at all, so C# gave
+  /// them a public parameterless one and a consumer could build an event libalpm never reported.
+  /// Sealing does not close that hole - sealing stops derivation, not construction - so the
+  /// constructors have to be declared, and this test keeps it that way.
+  /// </remarks>
+  [Fact]
+  public void PublicApi_DoesNotExposeConstructorsOnCallbackPayloads()
+  {
+    Type[] unions = [typeof(AlpmEvent), typeof(AlpmQuestion), typeof(AlpmDownloadEvent)];
+
+    var offenders = ExportedTypes
+      .Where(type => unions.Contains(type.BaseType))
+      .SelectMany(type => type.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
+      .Select(ctor => $"{ctor.DeclaringType!.FullName}.{ctor.Name}({ctor.GetParameters().Length} params)")
+      .ToArray();
+
+    Assert.Empty(offenders);
+  }
+
   private static IEnumerable<Type> ExportedTypes => typeof(AlpmSession).Assembly.GetExportedTypes();
 }
