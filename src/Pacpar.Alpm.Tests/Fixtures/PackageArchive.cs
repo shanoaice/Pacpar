@@ -5,7 +5,8 @@ namespace Pacpar.Alpm.Tests.Fixtures;
 
 /// <summary>
 /// Builds the smallest package <c>alpm_pkg_load</c> accepts, so tests that need a real package file
-/// do not need the integration container.
+/// do not need the integration container. <see cref="IsolatedAlpmEnvironment.Install"/> is the way to
+/// get one of these into a database.
 /// </summary>
 /// <remarks>
 /// A <c>.PKGINFO</c> plus, optionally, one file the package owns is enough. The archive stays
