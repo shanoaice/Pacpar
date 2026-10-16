@@ -14,6 +14,10 @@ namespace Pacpar.Alpm;
 /// Packages in payload properties are exposed as borrowed <see cref="PackageView"/> instances anchored to the
 /// callback frame's lifetime; callers wishing to retain package data after the callback returns must
 /// call <see cref="PackageBase.ToSnapshot"/> to create an independent managed snapshot.
+/// <para>
+/// The set of subclasses is closed: it mirrors <c>_alpm_question_type_t</c>, and
+/// <c>FromUnion</c> is the only thing that creates one - every subclass is sealed.
+/// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract unsafe class AlpmQuestion
@@ -49,7 +53,7 @@ public abstract unsafe class AlpmQuestion
   }
 
   /// <summary>Question asked when attempting to install a package marked in IgnorePkg.</summary>
-  public class InstallIgnoredPackage : AlpmQuestion
+  public sealed class InstallIgnoredPackage : AlpmQuestion
   {
     private bool _install;
 
@@ -76,7 +80,7 @@ public abstract unsafe class AlpmQuestion
   }
 
   /// <summary>Question asked when an existing package is to be replaced by another package.</summary>
-  public class ReplacePackage : AlpmQuestion
+  public sealed class ReplacePackage : AlpmQuestion
   {
     private bool _replace;
 
@@ -111,7 +115,7 @@ public abstract unsafe class AlpmQuestion
   }
 
   /// <summary>Question asked when two packages conflict during transaction preparation.</summary>
-  public class ConflictPkg : AlpmQuestion
+  public sealed class ConflictPkg : AlpmQuestion
   {
     private bool _remove;
 
@@ -156,7 +160,7 @@ public abstract unsafe class AlpmQuestion
   }
 
   /// <summary>Question asked when a downloaded package file is found to be corrupted.</summary>
-  public class CorruptedPkg : AlpmQuestion
+  public sealed class CorruptedPkg : AlpmQuestion
   {
     private bool _remove;
 
@@ -187,7 +191,7 @@ public abstract unsafe class AlpmQuestion
   }
 
   /// <summary>Question asked when unresolvable dependencies require removing packages.</summary>
-  public class RemovePkgs : AlpmQuestion
+  public sealed class RemovePkgs : AlpmQuestion
   {
     private bool _skip;
 
@@ -214,7 +218,7 @@ public abstract unsafe class AlpmQuestion
   }
 
   /// <summary>Question asked when multiple providers satisfy a dependency and a selection is required.</summary>
-  public class SelectProvider : AlpmQuestion
+  public sealed class SelectProvider : AlpmQuestion
   {
     private int _useIndex;
 
@@ -253,7 +257,7 @@ public abstract unsafe class AlpmQuestion
   }
 
   /// <summary>Question asked when an unknown PGP key needs to be imported into the keyring.</summary>
-  public class ImportKey : AlpmQuestion
+  public sealed class ImportKey : AlpmQuestion
   {
     private bool _import;
 

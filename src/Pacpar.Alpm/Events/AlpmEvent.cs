@@ -47,6 +47,11 @@ public enum PackageOperation : uint
 /// Event payloads carrying package views are borrowed references valid only for the duration of the
 /// callback execution frame. Callers wishing to retain package data after the callback returns must
 /// call <see cref="PackageBase.ToSnapshot"/> to create an independent managed snapshot.
+/// <para>
+/// The set of subclasses is closed: it mirrors <c>_alpm_event_type_t</c>, and
+/// <c>FromUnion</c> is the only thing that creates one - every subclass is sealed, so the union
+/// cannot grow a member libalpm does not have.
+/// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class AlpmEvent
@@ -97,37 +102,37 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when dependency checking begins.</summary>
-  public class CheckDepsStart : AlpmEvent;
+  public sealed class CheckDepsStart : AlpmEvent;
 
   /// <summary>Triggered when dependency checking completes.</summary>
-  public class CheckDepsDone : AlpmEvent;
+  public sealed class CheckDepsDone : AlpmEvent;
 
   /// <summary>Triggered when file conflict checking begins.</summary>
-  public class FileConflictsStart : AlpmEvent;
+  public sealed class FileConflictsStart : AlpmEvent;
 
   /// <summary>Triggered when file conflict checking completes.</summary>
-  public class FileConflictsDone : AlpmEvent;
+  public sealed class FileConflictsDone : AlpmEvent;
 
   /// <summary>Triggered when dependency resolution begins.</summary>
-  public class ResolveDepsStart : AlpmEvent;
+  public sealed class ResolveDepsStart : AlpmEvent;
 
   /// <summary>Triggered when dependency resolution completes.</summary>
-  public class ResolveDepsDone : AlpmEvent;
+  public sealed class ResolveDepsDone : AlpmEvent;
 
   /// <summary>Triggered when inter-package conflict checking begins.</summary>
-  public class InterConflictsStart : AlpmEvent;
+  public sealed class InterConflictsStart : AlpmEvent;
 
   /// <summary>Triggered when inter-package conflict checking completes.</summary>
-  public class InterConflictsDone : AlpmEvent;
+  public sealed class InterConflictsDone : AlpmEvent;
 
   /// <summary>Triggered when transaction processing begins.</summary>
-  public class TransactionStart : AlpmEvent;
+  public sealed class TransactionStart : AlpmEvent;
 
   /// <summary>Triggered when transaction processing completes.</summary>
-  public class TransactionDone : AlpmEvent;
+  public sealed class TransactionDone : AlpmEvent;
 
   /// <summary>Triggered when a package operation (install, upgrade, downgrade, or remove) begins.</summary>
-  public class PackageOperationStart : AlpmEvent
+  public sealed class PackageOperationStart : AlpmEvent
   {
     internal unsafe PackageOperationStart(_alpm_event_t* native, ChildLifetime? lifetime)
     {
@@ -147,7 +152,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when a package operation completes.</summary>
-  public class PackageOperationDone : AlpmEvent
+  public sealed class PackageOperationDone : AlpmEvent
   {
     internal unsafe PackageOperationDone(_alpm_event_t* native, ChildLifetime? lifetime)
     {
@@ -167,19 +172,19 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when package integrity checking begins.</summary>
-  public class IntegrityStart : AlpmEvent;
+  public sealed class IntegrityStart : AlpmEvent;
 
   /// <summary>Triggered when package integrity checking completes.</summary>
-  public class IntegrityDone : AlpmEvent;
+  public sealed class IntegrityDone : AlpmEvent;
 
   /// <summary>Triggered when package loading begins.</summary>
-  public class LoadStart : AlpmEvent;
+  public sealed class LoadStart : AlpmEvent;
 
   /// <summary>Triggered when package loading completes.</summary>
-  public class LoadDone : AlpmEvent;
+  public sealed class LoadDone : AlpmEvent;
 
   /// <summary>Carries output from an install or remove scriptlet.</summary>
-  public class ScriptletInfo : AlpmEvent
+  public sealed class ScriptletInfo : AlpmEvent
   {
     internal unsafe ScriptletInfo(_alpm_event_t* native)
     {
@@ -191,22 +196,22 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when package file retrieval begins.</summary>
-  public class RetrieveStart : AlpmEvent;
+  public sealed class RetrieveStart : AlpmEvent;
 
   /// <summary>Triggered when package file retrieval completes successfully.</summary>
-  public class RetrieveDone : AlpmEvent;
+  public sealed class RetrieveDone : AlpmEvent;
 
   /// <summary>Triggered when package file retrieval fails.</summary>
-  public class RetrieveFailed : AlpmEvent;
+  public sealed class RetrieveFailed : AlpmEvent;
 
   /// <summary>Triggered when disk space checking begins.</summary>
-  public class DiskSpaceStart : AlpmEvent;
+  public sealed class DiskSpaceStart : AlpmEvent;
 
   /// <summary>Triggered when disk space checking completes.</summary>
-  public class DiskSpaceDone : AlpmEvent;
+  public sealed class DiskSpaceDone : AlpmEvent;
 
   /// <summary>Triggered when an optional dependency is being removed.</summary>
-  public class OptionalDependencyRemoval : AlpmEvent
+  public sealed class OptionalDependencyRemoval : AlpmEvent
   {
     internal unsafe OptionalDependencyRemoval(_alpm_event_t* native, ChildLifetime? lifetime)
     {
@@ -221,7 +226,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when a requested sync database file is missing.</summary>
-  public class DatabaseMissing : AlpmEvent
+  public sealed class DatabaseMissing : AlpmEvent
   {
     internal unsafe DatabaseMissing(_alpm_event_t* native)
     {
@@ -233,19 +238,19 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when keyring verification or initialization begins.</summary>
-  public class KeyringStart : AlpmEvent;
+  public sealed class KeyringStart : AlpmEvent;
 
   /// <summary>Triggered when keyring verification or initialization completes.</summary>
-  public class KeyringDone : AlpmEvent;
+  public sealed class KeyringDone : AlpmEvent;
 
   /// <summary>Triggered when downloading a PGP key begins.</summary>
-  public class KeyDownloadStart : AlpmEvent;
+  public sealed class KeyDownloadStart : AlpmEvent;
 
   /// <summary>Triggered when downloading a PGP key completes.</summary>
-  public class KeyDownloadDone : AlpmEvent;
+  public sealed class KeyDownloadDone : AlpmEvent;
 
   /// <summary>Triggered when a .pacnew configuration file is created during package extraction.</summary>
-  public class PacnewCreated : AlpmEvent
+  public sealed class PacnewCreated : AlpmEvent
   {
     internal unsafe PacnewCreated(_alpm_event_t* native, ChildLifetime? lifetime)
     {
@@ -268,7 +273,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when a .pacsave backup file is created during package removal.</summary>
-  public class PacsaveCreated : AlpmEvent
+  public sealed class PacsaveCreated : AlpmEvent
   {
     internal unsafe PacsaveCreated(_alpm_event_t* native, ChildLifetime? lifetime)
     {
@@ -284,7 +289,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when transaction hooks begin executing.</summary>
-  public class HookStart : AlpmEvent
+  public sealed class HookStart : AlpmEvent
   {
     internal unsafe HookStart(_alpm_event_t* native)
     {
@@ -296,7 +301,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when transaction hooks finish executing.</summary>
-  public class HookDone : AlpmEvent
+  public sealed class HookDone : AlpmEvent
   {
     internal unsafe HookDone(_alpm_event_t* native)
     {
@@ -308,7 +313,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when a specific hook starts running.</summary>
-  public class HookRunStart : AlpmEvent
+  public sealed class HookRunStart : AlpmEvent
   {
     internal unsafe HookRunStart(_alpm_event_t* native)
     {
@@ -329,7 +334,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when a specific hook finishes running.</summary>
-  public class HookRunDone : AlpmEvent
+  public sealed class HookRunDone : AlpmEvent
   {
     internal unsafe HookRunDone(_alpm_event_t* native)
     {
@@ -350,7 +355,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when package retrieval for a transaction begins.</summary>
-  public class PackageRetrieveStart : AlpmEvent
+  public sealed class PackageRetrieveStart : AlpmEvent
   {
     internal unsafe PackageRetrieveStart(_alpm_event_t* native)
     {
@@ -365,7 +370,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when package retrieval for a transaction completes successfully.</summary>
-  public class PackageRetrieveDone : AlpmEvent
+  public sealed class PackageRetrieveDone : AlpmEvent
   {
     internal unsafe PackageRetrieveDone(_alpm_event_t* native)
     {
@@ -380,7 +385,7 @@ public abstract class AlpmEvent
   }
 
   /// <summary>Triggered when package retrieval for a transaction fails.</summary>
-  public class PackageRetrieveFailed : AlpmEvent
+  public sealed class PackageRetrieveFailed : AlpmEvent
   {
     internal unsafe PackageRetrieveFailed(_alpm_event_t* native)
     {

@@ -10,6 +10,10 @@ namespace Pacpar.Alpm;
 /// <remarks>
 /// Every event subclass is a managed snapshot whose values are copied from libalpm during callback execution.
 /// Instances are safe to persist or inspect after the callback completes.
+/// <para>
+/// The set of subclasses is closed: it mirrors <c>_alpm_download_event_type_t</c>, and
+/// <c>FromUnion</c> is the only thing that creates one - every subclass is sealed.
+/// </para>
 /// </remarks>
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public abstract class AlpmDownloadEvent
@@ -27,7 +31,7 @@ public abstract class AlpmDownloadEvent
   }
 
   /// <summary>Download initialization event.</summary>
-  public class Init : AlpmDownloadEvent
+  public sealed class Init : AlpmDownloadEvent
   {
     internal unsafe Init(_alpm_download_event_init_t* init)
     {
@@ -39,7 +43,7 @@ public abstract class AlpmDownloadEvent
   }
 
   /// <summary>Download progress event.</summary>
-  public class Progress : AlpmDownloadEvent
+  public sealed class Progress : AlpmDownloadEvent
   {
     internal unsafe Progress(_alpm_download_event_progress_t* progress)
     {
@@ -54,7 +58,7 @@ public abstract class AlpmDownloadEvent
   }
 
   /// <summary>Download retry event.</summary>
-  public class Retry : AlpmDownloadEvent
+  public sealed class Retry : AlpmDownloadEvent
   {
     internal unsafe Retry(_alpm_download_event_retry_t* retry)
     {
@@ -66,7 +70,7 @@ public abstract class AlpmDownloadEvent
   }
 
   /// <summary>Download completion event.</summary>
-  public class Completed : AlpmDownloadEvent
+  public sealed class Completed : AlpmDownloadEvent
   {
     internal unsafe Completed(_alpm_download_event_completed_t* completed)
     {
