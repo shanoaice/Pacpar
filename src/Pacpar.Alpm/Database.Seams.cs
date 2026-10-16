@@ -4,7 +4,7 @@ using Pacpar.Alpm.List;
 
 namespace Pacpar.Alpm;
 
-public unsafe partial class Database
+public sealed unsafe partial class Database
 {
   /// <summary>
   /// The failure-returning seam for <see cref="Search"/>.

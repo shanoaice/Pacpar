@@ -46,7 +46,7 @@ public enum DepMod : uint
 /// libalpm built itself carries.
 /// </para>
 /// </remarks>
-public unsafe class Depend
+public sealed unsafe class Depend
 {
   /// <summary>Creates a detached, fully managed copy of a native dependency.</summary>
   internal Depend(_alpm_depend_t* backingStruct)

@@ -10,7 +10,7 @@ namespace Pacpar.Alpm;
 /// A managed snapshot of an ALPM package backup file entry. The name is copied on construction,
 /// so the entry remains accessible even after the originating package is released.
 /// </remarks>
-public class Backup
+public sealed class Backup
 {
   internal unsafe Backup(_alpm_backup_t* backingStruct)
   {

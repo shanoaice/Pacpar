@@ -14,7 +14,7 @@ namespace Pacpar.Alpm;
 /// members belong to the database that issued them, so reading one after that database was
 /// unregistered throws <see cref="AlpmLifetimeException"/> even though the group itself is a copy.
 /// </remarks>
-public class Group
+public sealed class Group
 {
   /// <param name="backingStruct">The libalpm-owned group; dereferenced eagerly.</param>
   /// <param name="lifetime">

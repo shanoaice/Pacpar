@@ -5,7 +5,7 @@ namespace Pacpar.Alpm;
 /// <summary>
 /// Represents a file conflict between packages or with the filesystem.
 /// </summary>
-public class FileConflict
+public sealed class FileConflict
 {
   /// <summary>
   /// The target or package that causes the conflict.
@@ -35,7 +35,7 @@ public class FileConflict
 /// <summary>
 /// Represents a package dependency conflict between two packages.
 /// </summary>
-public class Conflict
+public sealed class Conflict
 {
   /// <summary>
   /// The name of the first conflicting package.

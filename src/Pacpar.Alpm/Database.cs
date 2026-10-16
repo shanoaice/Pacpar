@@ -40,7 +40,7 @@ public enum DatabaseUsage : uint
 /// throws <see cref="AlpmLifetimeException"/> instead of reading freed memory. Views handed out here
 /// (packages, groups, server lists) die with it the same way.
 /// </remarks>
-public unsafe partial class Database
+public sealed unsafe partial class Database
 {
   /// <summary>
   /// The only way to obtain the native pointer from outside this class. The guard runs here, so a

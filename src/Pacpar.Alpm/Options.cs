@@ -30,7 +30,7 @@ public enum SandboxState
 /// Options of scalar type are queried and modified through properties whose accessors call the
 /// underlying ALPM functions.
 /// </summary>
-public unsafe class AlpmOptions
+public sealed unsafe class AlpmOptions
 {
   private readonly SafeAlpmHandle _handle;
 

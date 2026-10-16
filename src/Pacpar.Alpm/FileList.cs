@@ -16,7 +16,7 @@ namespace Pacpar.Alpm;
 /// package has been released, instead of reading the freed array.
 /// </para>
 /// </remarks>
-public unsafe class FileList : IReadOnlyList<PackageFile>
+public sealed unsafe class FileList : IReadOnlyList<PackageFile>
 {
   private readonly _alpm_filelist_t* _backingStruct;
   private readonly LifetimeStamp? _lifetime;

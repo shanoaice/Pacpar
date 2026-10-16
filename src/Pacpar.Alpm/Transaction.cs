@@ -95,7 +95,7 @@ public enum TransactionFlags : uint
   NoLock = 131072,
 }
 
-public partial class Transaction : IDisposable
+public sealed partial class Transaction : IDisposable
 {
   private enum CompletionState : byte
   {

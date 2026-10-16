@@ -3,7 +3,7 @@ using Pacpar.Alpm.Bindings;
 
 namespace Pacpar.Alpm;
 
-public partial class Transaction
+public sealed partial class Transaction
 {
   internal static bool TryCreate(AlpmSession alpmLibrary, TransactionFlags flags,
     [NotNullWhen(true)] out Transaction? transaction,
