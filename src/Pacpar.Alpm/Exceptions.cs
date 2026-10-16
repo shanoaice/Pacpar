@@ -16,6 +16,12 @@ namespace Pacpar.Alpm;
 /// as <see cref="OutOfMemoryException"/>, because allocation failure is a runtime condition that
 /// should not be swallowed by a catch-all.
 /// </para>
+/// <para>
+/// ADR 0007 fixes one public type per errno, so the hierarchy below this type is a closed mapping:
+/// the library decides which type an errno becomes, and the leaves are sealed because a type a
+/// caller adds would never be produced by any call. This type stays open - deriving a
+/// library-specific exception from it is the supported way to add one.
+/// </para>
 /// </remarks>
 public class AlpmException : Exception
 {
@@ -53,7 +59,7 @@ public class AlpmException : Exception
 }
 
 /// <summary>An error from libalpm's database handling (<c>ALPM_ERR_DB_*</c>).</summary>
-public class AlpmDatabaseException(int errno, string? strError = null, string? context = null)
+public sealed class AlpmDatabaseException(int errno, string? strError = null, string? context = null)
   : AlpmException(errno, strError, context);
 
 /// <summary>
@@ -70,7 +76,7 @@ public class AlpmDatabaseException(int errno, string? strError = null, string? c
 /// - see that type's remarks.
 /// </para>
 /// </remarks>
-public class AlpmPackageException(
+public sealed class AlpmPackageException(
   int errno,
   string? strError = null,
   PackageBase? package = null,
@@ -82,11 +88,11 @@ public class AlpmPackageException(
 }
 
 /// <summary>A signature or keyring error (<c>ALPM_ERR_SIG_*</c>, missing signature support).</summary>
-public class AlpmSignatureException(int errno, string? strError = null, string? context = null)
+public sealed class AlpmSignatureException(int errno, string? strError = null, string? context = null)
   : AlpmException(errno, strError, context);
 
 /// <summary>A download or retrieval error (<c>ALPM_ERR_RETRIEVE*</c>, libcurl, external downloader).</summary>
-public class AlpmRetrieveException(int errno, string? strError = null, string? context = null)
+public sealed class AlpmRetrieveException(int errno, string? strError = null, string? context = null)
   : AlpmException(errno, strError, context);
 
 /// <summary>
