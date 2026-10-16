@@ -1,7 +1,12 @@
 using Pacpar.Alpm.Bindings;
 
-namespace Pacpar.Alpm.Tests.Unit.Callbacks;
+namespace Pacpar.Alpm.Tests.Unit.Snapshots;
 
+/// <summary>
+/// The other half of <see cref="ManagedSnapshotTests"/>: a payload is a copy taken inside the callback,
+/// so the branches that carry a package have to answer <c>null</c> - not a view over a null pointer -
+/// when libalpm reports one. Every case here leaves the package pointers null on purpose.
+/// </summary>
 public sealed unsafe class AlpmEventNullSafetyTests
 {
   [Fact]
