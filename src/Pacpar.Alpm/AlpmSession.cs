@@ -501,12 +501,30 @@ public partial class AlpmSession : IDisposable
   }
 
   /// <summary>
-  /// Finds a package satisfying the specified dependency across the given databases.
+  /// Resolves a dependency string to the package that provides it, searching the given databases in order.
   /// </summary>
-  public PackageView? FindSatisfier(IEnumerable<Database> databases, string dependency)
+  /// <param name="databases">The databases to search, in the order they should be consulted.</param>
+  /// <param name="dependency">The dependency query string (e.g. <c>"glibc&gt;=2.30"</c>).</param>
+  /// <returns>
+  /// A <see cref="PackageView"/> for the providing package, or <c>null</c> if no database provides it.
+  /// </returns>
+  /// <remarks>
+  /// <para>
+  /// The returned view is new. It is anchored to the lifetime domain of the database that provided the
+  /// package, resolved among the wrappers the caller handed in; reading it after that database is
+  /// retired - by <see cref="Database.Update"/>, unregistration, or a commit - throws
+  /// <see cref="AlpmLifetimeException"/> instead of reading freed memory.
+  /// </para>
+  /// <para>
+  /// To match a dependency against packages you already hold, use
+  /// <see cref="PackageView.FindSatisfier"/> instead: it needs no handle, touches no database, and
+  /// hands back one of the views you passed in.
+  /// </para>
+  /// </remarks>
+  public PackageView? ResolveDependency(IEnumerable<Database> databases, string dependency)
   {
     ThrowIfDisposed();
-    if (!TryFindSatisfier(databases, dependency, out var satisfier, out var failure))
+    if (!TryResolveDependency(databases, dependency, out var satisfier, out var failure))
     {
       throw failure.ToException();
     }

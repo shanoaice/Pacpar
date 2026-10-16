@@ -35,6 +35,19 @@ public sealed unsafe partial class PackageView : PackageBase
   /// <param name="packages">The packages to search.</param>
   /// <param name="dependency">The dependency query string (e.g. <c>"glibc&gt;=2.30"</c>).</param>
   /// <returns>The matching <see cref="PackageView"/>, or <c>null</c> if no satisfier was found.</returns>
+  /// <remarks>
+  /// <para>
+  /// The result is one of the views in <paramref name="packages"/>, not a new one: libalpm searches the
+  /// list it was handed, so the match is always a package the caller already holds, and it keeps that
+  /// view's domain. No handle or database is involved, which is why this member is static.
+  /// </para>
+  /// <para>
+  /// <c>null</c> covers both "nothing in the list satisfies the dependency" and "the dependency string
+  /// could not be parsed": <c>alpm_find_satisfier</c> takes no handle and therefore has no error
+  /// channel to tell the two apart. To search databases rather than a list you already hold, use
+  /// <see cref="AlpmSession.ResolveDependency"/>.
+  /// </para>
+  /// </remarks>
   public static PackageView? FindSatisfier(IEnumerable<PackageView> packages, string dependency)
   {
     ArgumentNullException.ThrowIfNull(packages);
@@ -106,7 +119,7 @@ public sealed unsafe partial class PackageView : PackageBase
 
       var dbPtr = NativeMethods.alpm_pkg_get_db(newPkgPtr);
       // Resolved among the caller's wrappers rather than the handle registry, for the same reason
-      // AlpmSession.TryFindSatisfier does: see Database.ResolveLifetime.
+      // AlpmSession.TryResolveDependency does: see Database.ResolveLifetime.
       return new PackageView(newPkgPtr, Database.ResolveLifetime(dbs, dbPtr));
     }
     finally

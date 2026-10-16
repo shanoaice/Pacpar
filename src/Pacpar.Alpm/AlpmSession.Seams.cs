@@ -344,9 +344,16 @@ public partial class AlpmSession
   }
 
   /// <summary>
-  /// The failure-returning seam for <see cref="FindSatisfier"/>.
+  /// The failure-returning seam for <see cref="ResolveDependency"/>.
   /// </summary>
-  internal unsafe bool TryFindSatisfier(
+  /// <remarks>
+  /// Every path here leaves <paramref name="failure"/> null, and that is not an oversight in this
+  /// wrapper: <c>alpm_find_dbs_satisfier</c> signals a miss and a failure with the same null pointer
+  /// and the seam reads no errno, so the two cannot be told apart today. The seam is kept because
+  /// ADR 0013 gives every handle-touching operation one. Do not add a failure branch here without
+  /// first establishing, against the native source, that the call actually reports one.
+  /// </remarks>
+  internal unsafe bool TryResolveDependency(
     IEnumerable<Database> databases,
     string dependency,
     out PackageView? satisfier,

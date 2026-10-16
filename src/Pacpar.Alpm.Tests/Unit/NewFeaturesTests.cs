@@ -118,16 +118,16 @@ public sealed class NewFeaturesTests : IDisposable
   }
 
   [Fact]
-  public void Alpm_FindSatisfier_FindsMatchingPackageAcrossDatabases()
+  public void AlpmSession_ResolveDependency_FindsMatchingPackageAcrossDatabases()
   {
     var pkg = InstallAndGetPackage("test-dbs-satisfier-target");
     var localDb = _environment.AlpmSession.GetLocalDatabase();
 
-    var found = _environment.AlpmSession.FindSatisfier([localDb], "test-dbs-satisfier-target");
+    var found = _environment.AlpmSession.ResolveDependency([localDb], "test-dbs-satisfier-target");
     Assert.NotNull(found);
     Assert.Equal("test-dbs-satisfier-target", found!.Name);
 
-    var notFound = _environment.AlpmSession.FindSatisfier([localDb], "no-such-pkg");
+    var notFound = _environment.AlpmSession.ResolveDependency([localDb], "no-such-pkg");
     Assert.Null(notFound);
   }
 
@@ -142,21 +142,21 @@ public sealed class NewFeaturesTests : IDisposable
   /// a commit, because a commit retires the whole session root first and would hide the difference.
   /// </remarks>
   [Fact]
-  public void Alpm_FindSatisfier_IssuesViewsUnderTheLocalDatabaseDomain()
+  public void AlpmSession_ResolveDependency_IssuesViewsUnderTheLocalDatabaseDomain()
   {
     InstallAndGetPackage("test-satisfier-domain-pkg");
     var localDb = _environment.AlpmSession.GetLocalDatabase();
 
     var viaGetPackage = localDb.GetPackage("test-satisfier-domain-pkg");
-    var viaFindSatisfier = _environment.AlpmSession.FindSatisfier([localDb], "test-satisfier-domain-pkg");
+    var viaResolveDependency = _environment.AlpmSession.ResolveDependency([localDb], "test-satisfier-domain-pkg");
     Assert.NotNull(viaGetPackage);
-    Assert.NotNull(viaFindSatisfier);
+    Assert.NotNull(viaResolveDependency);
 
     localDb.InvalidateViews("Database.Update");
 
     var thrown = Assert.Throws<AlpmLifetimeException>(() => viaGetPackage!.Name);
     Assert.Equal("the local database", thrown.Target);
-    Assert.Throws<AlpmLifetimeException>(() => viaFindSatisfier!.Name);
+    Assert.Throws<AlpmLifetimeException>(() => viaResolveDependency!.Name);
   }
 
   [Fact]

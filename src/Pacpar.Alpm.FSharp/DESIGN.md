@@ -617,7 +617,8 @@ The bridge should make each native convention explicit. The following are all of
 | `Unlock`, `LogAction` | return code plus handle errno | `Result<unit, SessionError>` | `TryUnlock(out failure)`, `TryLogAction(..., out failure)` |
 | `FetchPackageUrls` | return code plus handle errno; null on error | `Result<IReadOnlyList<string>, NetworkError>` | `TryFetchPackageUrls(..., out fetchedUrls, out failure)` |
 | `CheckDependencies`, `CheckConflicts` | return code plus list payload | `Result<IReadOnlyList<_>, ResolutionError>` | `TryCheckDependencies(..., out missing, out failure)`, `TryCheckConflicts(..., out conflicts, out failure)` |
-| `FindSatisfier` | null pointer as lookup miss vs failure | `Result<PackageView option, QueryError>` | `TryFindSatisfier(..., out satisfier, out failure)` |
+| `AlpmSession.ResolveDependency` | null pointer as lookup miss; the seam reports no failure today | `Result<PackageView option, QueryError>` | `TryResolveDependency(..., out satisfier, out failure)` |
+| `PackageView.FindSatisfier` (static) | null pointer as lookup miss; no handle, so no error channel at all | `PackageView option` | no seam — call the public member directly |
 | `LoadPackage`, `GetSignature` | return code plus handle errno | `Result<_, PackageError>` | `TryX(..., out value, out failure)` |
 | `CheckMd5Sum` | return code plus handle errno; mismatch is a boolean answer | `Result<bool, PackageError>` | `TryCheckMd5Sum(out matches, out failure)` |
 | `PackageView.SetReason` | return code plus handle errno | `Result<unit, PackageError>` | `TrySetReason(..., out failure)` |
