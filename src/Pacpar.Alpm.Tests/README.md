@@ -4,25 +4,30 @@ This project contains the C# test harness for `Pacpar.Alpm`.
 
 ## Test layout
 
-- `Unit/` contains managed-only tests and hermetic libalpm tests that run against isolated temporary directory trees (`IsolatedAlpmEnvironment`).
+Every folder under `Unit/` is one topic and one namespace: a file's namespace is
+`Pacpar.Alpm.Tests.Unit.<Folder>`.
+
+- `Unit/Callbacks/` — the callback thunks, their registration and the log `va_list` forwarding.
+- `Unit/Databases/` — `Database` behaviour: search, update, servers, usage.
+- `Unit/Errors/` — errno classification, the `Try*` seam, and what a failed transaction reports.
+- `Unit/GcAnchor/` — the IL audit that every read of unmanaged memory names its anchor, plus the
+  IL decoder it runs on.
+- `Unit/Interop/` — drift between the hand-written `[LibraryImport]` layer and the generated one.
+- `Unit/Lifetime/` — lifetimes: the domains and stamps themselves, and the sites that invalidate them.
+- `Unit/Options/` — the option collections and the options the collections do not cover.
+- `Unit/Ownership/` — which side owns a package, a list or a transaction.
+- `Unit/Packages/` — reading a package: files, mtree, changelog, dependency resolution.
+- `Unit/Session/` — `AlpmSession`-level APIs that need no database: unlock, logaction, fetch,
+  dependency checks, version and capabilities.
+- `Unit/Snapshots/` — the managed values copied out of native memory, and the enums that mirror
+  their native counterparts.
 - `Fixtures/` contains reusable environment setup that can also be shared by future F# tests.
-- `Pending/` contains the acceptance tests for the features recorded in the coverage ledger
-  (`src/Pacpar.Alpm/COMPLETENESS.md`). Those features exist now, so the folder builds and runs with
-  the rest of the suite; the name records only that the files have not moved to `Unit/` yet.
 - `native/` contains a C caller for the `va_list` forwarding test, compiled by this project into
   its intermediate output. It is test-only: `Pacpar.Alpm` itself ships no native artifact.
 
-## Feature tests in `Pending/`
-
-The coverage ledger (`src/Pacpar.Alpm/COMPLETENESS.md` §4) records the native APIs that landed
-after the first implementation batch. Their acceptance tests live in `Pending/` and run with the
-rest of the suite:
-
-```bash
-dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj
-```
-
-Move a file from `Pending/` to `Unit/` once it no longer needs to be singled out.
+Tests that cover one of the APIs recorded in the coverage ledger
+(`src/Pacpar.Alpm/COMPLETENESS.md` §4) live in the topic folder with everything else; their class
+remarks name the ledger entry and the libalpm behaviour that was measured for it.
 
 ## Running locally
 
