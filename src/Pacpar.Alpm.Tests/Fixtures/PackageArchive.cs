@@ -26,8 +26,11 @@ internal static class PackageArchive
   /// <param name="depend">Optional <c>depend</c> entry.</param>
   /// <param name="conflict">Optional <c>conflict</c> entry.</param>
   /// <param name="file">Optional file the package owns, for example <c>usr/bin/probe-file</c>.</param>
+  /// <param name="mtree">Optional <c>.MTREE</c> contents.</param>
+  /// <param name="changelog">Optional <c>.CHANGELOG</c> contents, the one place libalpm reads a
+  /// changelog from for a package loaded from a file.</param>
   internal static string Create(string directory, string name, string arch = "x86_64", string? depend = null,
-    string? conflict = null, string? file = null, string? mtree = null)
+    string? conflict = null, string? file = null, string? mtree = null, string? changelog = null)
   {
     var info = new StringBuilder()
       .AppendLine($"pkgname = {name}")
@@ -49,6 +52,8 @@ internal static class PackageArchive
     using (var writer = new TarWriter(stream, TarEntryFormat.Pax))
     {
       writer.WriteEntry(TextEntry(".PKGINFO", info.ToString()));
+
+      if (changelog != null) writer.WriteEntry(TextEntry(".CHANGELOG", changelog));
 
       if (mtree != null)
       {

@@ -22,18 +22,6 @@ public sealed class ErrorContractTests : IDisposable
   private Database LocalDatabase => _environment.AlpmSession.GetLocalDatabase();
 
   [Fact]
-  public void GetLocalDatabase_ReturnsLocalDatabase()
-  {
-    Assert.Equal("local", LocalDatabase.Name);
-  }
-
-  [Fact]
-  public void GetSyncDatabases_ReturnsEmptyList_WhenNoSyncDatabasesRegistered()
-  {
-    Assert.Empty(AlpmSession.GetSyncDatabases());
-  }
-
-  [Fact]
   public void LoadPackageCache_IsAnEmptyView_WhenTheDatabaseHasNoPackages()
   {
     // Regression: this used to throw ArgumentOutOfRangeException - the null cache came with

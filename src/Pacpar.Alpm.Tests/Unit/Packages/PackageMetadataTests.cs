@@ -42,13 +42,38 @@ public sealed class PackageMetadataTests : IDisposable
     Assert.Null(pkg.Files.FindFile("usr/bin/nonexistent-binary"));
   }
 
+  /// <summary>
+  /// Measured against libalpm 16.0.1: a package the local database owns reports a download size of
+  /// 0 - it is already on disk - rather than the size <c>.PKGINFO</c> records.
+  /// </summary>
   [Fact]
-  public void Package_DownloadSizeAndChangelog()
+  public void DownloadSize_IsZeroForAPackageTheLocalDatabaseOwns()
   {
-    var pkg = _environment.Install("test-meta-pkg");
+    var pkg = _environment.Install("test-download-size");
 
-    Assert.True(pkg.DownloadSize >= 0);
-    Assert.Null(pkg.OpenChangelogStream());
-    Assert.Null(pkg.ReadChangelog());
+    Assert.Equal(0, pkg.DownloadSize);
+  }
+
+  /// <summary>
+  /// <c>.CHANGELOG</c> inside the package file is the one place libalpm reads a changelog from, so a
+  /// package loaded from a file has one and an installed package does not: writing a changelog into
+  /// the database entry afterwards changes nothing (measured against libalpm 16.0.1 - neither
+  /// <c>dbpath/local/pkg/changelog</c> nor the same path without <c>local/</c> is read).
+  /// </summary>
+  [Fact]
+  public void ReadChangelog_ReadsThePackagedOne_AndNoneFromAnInstalledPackage()
+  {
+    const string body = "the changelog body";
+
+    var archive = PackageArchive.Create(_environment.PackageDirectory, "test-changelog", changelog: body);
+    using var loaded = _environment.AlpmSession.LoadPackage(archive, full: true, SigLevel.UseDefault);
+
+    var changelog = loaded.ReadChangelog();
+    Assert.NotNull(changelog);
+    Assert.Contains(body, changelog);
+
+    var installed = _environment.Install("test-changelog-installed");
+    Assert.Null(installed.OpenChangelogStream());
+    Assert.Null(installed.ReadChangelog());
   }
 }

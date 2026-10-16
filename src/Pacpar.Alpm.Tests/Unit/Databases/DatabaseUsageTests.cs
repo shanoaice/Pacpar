@@ -7,6 +7,11 @@ namespace Pacpar.Alpm.Tests.Unit.Databases;
 /// </summary>
 public sealed class DatabaseUsageTests
 {
+  /// <summary>
+  /// Pins the bit values against <c>alpm.h</c>. This is not in <see cref="ManagedEnumsTests"/> because
+  /// the bindings project <c>alpm_db_usage_t</c> as a plain <c>uint</c>, so there is no native enum to
+  /// mirror - the wrapper's declaration is the only one there is.
+  /// </summary>
   [Fact]
   public void DatabaseUsage_DeclaresTheNativeFlags()
   {
