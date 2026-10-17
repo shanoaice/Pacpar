@@ -19,39 +19,15 @@ namespace Pacpar.Alpm.Tests.Unit.Errors;
 /// </remarks>
 public sealed unsafe class TransactionFailureTests : IDisposable
 {
-  /// <summary>No flags: dependency and conflict checks stay on, which is what these tests exercise.</summary>
-  private const TransactionFlags NoFlags = 0;
+  private readonly IsolatedAlpmEnvironment _environment = new();
 
-  private readonly string _workspaceRoot;
-  private readonly string _root;
-  private readonly string _packageDirectory;
-  private readonly AlpmSession _alpm;
+  public void Dispose() => _environment.Dispose();
 
-  public TransactionFailureTests()
-  {
-    _workspaceRoot = Path.Combine(Path.GetTempPath(), "pacpar-transaction-tests", Guid.NewGuid().ToString("n"));
-    _root = Path.Combine(_workspaceRoot, "root");
-    var dbpath = Path.Combine(_workspaceRoot, "var", "lib", "pacman");
-    _packageDirectory = Path.Combine(_workspaceRoot, "packages");
+  private AlpmSession AlpmSession => _environment.AlpmSession;
 
-    Directory.CreateDirectory(_root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(_root, "tmp"));
-    Directory.CreateDirectory(Path.Combine(_root, "var", "cache", "pacman", "pkg"));
-    Directory.CreateDirectory(_packageDirectory);
+  private string PackageDirectory => _environment.PackageDirectory;
 
-    _alpm = new AlpmSession(_root, dbpath);
-  }
-
-  public void Dispose()
-  {
-    _alpm.Dispose();
-
-    if (Directory.Exists(_workspaceRoot))
-    {
-      Directory.Delete(_workspaceRoot, recursive: true);
-    }
-  }
+  private string Root => _environment.Root;
 
   /// <summary>
   /// Loads a package and hands it to <paramref name="transaction"/>, which takes over the release.
@@ -62,15 +38,15 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   /// </remarks>
   private void AddTo(Transaction transaction, string path)
   {
-    var package = _alpm.LoadPackage(path, full: true, SigLevel.UseDefault);
+    var package = AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault);
     transaction.AddPackage(package);
   }
 
   [Fact]
   public void Prepare_WithAnUnsatisfiedDependency_ReportsTheMissingDependency()
   {
-    using var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-needs", depend: "missing-xyz"));
+    using var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-needs", depend: "missing-xyz"));
 
     var failure = Assert.Throws<AlpmTransactionException.MissingDependencies>(() => transaction.Prepare());
 
@@ -85,8 +61,8 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void TryPrepare_WithAnUnsatisfiedDependency_ReportsTheMissingDependencyInDetail()
   {
-    using var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-needs-try", depend: "missing-xyz"));
+    using var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-needs-try", depend: "missing-xyz"));
 
     var ok = transaction.TryPrepare(out var failure);
 
@@ -109,9 +85,9 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Prepare_WithConflictingPackages_ReportsTheConflictWithoutAborting()
   {
-    using var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-left"));
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-right", conflict: "audit-left"));
+    using var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-left"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-right", conflict: "audit-left"));
 
     var failure = Assert.Throws<AlpmTransactionException.ConflictingDependencies>(() => transaction.Prepare());
 
@@ -126,10 +102,10 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Prepare_WithAForeignArchitecture_ReportsThePackageNames()
   {
-    _alpm.Options.Architectures.Add("aarch64");
+    AlpmSession.Options.Architectures.Add("aarch64");
 
-    using var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-arch", arch: "notarealarchitecture"));
+    using var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-arch", arch: "notarealarchitecture"));
 
     var failure = Assert.Throws<AlpmTransactionException.InvalidPackageArchitecture>(() => transaction.Prepare());
 
@@ -144,11 +120,11 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Prepare_WithSeveralForeignArchitectures_ReportsAllOfThem()
   {
-    _alpm.Options.Architectures.Add("aarch64");
+    AlpmSession.Options.Architectures.Add("aarch64");
 
-    using var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-arch-one", arch: "notarealarchitecture"));
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-arch-two", arch: "notarealarchitecture"));
+    using var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-arch-one", arch: "notarealarchitecture"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-arch-two", arch: "notarealarchitecture"));
 
     var failure = Assert.Throws<AlpmTransactionException.InvalidPackageArchitecture>(() => transaction.Prepare());
 
@@ -160,12 +136,12 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Commit_WithAFileConflict_ReportsTheFile()
   {
-    var owned = Path.Combine(_root, "usr", "bin", "probe-file");
+    var owned = Path.Combine(Root, "usr", "bin", "probe-file");
     Directory.CreateDirectory(Path.GetDirectoryName(owned)!);
     File.WriteAllText(owned, "already on disk, owned by nobody");
 
-    using var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-file", file: "usr/bin/probe-file"));
+    using var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-file", file: "usr/bin/probe-file"));
 
     transaction.Prepare();
 
@@ -182,12 +158,12 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void TryCommit_WithAFileConflict_ReportsTheFileInDetail()
   {
-    var owned = Path.Combine(_root, "usr", "bin", "probe-file-try");
+    var owned = Path.Combine(Root, "usr", "bin", "probe-file-try");
     Directory.CreateDirectory(Path.GetDirectoryName(owned)!);
     File.WriteAllText(owned, "already on disk, owned by nobody");
 
-    using var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-file-try", file: "usr/bin/probe-file-try"));
+    using var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-file-try", file: "usr/bin/probe-file-try"));
 
     Assert.True(transaction.TryPrepare(out _));
 
@@ -207,11 +183,11 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void TryAddPackage_LoadedPackage_OnFailure_LeavesPackageOwned()
   {
-    var path = PackageArchive.Create(_packageDirectory, "audit-dup-target");
-    using var transaction = _alpm.BeginTransaction();
+    var path = PackageArchive.Create(PackageDirectory, "audit-dup-target");
+    using var transaction = AlpmSession.BeginTransaction();
 
-    using var pkg1 = _alpm.LoadPackage(path, full: true, SigLevel.UseDefault);
-    using var pkg2 = _alpm.LoadPackage(path, full: true, SigLevel.UseDefault);
+    using var pkg1 = AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault);
+    using var pkg2 = AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault);
 
     // First add succeeds; transaction takes ownership.
     var ok1 = transaction.TryAddPackage(pkg1, out var view1, out var failure1);
@@ -242,14 +218,14 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Prepare_And_Commit_ReportNothingForASoundTransaction()
   {
-    var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-ok", file: "usr/bin/probe-file"));
+    var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-ok", file: "usr/bin/probe-file"));
 
     transaction.Prepare();
     transaction.Commit();
     transaction.Dispose();
 
-    Assert.NotNull(_alpm.GetLocalDatabase().GetPackage("audit-ok"));
+    Assert.NotNull(AlpmSession.GetLocalDatabase().GetPackage("audit-ok"));
   }
 
   /// <summary>
@@ -260,8 +236,8 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Commit_BeforePrepare_ReportsTheBaseState()
   {
-    using var transaction = _alpm.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(_packageDirectory, "audit-early"));
+    using var transaction = AlpmSession.BeginTransaction();
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-early"));
 
     var failure = Assert.Throws<AlpmTransactionException>(() => transaction.Commit());
 
@@ -291,7 +267,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   [Fact]
   public void Prepare_AfterDispose_ThrowsObjectDisposed()
   {
-    var transaction = _alpm.BeginTransaction();
+    var transaction = AlpmSession.BeginTransaction();
     transaction.Dispose();
 
     Assert.Throws<ObjectDisposedException>(() => transaction.Prepare());

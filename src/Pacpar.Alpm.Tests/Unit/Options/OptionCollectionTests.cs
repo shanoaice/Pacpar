@@ -8,9 +8,9 @@ namespace Pacpar.Alpm.Tests.Unit.Options;
 /// <see cref="ICollection{T}"/> semantics instead of shifting the destination.
 /// </summary>
 /// <remarks>
-/// These tests build their own isolated libalpm handle under <see cref="Path.GetTempPath()"/>.
-/// They deliberately do not use <c>AlpmEnvironmentFixture</c>, which refuses to run outside the
-/// project container, so they stay in the non-integration test set.
+/// These tests run against <see cref="IsolatedAlpmEnvironment"/>, which builds the handle under
+/// <see cref="Path.GetTempPath()"/> deliberately instead of using the container fixture, so they
+/// stay in the non-integration test set.
 /// </remarks>
 public sealed class OptionCollectionTests : IDisposable
 {

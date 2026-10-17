@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
+using Pacpar.Alpm.Tests.Fixtures;
 
 namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 
@@ -19,6 +20,11 @@ namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 /// (dotnet/runtime <c>WeakGCHandle.T.cs</c>: "Skip the type check"), which is memory corruption rather
 /// than a catchable exception. <see cref="LeakedHandle_LogCallbacksAfterCollection_AreSafeNoOps"/>
 /// drives that hazard end to end.
+/// <para>
+/// The cases that drop a session without disposing it cannot clean up through
+/// <see cref="IsolatedAlpmEnvironment.Dispose"/> - keeping the environment reachable would keep the
+/// session reachable - so they delete the workspace themselves once the assertions are done.
+/// </para>
 /// </remarks>
 public sealed class CallbackContextLifetimeTests
 {
@@ -33,33 +39,24 @@ public sealed class CallbackContextLifetimeTests
   [Fact]
   public void AlpmFinalizer_DoesNotRootTheCallback()
   {
-    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-finalizer-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(workspace, "root");
-    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
+    var (callback, workspace) = CreateAlpmWithoutDisposing();
 
-    var callback = CreateAlpmWithoutDisposing(root, dbpath);
-
-    for (var i = 0; i < 10 && callback.IsAlive; ++i)
-    {
-      GC.Collect();
-      GC.WaitForPendingFinalizers();
-    }
+    CollectUntilDead(callback);
 
     Assert.False(callback.IsAlive,
       "Callback is still rooted after Alpm was finalized although the ctx handle is weak.");
+
+    DeleteWorkspace(workspace);
   }
 
   [MethodImpl(MethodImplOptions.NoInlining)]
-  private static WeakReference CreateAlpmWithoutDisposing(string root, string dbpath)
+  private static (WeakReference Callback, string Workspace) CreateAlpmWithoutDisposing()
   {
-    var alpm = new AlpmSession(root, dbpath);
-    var weak = new WeakReference(alpm.Callback);
+    var environment = new IsolatedAlpmEnvironment();
+    var weak = new WeakReference(environment.AlpmSession.Callback);
 
     // Intentionally not disposed: this exercises SafeAlpmHandle's critical finalizer.
-    return weak;
+    return (weak, environment.WorkspaceRoot);
   }
 
   /// <summary>
@@ -71,32 +68,21 @@ public sealed class CallbackContextLifetimeTests
   /// (it casts without a type check). Only object liveness is observable here: holding the
   /// <see cref="Callback"/> alive to inspect the slot would also root its
   /// <see cref="SafeAlpmHandle"/> and suppress the finalizer this test is about. The slot
-  /// mechanism itself is pinned deterministically by the <c>AlpmDispose_</c> tests above and
-  /// below; the end-to-end stale-ctx behavior by
+  /// mechanism itself is pinned deterministically by the <c>AlpmDispose_</c> tests below; the
+  /// end-to-end stale-ctx behavior by
   /// <see cref="LeakedHandle_LogCallbacksAfterCollection_AreSafeNoOps"/>.
   /// </summary>
   [Fact]
   public void AlpmFinalizer_DoesNotRootTheCallback_WhenTheHandleCouldNotBeReleased()
   {
-    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-finalizer-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(workspace, "root");
-    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
+    var (callback, workspace) = CreateAlpmWithAnUnreleasableHandle();
 
-    var callback = CreateAlpmWithAnUnreleasableHandle(root, dbpath);
-
-    for (var i = 0; i < 10 && callback.IsAlive; ++i)
-    {
-      GC.Collect();
-      GC.WaitForPendingFinalizers();
-    }
+    CollectUntilDead(callback);
 
     Assert.False(callback.IsAlive,
       "Callback is rooted although the ctx handle is weak and the Alpm instance is gone.");
 
-    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
+    DeleteWorkspace(workspace);
   }
 
   /// <summary>
@@ -115,19 +101,11 @@ public sealed class CallbackContextLifetimeTests
   [Fact]
   public void AlpmDispose_KeepsTheCallbackContext_WhenTheHandleCouldNotBeReleased()
   {
-    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-dispose-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(workspace, "root");
-    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
-
-    var callback = DisposeAlpmWithAnUnreleasableHandle(root, dbpath);
+    using var environment = new IsolatedAlpmEnvironment();
+    var callback = DisposeAlpmWithAnUnreleasableHandle(environment.AlpmSession);
 
     Assert.True(IsContextHandleAllocated(callback),
       "The ctx handle was freed although the leaked native handle still carries its value.");
-
-    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
   }
 
   /// <summary>
@@ -139,25 +117,14 @@ public sealed class CallbackContextLifetimeTests
   [Fact]
   public void AlpmDispose_DoesNotRootTheCallback_WhenTheHandleCouldNotBeReleased()
   {
-    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-dispose-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(workspace, "root");
-    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
+    var (callback, workspace) = DisposeAlpmWithAnUnreleasableHandleUnrooted();
 
-    var callback = DisposeAlpmWithAnUnreleasableHandleUnrooted(root, dbpath);
-
-    for (var i = 0; i < 10 && callback.IsAlive; ++i)
-    {
-      GC.Collect();
-      GC.WaitForPendingFinalizers();
-    }
+    CollectUntilDead(callback);
 
     Assert.False(callback.IsAlive,
       "Callback is rooted although the ctx handle is weak and the Alpm instance is gone.");
 
-    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
+    DeleteWorkspace(workspace);
   }
 
   /// <summary>
@@ -170,14 +137,8 @@ public sealed class CallbackContextLifetimeTests
   [Fact]
   public void AlpmDispose_ReleasesTheCallbackContext()
   {
-    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-dispose-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(workspace, "root");
-    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
-
-    var alpm = new AlpmSession(root, dbpath);
+    using var environment = new IsolatedAlpmEnvironment();
+    var alpm = environment.AlpmSession;
     var callback = alpm.Callback;
     callback.LogHandler = (_, _) => { };
 
@@ -185,21 +146,17 @@ public sealed class CallbackContextLifetimeTests
 
     Assert.False(IsContextHandleAllocated(callback),
       "The ctx handle was not freed although alpm_release destroyed the native handle.");
-
-    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
   }
 
   /// <summary>
-  /// The <see cref="AlpmSession.Dispose()"/> scenario where release must fail: the transaction it owns is
-  /// hidden from the wrapper, which is the state a consumer's forgotten transaction leaves libalpm
+  /// The <see cref="AlpmSession.Dispose()"/> scenario where release must fail: the transaction it owns
+  /// is hidden from the wrapper, which is the state a consumer's forgotten transaction leaves libalpm
   /// in. The native handle (and its lock) then leak for the life of the process. Returns the
   /// <see cref="Callback"/> strongly so the ctx handle slot can be inspected; use
   /// <see cref="DisposeAlpmWithAnUnreleasableHandleUnrooted"/> for GC-liveness checks.
   /// </summary>
-  [MethodImpl(MethodImplOptions.NoInlining)]
-  private static Callback DisposeAlpmWithAnUnreleasableHandle(string root, string dbpath)
+  private static Callback DisposeAlpmWithAnUnreleasableHandle(AlpmSession alpm)
   {
-    var alpm = new AlpmSession(root, dbpath);
     var callback = alpm.Callback;
     // Registration is presence-driven: without a handler no thunk is registered and the leaked
     // handle never dereferences the ctx. The log thunk is the one teardown would enter.
@@ -218,8 +175,13 @@ public sealed class CallbackContextLifetimeTests
   // Separate wrapper so the WeakReference is created inside a non-inlined frame: in Debug builds
   // the JIT extends local lifetimes to the end of the method, which would defeat the GC tests.
   [MethodImpl(MethodImplOptions.NoInlining)]
-  private static WeakReference DisposeAlpmWithAnUnreleasableHandleUnrooted(string root, string dbpath)
-    => new(DisposeAlpmWithAnUnreleasableHandle(root, dbpath));
+  private static (WeakReference Callback, string Workspace) DisposeAlpmWithAnUnreleasableHandleUnrooted()
+  {
+    var environment = new IsolatedAlpmEnvironment();
+    var callback = DisposeAlpmWithAnUnreleasableHandle(environment.AlpmSession);
+
+    return (new WeakReference(callback), environment.WorkspaceRoot);
+  }
 
   /// <summary>
   /// An <see cref="AlpmSession"/> whose release must fail: the transaction it owns is hidden from the
@@ -227,16 +189,16 @@ public sealed class CallbackContextLifetimeTests
   /// (and its lock) then leak for the life of the process, which is what this test needs.
   /// </summary>
   [MethodImpl(MethodImplOptions.NoInlining)]
-  private static WeakReference CreateAlpmWithAnUnreleasableHandle(string root, string dbpath)
+  private static (WeakReference Callback, string Workspace) CreateAlpmWithAnUnreleasableHandle()
   {
-    var alpm = new AlpmSession(root, dbpath);
-    alpm.Callback.LogHandler = (_, _) => { };
-    var weak = new WeakReference(alpm.Callback);
-    _ = alpm.BeginTransaction();
-    alpm.CurrentTransaction = null;
+    var environment = new IsolatedAlpmEnvironment();
+    environment.AlpmSession.Callback.LogHandler = (_, _) => { };
+    var weak = new WeakReference(environment.AlpmSession.Callback);
+    _ = environment.AlpmSession.BeginTransaction();
+    environment.AlpmSession.CurrentTransaction = null;
 
     // Intentionally not disposed: this exercises SafeAlpmHandle's critical finalizer.
-    return weak;
+    return (weak, environment.WorkspaceRoot);
   }
 
   /// <summary>
@@ -251,27 +213,16 @@ public sealed class CallbackContextLifetimeTests
   [Fact]
   public void LeakedHandle_LogCallbacksAfterCollection_AreSafeNoOps()
   {
-    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-dispose-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(workspace, "root");
-    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
+    var (callback, handle, received, workspace) = SetUpLeakedLogHandle();
 
-    var (callback, handle, received) = SetUpLeakedLogHandle(root, dbpath);
-
-    for (var i = 0; i < 10 && callback.IsAlive; ++i)
-    {
-      GC.Collect();
-      GC.WaitForPendingFinalizers();
-    }
+    CollectUntilDead(callback);
     Assert.False(callback.IsAlive, "Callback is rooted although the ctx handle is weak.");
 
     var count = received.Count;
     DriveLogMessage(handle);
     Assert.Equal(count, received.Count);
 
-    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
+    DeleteWorkspace(workspace);
   }
 
   /// <summary>
@@ -282,10 +233,11 @@ public sealed class CallbackContextLifetimeTests
   /// meaningful rather than a bare not-throw.
   /// </summary>
   [MethodImpl(MethodImplOptions.NoInlining)]
-  private static (WeakReference Callback, SafeAlpmHandle Handle, List<string> Received) SetUpLeakedLogHandle(
-    string root, string dbpath)
+  private static (WeakReference Callback, SafeAlpmHandle Handle, List<string> Received, string Workspace)
+    SetUpLeakedLogHandle()
   {
-    var alpm = new AlpmSession(root, dbpath);
+    var environment = new IsolatedAlpmEnvironment();
+    var alpm = environment.AlpmSession;
     var callback = alpm.Callback;
     var received = new List<string>();
     callback.LogHandler = (_, message) => received.Add(message);
@@ -301,13 +253,13 @@ public sealed class CallbackContextLifetimeTests
     DriveLogMessage(handle);
     Assert.Contains(received.Skip(count), message => message.Contains("cachedir"));
 
-    return (new WeakReference(callback), handle, received);
+    return (new WeakReference(callback), handle, received, environment.WorkspaceRoot);
   }
 
   /// <summary>
   /// Fires one log message through the given handle's registered log callback:
   /// <c>alpm_option_add_cachedir</c> logs "option 'cachedir' = ..." at DEBUG through
-  /// <c>handle-&gt;logcb</c>. The handle is deliberately driven through the raw binding - the
+  /// <c>handle->logcb</c>. The handle is deliberately driven through the raw binding - the
   /// SafeHandle marshaller refuses a disposed wrapper, and a leaked handle is exactly the case
   /// under test.
   /// </summary>
@@ -323,6 +275,20 @@ public sealed class CallbackContextLifetimeTests
     {
       Marshal.FreeCoTaskMem((nint)cachedir);
     }
+  }
+
+  private static void CollectUntilDead(WeakReference reference)
+  {
+    for (var i = 0; i < 10 && reference.IsAlive; ++i)
+    {
+      GC.Collect();
+      GC.WaitForPendingFinalizers();
+    }
+  }
+
+  private static void DeleteWorkspace(string workspace)
+  {
+    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
   }
 
   /// <summary>

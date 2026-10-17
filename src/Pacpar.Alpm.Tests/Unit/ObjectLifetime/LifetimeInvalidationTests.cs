@@ -14,28 +14,14 @@ namespace Pacpar.Alpm.Tests.Unit.ObjectLifetime;
 /// </remarks>
 public sealed class LifetimeInvalidationTests : IDisposable
 {
-  /// <summary>No flags: the tests only care about lifetimes, but the transaction must still be sound.</summary>
-  private const TransactionFlags NoFlags = 0;
-
   private readonly IsolatedAlpmEnvironment _environment = new();
 
-  private readonly string _packageDirectory =
-    Path.Combine(Path.GetTempPath(), "pacpar-lifetime-packages", Guid.NewGuid().ToString("n"));
+  public void Dispose() => _environment.Dispose();
 
-  public LifetimeInvalidationTests() => Directory.CreateDirectory(_packageDirectory);
-
-  public void Dispose()
-  {
-    _environment.Dispose();
-
-    if (Directory.Exists(_packageDirectory))
-    {
-      Directory.Delete(_packageDirectory, recursive: true);
-    }
-  }
+  private string PackageDirectory => _environment.PackageDirectory;
 
   private string Archive(string name, string? depend = null)
-    => PackageArchive.Create(_packageDirectory, name, depend: depend);
+    => PackageArchive.Create(PackageDirectory, name, depend: depend);
 
   private void Install(string name, string? depend = null)
   {

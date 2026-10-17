@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
+using Pacpar.Alpm.Tests.Fixtures;
 
 namespace Pacpar.Alpm.Tests.Unit.Options;
 
@@ -10,37 +11,16 @@ namespace Pacpar.Alpm.Tests.Unit.Options;
 /// comparing values.
 /// </summary>
 /// <remarks>
-/// Like <see cref="OptionCollectionTests"/>, this builds an isolated libalpm handle under
-/// <see cref="Path.GetTempPath()"/> so it stays in the non-integration set.
+/// Like <see cref="OptionCollectionTests"/>, this runs against
+/// <see cref="IsolatedAlpmEnvironment"/>, so it stays in the non-integration set.
 /// </remarks>
 public sealed unsafe class AssumeInstalledOptionTests : IDisposable
 {
-  private readonly string _workspaceRoot;
-  private readonly AlpmSession _alpm;
+  private readonly IsolatedAlpmEnvironment _environment = new();
 
-  public AssumeInstalledOptionTests()
-  {
-    _workspaceRoot = Path.Combine(Path.GetTempPath(), "pacpar-assume-tests", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(_workspaceRoot, "root");
-    var dbpath = Path.Combine(_workspaceRoot, "var", "lib", "pacman");
+  public void Dispose() => _environment.Dispose();
 
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "tmp"));
-    Directory.CreateDirectory(Path.Combine(root, "var", "cache", "pacman", "pkg"));
-
-    _alpm = new AlpmSession(root, dbpath);
-  }
-
-  public void Dispose()
-  {
-    _alpm.Dispose();
-
-    if (Directory.Exists(_workspaceRoot))
-    {
-      Directory.Delete(_workspaceRoot, recursive: true);
-    }
-  }
+  private AlpmSession AlpmSession => _environment.AlpmSession;
 
   /// <summary>
   /// Parses a dependency with libalpm, then frees the native struct and hands back the snapshot: from
@@ -95,7 +75,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Add_StoresACopyOfTheSnapshot()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
     Assert.Empty(collection);
 
     collection.Add(Parse("foobar=1.0"));
@@ -113,7 +93,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Add_KeepsTheDescription()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
 
     collection.Add(HandBuilt("foobar", "1.0", "needed by a test", DepMod.Equal));
 
@@ -123,7 +103,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Add_AcceptsADependencyWithoutAVersion()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
 
     collection.Add(Parse("foobar"));
 
@@ -142,7 +122,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Contains_ComparesByValue()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
     collection.Add(Parse("foobar=1.0"));
 
     Assert.True(collection.Contains(Parse("foobar=1.0")));
@@ -158,7 +138,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Contains_IgnoresTheDescription()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
     collection.Add(HandBuilt("foobar", "1.0", "stored description", DepMod.Equal));
 
     Assert.True(collection.Contains(HandBuilt("foobar", "1.0", "another description", DepMod.Equal)));
@@ -175,7 +155,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Remove_ReportsWhetherTheDependencyWasThere()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
     collection.Add(Parse("foobar=1.0"));
 
     // The entry does go away although the argument is a different snapshot of the same value.
@@ -189,7 +169,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Remove_OnDuplicateValues_RemovesOneEntry()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
     collection.Add(Parse("foobar=1.0"));
     collection.Add(Parse("foobar=1.0"));
     Assert.Equal(2, collection.Count);
@@ -202,7 +182,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Clear_RemovesEveryDependency()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
     collection.Add(Parse("foobar=1.0"));
     collection.Add(Parse("barfoo=2.0"));
     Assert.Equal(2, collection.Count);
@@ -221,7 +201,7 @@ public sealed unsafe class AssumeInstalledOptionTests : IDisposable
   [Fact]
   public void Add_RejectsAModifierLibalpmDoesNotSupport()
   {
-    var collection = _alpm.Options.AssumeInstalled;
+    var collection = AlpmSession.Options.AssumeInstalled;
 
     var exception = Assert.Throws<AlpmException>(
       () => collection.Add(HandBuilt("foobar", "1.0", null, DepMod.GreaterOrEqual)));

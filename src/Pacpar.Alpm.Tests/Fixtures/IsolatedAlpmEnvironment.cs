@@ -30,6 +30,9 @@ internal sealed class IsolatedAlpmEnvironment : IDisposable
   internal AlpmSession AlpmSession { get; }
   internal string WorkspaceRoot => _workspaceRoot;
 
+  /// <summary>The fake installation root the handle was opened on.</summary>
+  internal string Root => Path.Combine(_workspaceRoot, "root");
+
   /// <summary>Where <see cref="Install"/> writes the packages it builds.</summary>
   internal string PackageDirectory { get; }
 

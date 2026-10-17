@@ -1,4 +1,6 @@
+using System.Runtime.CompilerServices;
 using Pacpar.Alpm.List;
+using Pacpar.Alpm.Tests.Fixtures;
 
 namespace Pacpar.Alpm.Tests.Unit.ObjectLifetime;
 
@@ -24,22 +26,13 @@ namespace Pacpar.Alpm.Tests.Unit.ObjectLifetime;
 /// the release path never frees memory that some wrapper could still validate against.
 /// </description></item>
 /// </list>
+/// <para>
+/// Both sessions are dropped without disposing them, so the workspace cannot be cleaned up through
+/// <see cref="IsolatedAlpmEnvironment.Dispose"/> - the tests delete the directory themselves.
+/// </para>
 /// </remarks>
 public sealed class LifetimeGcPathTests
 {
-  private static (string Root, string DbPath, string Workspace) NewWorkspace()
-  {
-    var workspace = Path.Combine(Path.GetTempPath(), "pacpar-gc-path", Guid.NewGuid().ToString("n"));
-    var root = Path.Combine(workspace, "root");
-    var dbpath = Path.Combine(workspace, "var", "lib", "pacman");
-
-    Directory.CreateDirectory(root);
-    Directory.CreateDirectory(Path.Combine(dbpath, "local"));
-    Directory.CreateDirectory(Path.Combine(root, "var", "cache", "pacman", "pkg"));
-
-    return (root, dbpath, workspace);
-  }
-
   private static void CollectEverything()
   {
     GC.Collect();
@@ -51,9 +44,7 @@ public sealed class LifetimeGcPathTests
   [Fact]
   public void ALiveView_KeepsTheSessionAlive_SoTheGcPathCannotFreeUnderIt()
   {
-    var (root, dbpath, workspace) = NewWorkspace();
-
-    var (view, session) = Create();
+    var (view, session, workspace) = CreateWithALiveView();
 
     CollectEverything();
 
@@ -67,23 +58,13 @@ public sealed class LifetimeGcPathTests
     session = null;
     CollectEverything();
 
-    Directory.Delete(workspace, recursive: true);
-
-    (AlpmStringList, WeakReference) Create()
-    {
-      var alpm = new AlpmSession(root, dbpath);
-      // Stamped with the local database's domain, whose root is the session.
-      var servers = alpm.GetLocalDatabase().Servers;
-      return (servers, new WeakReference(alpm));
-    }
+    DeleteWorkspace(workspace);
   }
 
   [Fact]
   public void SessionWithoutViews_IsCollected_AndItsHandleIsReleased()
   {
-    var (root, dbpath, workspace) = NewWorkspace();
-
-    var session = Create();
+    var (session, workspace) = CreateWithoutViews();
 
     CollectEverything();
 
@@ -92,12 +73,32 @@ public sealed class LifetimeGcPathTests
     // assertion - it means the release path ran to completion outside a test-thread call.
     Assert.False(session.IsAlive, "the session should have been collected");
 
-    Directory.Delete(workspace, recursive: true);
+    DeleteWorkspace(workspace);
+  }
 
-    WeakReference Create()
-    {
-      var alpm = new AlpmSession(root, dbpath);
-      return new WeakReference(alpm);
-    }
+  /// <summary>Answers with a view the caller keeps, a weak handle on the session behind it, and the
+  /// workspace to delete afterwards.</summary>
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  private static (AlpmStringList View, WeakReference Session, string Workspace) CreateWithALiveView()
+  {
+    var environment = new IsolatedAlpmEnvironment();
+
+    // Stamped with the local database's domain, whose root is the session.
+    return (environment.AlpmSession.GetLocalDatabase().Servers,
+      new WeakReference(environment.AlpmSession),
+      environment.WorkspaceRoot);
+  }
+
+  [MethodImpl(MethodImplOptions.NoInlining)]
+  private static (WeakReference Session, string Workspace) CreateWithoutViews()
+  {
+    var environment = new IsolatedAlpmEnvironment();
+
+    return (new WeakReference(environment.AlpmSession), environment.WorkspaceRoot);
+  }
+
+  private static void DeleteWorkspace(string workspace)
+  {
+    if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true);
   }
 }

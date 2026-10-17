@@ -16,26 +16,15 @@ public sealed class CachedReadInvalidationTests : IDisposable
 {
   private readonly IsolatedAlpmEnvironment _environment = new();
 
-  private readonly string _packageDirectory =
-    Path.Combine(Path.GetTempPath(), "pacpar-cached-read", Guid.NewGuid().ToString("n"));
+  public void Dispose() => _environment.Dispose();
 
-  public CachedReadInvalidationTests() => Directory.CreateDirectory(_packageDirectory);
-
-  public void Dispose()
-  {
-    _environment.Dispose();
-
-    if (Directory.Exists(_packageDirectory))
-    {
-      Directory.Delete(_packageDirectory, recursive: true);
-    }
-  }
+  private string PackageDirectory => _environment.PackageDirectory;
 
   private void Install(string name)
   {
     using var transaction = _environment.AlpmSession.BeginTransaction();
     transaction.AddPackage(_environment.AlpmSession.LoadPackage(
-      PackageArchive.Create(_packageDirectory, name), full: true, SigLevel.UseDefault));
+      PackageArchive.Create(PackageDirectory, name), full: true, SigLevel.UseDefault));
     transaction.Prepare();
     transaction.Commit();
   }

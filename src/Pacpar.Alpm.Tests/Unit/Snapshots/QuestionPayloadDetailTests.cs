@@ -13,23 +13,9 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
 {
   private readonly IsolatedAlpmEnvironment _environment = new();
 
-  private readonly string _packageDirectory =
-    Path.Combine(Path.GetTempPath(), "pacpar-payload-detail", Guid.NewGuid().ToString("n"));
+  public void Dispose() => _environment.Dispose();
 
-  public QuestionPayloadDetailTests()
-  {
-    Directory.CreateDirectory(_packageDirectory);
-  }
-
-  public void Dispose()
-  {
-    _environment.Dispose();
-
-    if (Directory.Exists(_packageDirectory))
-    {
-      Directory.Delete(_packageDirectory, recursive: true);
-    }
-  }
+  private string PackageDirectory => _environment.PackageDirectory;
 
   private static AlpmQuestion.InstallIgnoredPackage QuestionFor(
     AlpmSession alpm, _alpm_pkg_t* package, ChildLifetime? lifetime = null)
@@ -106,7 +92,7 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
 
   private LoadedPackage Load(string name, string file)
     => _environment.AlpmSession.LoadPackage(
-      PackageArchive.Create(_packageDirectory, name, file: file),
+      PackageArchive.Create(PackageDirectory, name, file: file),
       full: true,
       SigLevel.UseDefault);
 }

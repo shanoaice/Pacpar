@@ -22,23 +22,12 @@ public sealed class PackageTransferTests : IDisposable
 
   private readonly IsolatedAlpmEnvironment _environment = new();
 
-  private readonly string _packageDirectory =
-    Path.Combine(Path.GetTempPath(), "pacpar-transfer-packages", Guid.NewGuid().ToString("n"));
+  public void Dispose() => _environment.Dispose();
 
-  public PackageTransferTests() => Directory.CreateDirectory(_packageDirectory);
-
-  public void Dispose()
-  {
-    _environment.Dispose();
-
-    if (Directory.Exists(_packageDirectory))
-    {
-      Directory.Delete(_packageDirectory, recursive: true);
-    }
-  }
+  private string PackageDirectory => _environment.PackageDirectory;
 
   private LoadedPackage Load(string name, string? file = null)
-    => _environment.AlpmSession.LoadPackage(PackageArchive.Create(_packageDirectory, name, file: file),
+    => _environment.AlpmSession.LoadPackage(PackageArchive.Create(PackageDirectory, name, file: file),
       full: true, SigLevel.UseDefault);
 
   /// <summary>
@@ -150,7 +139,7 @@ public sealed class PackageTransferTests : IDisposable
   [Fact]
   public void AddPackage_OfAnInstalledPackage_IsRefusedWithThatPackageInThePayload()
   {
-    var path = PackageArchive.Create(_packageDirectory, "audit-installed", file: "usr/bin/probe-file");
+    var path = PackageArchive.Create(PackageDirectory, "audit-installed", file: "usr/bin/probe-file");
 
     using (var installer = _environment.AlpmSession.BeginTransaction())
     {
