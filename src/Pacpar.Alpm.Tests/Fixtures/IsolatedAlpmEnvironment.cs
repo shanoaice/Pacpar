@@ -2,9 +2,9 @@ namespace Pacpar.Alpm.Tests.Fixtures;
 
 /// <summary>
 /// An isolated libalpm handle for tests that must run without the project container: a unique
-/// root/dbpath tree under <see cref="Path.GetTempPath()"/>, built the same way as
-/// <see cref="AlpmEnvironmentFixture"/> but without its container assertion. It also provides
-/// <see cref="Install"/>, the synthetic package every feature test starts from.
+/// root/dbpath tree under <see cref="Path.GetTempPath()"/>, with no assertion that the container is
+/// running. It also provides <see cref="Install"/>, the synthetic package every feature test starts
+/// from.
 /// </summary>
 internal sealed class IsolatedAlpmEnvironment : IDisposable
 {

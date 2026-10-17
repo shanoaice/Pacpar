@@ -17,17 +17,9 @@ namespace Pacpar.Alpm.Tests.Unit.GcAnchor;
 /// </remarks>
 public sealed class GcAnchorAuditTests
 {
-  // Recorded baseline: raising this is fine, lowering it is not. The 187 -> 176 drop came from the
-  // cutover to SafeHandle-marshalled [LibraryImport] entry points, and is accounted for site by site:
-  //  -4  the four DangerousGetHandle sites in Alpm (the Handle escape property, AsHandle(), and the
-  //      two raw reads inlined into LoadPackage and GetLocalDatabase) - the escape hatch is gone.
-  //  -9  the nine "new Options.X(_handle, _lifetime)" constructions in AlpmOptions: while _handle was
-  //      a raw pointer those read as ManagedAllocationFromPointer, and now the constructor takes a
-  //      SafeAlpmHandle instead.
-  //  +2  the two non-owning "new SafeAlpmHandle(...)" wrappers added in Database..ctor and
-  //      PackageBase.LibraryHandle, which wrap a borrowed pointer for the interop boundary.
-  //  +1  the errno read in PackageMtreeReader.MoveNext's failure branch (alpm_pkg_mtree_next
-  //      returns -1 without setting pm_errno): anchored by GC.KeepAlive(_package) before the throw.
+  // Recorded baseline: raising this is fine, lowering it is not. An exact count is the tripwire: any
+  // new read of unmanaged memory - or any site that quietly stops claiming a mechanism - shows up
+  // here instead of as a crash in a finalizer thread. Re-record it when the library really changed.
   private const int ExpectedHazardSiteCount = 249;
 
   private static AnchorAuditResult Audit()

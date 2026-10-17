@@ -185,7 +185,7 @@ The core must read handle errno immediately after the relevant native call, befo
 4. Add `Try*` cores and delegate the existing C# facades to them for session, package, database, options, callback, and transaction groups.
 5. Add one F# interop translation module, then expose operation-specific F# error unions above it.
 6. Add C# facade/core parity tests and F# `Result`/`option`/`Result<bool, _>` tests.
-7. Run host tests with `dotnet test --filter "FullyQualifiedName!~Integration"`. Use BenchmarkDotNet only for any claimed performance benefit; do not use stopwatch measurements.
+7. Run host tests with `dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj`. The suite is hermetic - every test that touches libalpm does so against an `IsolatedAlpmEnvironment` - so no filter is needed to keep the host safe. Use BenchmarkDotNet only for any claimed performance benefit; do not use stopwatch measurements.
 
 ## 8. Non-Goals
 

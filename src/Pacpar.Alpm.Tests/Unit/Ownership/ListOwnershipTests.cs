@@ -8,7 +8,12 @@ namespace Pacpar.Alpm.Tests.Unit.Ownership;
 /// Locks in the list ownership contract: borrowed views can never free (and therefore are not
 /// disposable), and the only owning type frees both the list and its elements.
 /// </summary>
-[Collection("ProcessWideNativeHeap")]
+/// <remarks>
+/// <see cref="TakeOwned_FreesListAndStrings_RepeatedCallsDoNotGrowTheNativeHeap"/> measures the whole
+/// process' native heap, so it is the one test here that would be disturbed by another test
+/// allocating on that heap at the same time. xUnit runs a class serially, which is what keeps it
+/// alone; the collection it used to declare had no other member and no definition, so it did nothing.
+/// </remarks>
 public sealed unsafe class ListOwnershipTests
 {
   [Fact]

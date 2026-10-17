@@ -8,8 +8,9 @@ namespace Pacpar.Alpm.Tests.Unit.Session;
 /// <remarks>
 /// Both functions return an allocated list or <c>NULL</c>, and <b>NULL means "nothing wrong"</b> —
 /// not an error (measured: errno stays ALPM_ERR_OK). With an empty local database there is nothing
-/// to check, which is what these hermetic tests exercise; a case that actually produces a missing
-/// dependency or a conflict needs a real package file and belongs in <c>Integration/</c>.
+/// to check, which is what these tests exercise; the cases that do report a missing dependency or a
+/// conflict are covered through a transaction, in
+/// <see cref="Pacpar.Alpm.Tests.Unit.Errors.TransactionFailureTests"/>.
 /// </remarks>
 public sealed class DependencyCheckTests
 {

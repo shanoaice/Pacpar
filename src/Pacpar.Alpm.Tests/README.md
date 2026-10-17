@@ -40,6 +40,11 @@ The host must provide `libalpm`, `pkg-config`, Rust, a C compiler (`cc`, from `g
 dotnet test src/Pacpar.Alpm.Tests/Pacpar.Alpm.Tests.csproj
 ```
 
+No filter is needed: every test here runs on the host. The ones that touch libalpm do it through
+`IsolatedAlpmEnvironment`, so nothing in the suite needs the project container or a system database.
+(An older instruction filtered out tests whose names contained `Integration`; the tests it referred to
+are gone.)
+
 ## Running in an OCI container
 
 Use `scripts/run-alpm-tests-in-container.sh`. The script auto-detects `podman`, `nerdctl`, or `docker`, and builds `containers/alpm-tests/Containerfile`.
