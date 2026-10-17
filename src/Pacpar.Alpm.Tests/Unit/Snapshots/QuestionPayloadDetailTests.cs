@@ -40,12 +40,12 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   [Fact]
   public void Payload_ReadsPackagePropertiesWithinTheCallbackFrame()
   {
-    using var pkg = Load("payload-default", file: "usr/bin/probe");
+    using var pkg = Load("pacpar-payload-default", file: "usr/bin/probe");
     var frameLifetime = _environment.AlpmSession.RootLifetime.CreateChild("test frame");
 
     var question = QuestionFor(_environment.AlpmSession, pkg.BackingStruct, frameLifetime);
 
-    Assert.Equal("payload-default", question.Package.Name);
+    Assert.Equal("pacpar-payload-default", question.Package.Name);
     Assert.NotNull(question.Package.Files);
     Assert.Contains(question.Package.Files, file => file.Name == "usr/bin/probe");
   }
@@ -53,11 +53,11 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
   [Fact]
   public void Payload_DiesWhenCallbackFrameCompletes()
   {
-    using var pkg = Load("payload-frame-dies", file: "usr/bin/probe");
+    using var pkg = Load("pacpar-payload-frame-dies", file: "usr/bin/probe");
     var frameLifetime = _environment.AlpmSession.RootLifetime.CreateChild("test frame");
 
     var question = QuestionFor(_environment.AlpmSession, pkg.BackingStruct, frameLifetime);
-    Assert.Equal("payload-frame-dies", question.Package.Name);
+    Assert.Equal("pacpar-payload-frame-dies", question.Package.Name);
 
     // Frame ends
     frameLifetime.Invalidate("test frame completed");
@@ -73,18 +73,18 @@ public sealed unsafe class QuestionPayloadDetailTests : IDisposable
     PackageSnapshot snapshot;
     var frameLifetime = _environment.AlpmSession.RootLifetime.CreateChild("test frame");
 
-    using (var pkg = Load("payload-detached", file: "usr/bin/probe"))
+    using (var pkg = Load("pacpar-payload-detached", file: "usr/bin/probe"))
     {
       var question = QuestionFor(_environment.AlpmSession, pkg.BackingStruct, frameLifetime);
       snapshot = question.Package.ToSnapshot(includeFiles: true);
-      Assert.Equal("payload-detached", snapshot.Name);
+      Assert.Equal("pacpar-payload-detached", snapshot.Name);
     }
 
     // Invalidate frame
     frameLifetime.Invalidate("test frame completed");
 
     // The explicit snapshot stays valid independently of native memory and frame lifetime
-    Assert.Equal("payload-detached", snapshot.Name);
+    Assert.Equal("pacpar-payload-detached", snapshot.Name);
     Assert.Equal(PackageArchive.Version, snapshot.Version.ToString());
     Assert.NotNull(snapshot.Files);
     Assert.Contains(snapshot.Files, file => file.Name == "usr/bin/probe");

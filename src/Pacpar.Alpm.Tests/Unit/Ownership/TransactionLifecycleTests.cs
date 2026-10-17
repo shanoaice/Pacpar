@@ -140,7 +140,7 @@ public sealed class TransactionLifecycleTests
     using var environment = new IsolatedAlpmEnvironment();
     var alpm = environment.AlpmSession;
 
-    var pkgPath = PackageArchive.Create(environment.PackageDirectory, "audit-commit-ok");
+    var pkgPath = PackageArchive.Create(environment.PackageDirectory, "pacpar-commit-ok");
     using var loaded = alpm.LoadPackage(pkgPath, full: true, SigLevel.UseDefault);
 
     var transaction = alpm.BeginTransaction();

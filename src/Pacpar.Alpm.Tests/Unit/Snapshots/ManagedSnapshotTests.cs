@@ -122,7 +122,7 @@ public sealed unsafe class ManagedSnapshotTests
       native->hash = hash;
 
       // Backup is an eager snapshot: the factory takes the list's token for shape compatibility,
-      // but this test's memory is test-owned, so no context guards it.
+      // but this test's memory is pacpar-owned, so no context guards it.
       var backup = Backup.Factory(native, null);
 
       Scramble(name, "etc/pacman.conf");
@@ -196,7 +196,7 @@ public sealed unsafe class ManagedSnapshotTests
       fileList.count = (nuint)names.Length;
       fileList.files = entries;
 
-      // The FileList token guards Count / indexer / enumeration; this list is test-owned, so a
+      // The FileList token guards Count / indexer / enumeration; this list is pacpar-owned, so a
       // null token means "no owning context to outlive".
       var list = new FileList(&fileList, null);
 
@@ -358,7 +358,7 @@ public sealed unsafe class ManagedSnapshotTests
     using var env = new IsolatedAlpmEnvironment();
     var pkgDir = env.PackageDirectory;
 
-    using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "ignored-pkg"), full: false, SigLevel.UseDefault);
+    using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-ignored-pkg"), full: false, SigLevel.UseDefault);
 
     var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
     try
@@ -372,7 +372,7 @@ public sealed unsafe class ManagedSnapshotTests
 
       var question = Assert.IsType<AlpmQuestion.InstallIgnoredPackage>(payload);
       Assert.True(question.Install);
-      Assert.Equal("ignored-pkg", question.Package.Name);
+      Assert.Equal("pacpar-ignored-pkg", question.Package.Name);
     }
     finally
     {
@@ -386,8 +386,8 @@ public sealed unsafe class ManagedSnapshotTests
     using var env = new IsolatedAlpmEnvironment();
     var pkgDir = env.PackageDirectory;
 
-    using var pkg1 = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pkg-one"), full: false, SigLevel.UseDefault);
-    using var pkg2 = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pkg-two"), full: false, SigLevel.UseDefault);
+    using var pkg1 = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-pkg-one"), full: false, SigLevel.UseDefault);
+    using var pkg2 = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-pkg-two"), full: false, SigLevel.UseDefault);
 
     var conflictStruct = (_alpm_conflict_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_conflict_t));
     var dependStruct = (_alpm_depend_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_depend_t));
@@ -417,8 +417,8 @@ public sealed unsafe class ManagedSnapshotTests
 
       var conflict = Assert.IsType<AlpmQuestion.ConflictPkg>(payload);
       Assert.True(conflict.Remove);
-      Assert.Equal("pkg-one", conflict.Package1.Name);
-      Assert.Equal("pkg-two", conflict.Package2.Name);
+      Assert.Equal("pacpar-pkg-one", conflict.Package1.Name);
+      Assert.Equal("pacpar-pkg-two", conflict.Package2.Name);
       Assert.Equal("dep-name", conflict.Name);
       Assert.Equal("1.0", conflict.Version);
       Assert.Equal("dep-desc", conflict.Description);
@@ -445,7 +445,7 @@ public sealed unsafe class ManagedSnapshotTests
     using var env = new IsolatedAlpmEnvironment();
     var pkgDir = env.PackageDirectory;
 
-    using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "member-list"),
+    using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-member-list"),
       full: false, SigLevel.UseDefault);
     var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
     var members = NativeMethods.alpm_list_add(null, pkg.BackingStruct);
@@ -466,7 +466,7 @@ public sealed unsafe class ManagedSnapshotTests
 
       var remove = Assert.IsType<AlpmQuestion.RemovePkgs>(payload);
       Assert.False(remove.Skip);
-      Assert.Equal("member-list", Assert.Single(remove.Packages).Name);
+      Assert.Equal("pacpar-member-list", Assert.Single(remove.Packages).Name);
       pkg.Dispose();
     }
     finally
@@ -509,7 +509,7 @@ public sealed unsafe class ManagedSnapshotTests
     using var env = new IsolatedAlpmEnvironment();
     var pkgDir = env.PackageDirectory;
 
-    using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "disarm-pkg"), full: false, SigLevel.UseDefault);
+    using var pkg = env.AlpmSession.LoadPackage(PackageArchive.Create(pkgDir, "pacpar-disarm-pkg"), full: false, SigLevel.UseDefault);
     var native = (_alpm_question_t*)NativeMemory.AllocZeroed((nuint)sizeof(_alpm_question_t));
 
     try

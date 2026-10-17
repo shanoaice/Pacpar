@@ -46,7 +46,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   public void Prepare_WithAnUnsatisfiedDependency_ReportsTheMissingDependency()
   {
     using var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-needs", depend: "missing-xyz"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-needs", depend: "missing-xyz"));
 
     var failure = Assert.Throws<AlpmTransactionException.MissingDependencies>(() => transaction.Prepare());
 
@@ -54,7 +54,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     Assert.Contains("Failed to prepare transaction", failure.Message);
 
     var missing = Assert.Single(failure.Dependencies);
-    Assert.Equal("audit-needs", missing.Target);
+    Assert.Equal("pacpar-needs", missing.Target);
     Assert.Equal("missing-xyz", missing.Depend?.Name);
   }
 
@@ -62,7 +62,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   public void TryPrepare_WithAnUnsatisfiedDependency_ReportsTheMissingDependencyInDetail()
   {
     using var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-needs-try", depend: "missing-xyz"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-needs-try", depend: "missing-xyz"));
 
     var ok = transaction.TryPrepare(out var failure);
 
@@ -73,7 +73,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
 
     var detail = Assert.IsType<AlpmFailureDetail.MissingDependencies>(failure.Detail);
     var missing = Assert.Single(detail.Dependencies);
-    Assert.Equal("audit-needs-try", missing.Target);
+    Assert.Equal("pacpar-needs-try", missing.Target);
     Assert.Equal("missing-xyz", missing.Depend?.Name);
   }
 
@@ -86,17 +86,17 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   public void Prepare_WithConflictingPackages_ReportsTheConflictWithoutAborting()
   {
     using var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-left"));
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-right", conflict: "audit-left"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-left"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-right", conflict: "pacpar-left"));
 
     var failure = Assert.Throws<AlpmTransactionException.ConflictingDependencies>(() => transaction.Prepare());
 
     Assert.Equal((int)_alpm_errno_t.ALPM_ERR_CONFLICTING_DEPS, failure.Errno);
 
     var conflict = Assert.Single(failure.Conflicts);
-    Assert.Equal(["audit-left", "audit-right"],
+    Assert.Equal(["pacpar-left", "pacpar-right"],
       new[] { conflict.Package1Name, conflict.Package2Name }.Order());
-    Assert.Equal("audit-left", conflict.Reason.Name);
+    Assert.Equal("pacpar-left", conflict.Reason.Name);
   }
 
   [Fact]
@@ -105,7 +105,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     AlpmSession.Options.Architectures.Add("aarch64");
 
     using var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-arch", arch: "notarealarchitecture"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-arch", arch: "notarealarchitecture"));
 
     var failure = Assert.Throws<AlpmTransactionException.InvalidPackageArchitecture>(() => transaction.Prepare());
 
@@ -113,7 +113,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
 
     // libalpm names the offending packages itself as pkgname-pkgver-pkgarch - not the file they were
     // loaded from.
-    Assert.Equal([$"audit-arch-{PackageArchive.Version}-notarealarchitecture"], failure.Packages);
+    Assert.Equal([$"pacpar-arch-{PackageArchive.Version}-notarealarchitecture"], failure.Packages);
   }
 
   /// <summary>A payload is a list, not a single value: two rejected packages are both reported.</summary>
@@ -123,13 +123,13 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     AlpmSession.Options.Architectures.Add("aarch64");
 
     using var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-arch-one", arch: "notarealarchitecture"));
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-arch-two", arch: "notarealarchitecture"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-arch-one", arch: "notarealarchitecture"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-arch-two", arch: "notarealarchitecture"));
 
     var failure = Assert.Throws<AlpmTransactionException.InvalidPackageArchitecture>(() => transaction.Prepare());
 
     Assert.Equal(
-      [$"audit-arch-one-{PackageArchive.Version}-notarealarchitecture", $"audit-arch-two-{PackageArchive.Version}-notarealarchitecture"],
+      [$"pacpar-arch-one-{PackageArchive.Version}-notarealarchitecture", $"pacpar-arch-two-{PackageArchive.Version}-notarealarchitecture"],
       failure.Packages);
   }
 
@@ -141,7 +141,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     File.WriteAllText(owned, "already on disk, owned by nobody");
 
     using var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-file", file: "usr/bin/probe-file"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-file", file: "usr/bin/probe-file"));
 
     transaction.Prepare();
 
@@ -151,7 +151,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     Assert.Contains("Failed to commit transaction", failure.Message);
 
     var conflict = Assert.Single(failure.Conflicts);
-    Assert.Equal("audit-file", conflict.Target);
+    Assert.Equal("pacpar-file", conflict.Target);
     Assert.EndsWith(Path.Combine("usr", "bin", "probe-file"), conflict.File);
   }
 
@@ -163,7 +163,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
     File.WriteAllText(owned, "already on disk, owned by nobody");
 
     using var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-file-try", file: "usr/bin/probe-file-try"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-file-try", file: "usr/bin/probe-file-try"));
 
     Assert.True(transaction.TryPrepare(out _));
 
@@ -176,14 +176,14 @@ public sealed unsafe class TransactionFailureTests : IDisposable
 
     var detail = Assert.IsType<AlpmFailureDetail.ConflictingFiles>(failure.Detail);
     var conflict = Assert.Single(detail.Conflicts);
-    Assert.Equal("audit-file-try", conflict.Target);
+    Assert.Equal("pacpar-file-try", conflict.Target);
     Assert.EndsWith(Path.Combine("usr", "bin", "probe-file-try"), conflict.File);
   }
 
   [Fact]
   public void TryAddPackage_LoadedPackage_OnFailure_LeavesPackageOwned()
   {
-    var path = PackageArchive.Create(PackageDirectory, "audit-dup-target");
+    var path = PackageArchive.Create(PackageDirectory, "pacpar-dup-target");
     using var transaction = AlpmSession.BeginTransaction();
 
     using var pkg1 = AlpmSession.LoadPackage(path, full: true, SigLevel.UseDefault);
@@ -219,13 +219,13 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   public void Prepare_And_Commit_ReportNothingForASoundTransaction()
   {
     var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-ok", file: "usr/bin/probe-file"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-ok", file: "usr/bin/probe-file"));
 
     transaction.Prepare();
     transaction.Commit();
     transaction.Dispose();
 
-    Assert.NotNull(AlpmSession.GetLocalDatabase().GetPackage("audit-ok"));
+    Assert.NotNull(AlpmSession.GetLocalDatabase().GetPackage("pacpar-ok"));
   }
 
   /// <summary>
@@ -237,7 +237,7 @@ public sealed unsafe class TransactionFailureTests : IDisposable
   public void Commit_BeforePrepare_ReportsTheBaseState()
   {
     using var transaction = AlpmSession.BeginTransaction();
-    AddTo(transaction, PackageArchive.Create(PackageDirectory, "audit-early"));
+    AddTo(transaction, PackageArchive.Create(PackageDirectory, "pacpar-early"));
 
     var failure = Assert.Throws<AlpmTransactionException>(() => transaction.Commit());
 

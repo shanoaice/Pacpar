@@ -16,11 +16,11 @@ public sealed class PackageSatisfierTests : IDisposable
   [Fact]
   public void PackageView_FindSatisfier_FindsMatchingPackageInList()
   {
-    var pkg = _environment.Install("test-satisfier-target");
+    var pkg = _environment.Install("pacpar-satisfier-target");
 
-    var found = PackageView.FindSatisfier([pkg], "test-satisfier-target");
+    var found = PackageView.FindSatisfier([pkg], "pacpar-satisfier-target");
     Assert.NotNull(found);
-    Assert.Equal("test-satisfier-target", found!.Name);
+    Assert.Equal("pacpar-satisfier-target", found!.Name);
 
     var notFound = PackageView.FindSatisfier([pkg], "nonexistent-dep");
     Assert.Null(notFound);
@@ -29,12 +29,12 @@ public sealed class PackageSatisfierTests : IDisposable
   [Fact]
   public void AlpmSession_ResolveDependency_FindsMatchingPackageAcrossDatabases()
   {
-    var pkg = _environment.Install("test-dbs-satisfier-target");
+    var pkg = _environment.Install("pacpar-dbs-satisfier-target");
     var localDb = _environment.AlpmSession.GetLocalDatabase();
 
-    var found = _environment.AlpmSession.ResolveDependency([localDb], "test-dbs-satisfier-target");
+    var found = _environment.AlpmSession.ResolveDependency([localDb], "pacpar-dbs-satisfier-target");
     Assert.NotNull(found);
-    Assert.Equal("test-dbs-satisfier-target", found!.Name);
+    Assert.Equal("pacpar-dbs-satisfier-target", found!.Name);
 
     var notFound = _environment.AlpmSession.ResolveDependency([localDb], "no-such-pkg");
     Assert.Null(notFound);
@@ -53,11 +53,11 @@ public sealed class PackageSatisfierTests : IDisposable
   [Fact]
   public void AlpmSession_ResolveDependency_IssuesViewsUnderTheLocalDatabaseDomain()
   {
-    _environment.Install("test-satisfier-domain-pkg");
+    _environment.Install("pacpar-satisfier-domain-pkg");
     var localDb = _environment.AlpmSession.GetLocalDatabase();
 
-    var viaGetPackage = localDb.GetPackage("test-satisfier-domain-pkg");
-    var viaResolveDependency = _environment.AlpmSession.ResolveDependency([localDb], "test-satisfier-domain-pkg");
+    var viaGetPackage = localDb.GetPackage("pacpar-satisfier-domain-pkg");
+    var viaResolveDependency = _environment.AlpmSession.ResolveDependency([localDb], "pacpar-satisfier-domain-pkg");
     Assert.NotNull(viaGetPackage);
     Assert.NotNull(viaResolveDependency);
 

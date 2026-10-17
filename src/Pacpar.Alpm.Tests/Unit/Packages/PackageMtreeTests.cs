@@ -38,7 +38,7 @@ public sealed class PackageMtreeTests : IDisposable
   [Fact]
   public void PackageView_GetMtree_ReturnsNullWhenMtreeAbsent()
   {
-    var pkg = _environment.Install("test-no-mtree");
+    var pkg = _environment.Install("pacpar-no-mtree");
 
     Assert.Null(pkg.GetMtree());
   }
@@ -53,7 +53,7 @@ public sealed class PackageMtreeTests : IDisposable
       ./usr/share/doc mode=644 size=10 sha256digest=ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 
       """;
-    var entries = ReadMtreeEntries("test-with-mtree", mtreeContent);
+    var entries = ReadMtreeEntries("pacpar-with-mtree", mtreeContent);
     Assert.Equal(2, entries.Count);
 
     var fileEntry = entries[0];
@@ -77,7 +77,7 @@ public sealed class PackageMtreeTests : IDisposable
       ./only-sha size=0 sha256digest=ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 
       """;
-    var entries = ReadMtreeEntries("test-mtree-digests", mtreeContent);
+    var entries = ReadMtreeEntries("pacpar-mtree-digests", mtreeContent);
     Assert.Equal(3, entries.Count);
 
     Assert.Equal("plain", entries[0].Path);
@@ -104,7 +104,7 @@ public sealed class PackageMtreeTests : IDisposable
       ./good-after size=0
 
       """;
-    Assert.Throws<AlpmNativeFailureException>(() => ReadMtreeEntries("test-mtree-bad-digest", mtreeContent));
+    Assert.Throws<AlpmNativeFailureException>(() => ReadMtreeEntries("pacpar-mtree-bad-digest", mtreeContent));
   }
 
   [Fact]
@@ -116,7 +116,7 @@ public sealed class PackageMtreeTests : IDisposable
       ./big-ids size=0 uid=8589934592 gid=4294967296
 
       """;
-    var entries = ReadMtreeEntries("test-mtree-big-ids", mtreeContent);
+    var entries = ReadMtreeEntries("pacpar-mtree-big-ids", mtreeContent);
     var entry = Assert.Single(entries);
     Assert.Equal("big-ids", entry.Path);
     Assert.Equal(8589934592L, entry.Uid);

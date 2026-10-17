@@ -14,8 +14,8 @@ public sealed class PackageUpgradeTests : IDisposable
   [Fact]
   public void PackageView_GetNewVersion_ReturnsNullWhenNoSyncDatabasesHaveNewer()
   {
-    var pkg = _environment.Install("test-upgrade-check");
-    var syncDb = _environment.AlpmSession.RegisterSyncDatabase("test-sync-empty", 0);
+    var pkg = _environment.Install("pacpar-upgrade-check");
+    var syncDb = _environment.AlpmSession.RegisterSyncDatabase("pacpar-sync-empty", 0);
 
     var upgrade = pkg.GetNewVersion([syncDb]);
     Assert.Null(upgrade);

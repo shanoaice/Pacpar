@@ -16,7 +16,7 @@ public sealed class DatabaseUpdateTests : IDisposable
   [Fact]
   public void Database_Update_WithoutServers_FailsAndReportsError()
   {
-    var syncDb = _environment.AlpmSession.RegisterSyncDatabase("test-sync-update", 0);
+    var syncDb = _environment.AlpmSession.RegisterSyncDatabase("pacpar-sync-update", 0);
 
     var ok = syncDb.TryUpdate(force: false, out var updated, out var failure);
     Assert.False(ok);
@@ -29,7 +29,7 @@ public sealed class DatabaseUpdateTests : IDisposable
   [Fact]
   public void Database_Update_InvalidatesPriorPackageViews()
   {
-    var pkg = _environment.Install("test-invalidation-pkg");
+    var pkg = _environment.Install("pacpar-invalidation-pkg");
     var localDb = _environment.AlpmSession.GetLocalDatabase();
 
     // Calling InvalidateViews retires all views issued under localDb

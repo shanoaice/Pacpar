@@ -38,12 +38,12 @@ public sealed class PackageTransferTests : IDisposable
   [Fact]
   public void AddPackage_TransfersOwnership_SoBothDisposalsAreSafe()
   {
-    using var package = Load("audit-transfer", file: "usr/bin/probe-file");
+    using var package = Load("pacpar-transfer", file: "usr/bin/probe-file");
     using var transaction = _environment.AlpmSession.BeginTransaction();
 
     var view = transaction.AddPackage(package);
 
-    Assert.Equal("audit-transfer", view.Name);
+    Assert.Equal("pacpar-transfer", view.Name);
 
     transaction.Prepare();
     transaction.Commit();
@@ -56,13 +56,13 @@ public sealed class PackageTransferTests : IDisposable
   [Fact]
   public void AddPackage_ReturnsABorrowedView()
   {
-    var package = Load("audit-view");
+    var package = Load("pacpar-view");
     using var transaction = _environment.AlpmSession.BeginTransaction();
 
     var view = transaction.AddPackage(package);
 
     Assert.IsType<PackageView>(view);
-    Assert.Equal("audit-view", view.Name);
+    Assert.Equal("pacpar-view", view.Name);
     Assert.False(typeof(LoadedPackage).IsAssignableFrom(typeof(PackageView)),
       "the view must not be an owning type");
   }
@@ -79,7 +79,7 @@ public sealed class PackageTransferTests : IDisposable
     PackageView stale;
     using (var owner = _environment.AlpmSession.BeginTransaction(NoFlags))
     {
-      stale = owner.AddPackage(Load("audit-stale-view"));
+      stale = owner.AddPackage(Load("pacpar-stale-view"));
     }
 
     using var receiver = _environment.AlpmSession.BeginTransaction(NoFlags);
@@ -94,7 +94,7 @@ public sealed class PackageTransferTests : IDisposable
   [Fact]
   public void AddPackage_RetiresTheWrapperThatWasHandedOver()
   {
-    var package = Load("audit-retired");
+    var package = Load("pacpar-retired");
     using var transaction = _environment.AlpmSession.BeginTransaction();
 
     transaction.AddPackage(package);
@@ -116,7 +116,7 @@ public sealed class PackageTransferTests : IDisposable
   [Fact]
   public void AddPackage_OfAnAlreadyHandedOverPackage_Throws()
   {
-    var package = Load("audit-twice");
+    var package = Load("pacpar-twice");
     using var transaction = _environment.AlpmSession.BeginTransaction();
     transaction.AddPackage(package);
 
@@ -139,7 +139,7 @@ public sealed class PackageTransferTests : IDisposable
   [Fact]
   public void AddPackage_OfAnInstalledPackage_IsRefusedWithThatPackageInThePayload()
   {
-    var path = PackageArchive.Create(PackageDirectory, "audit-installed", file: "usr/bin/probe-file");
+    var path = PackageArchive.Create(PackageDirectory, "pacpar-installed", file: "usr/bin/probe-file");
 
     using (var installer = _environment.AlpmSession.BeginTransaction())
     {
@@ -148,7 +148,7 @@ public sealed class PackageTransferTests : IDisposable
       installer.Commit();
     }
 
-    var installed = _environment.AlpmSession.GetLocalDatabase().GetPackage("audit-installed");
+    var installed = _environment.AlpmSession.GetLocalDatabase().GetPackage("pacpar-installed");
     Assert.NotNull(installed);
 
     using var transaction = _environment.AlpmSession.BeginTransaction();
@@ -159,6 +159,6 @@ public sealed class PackageTransferTests : IDisposable
     Assert.Empty(transaction.AddedPackages);
 
     // The transaction borrowed nothing and freed nothing: the package still belongs to the local db.
-    Assert.Equal("audit-installed", installed.Name);
+    Assert.Equal("pacpar-installed", installed.Name);
   }
 }

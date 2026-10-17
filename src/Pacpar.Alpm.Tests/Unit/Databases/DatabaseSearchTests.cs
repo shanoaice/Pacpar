@@ -15,11 +15,11 @@ public sealed class DatabaseSearchTests : IDisposable
   [Fact]
   public void Database_Search_FindsMatchingPackages()
   {
-    _environment.Install("test-search-alpha");
+    _environment.Install("pacpar-search-alpha");
     var localDb = _environment.AlpmSession.GetLocalDatabase();
 
-    var results = localDb.Search(["test-search-alpha"]);
-    Assert.Contains(results, p => p.Name == "test-search-alpha");
+    var results = localDb.Search(["pacpar-search-alpha"]);
+    Assert.Contains(results, p => p.Name == "pacpar-search-alpha");
 
     var emptyResults = localDb.Search(["no-match-xyz-987"]);
     Assert.Empty(emptyResults);

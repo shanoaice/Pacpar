@@ -35,7 +35,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void LoadedPackageDispose_InvalidatesTheViewsItIssued()
   {
-    var pkg = _environment.AlpmSession.LoadPackage(Archive("audit-lifetime-dep", depend: "glibc"),
+    var pkg = _environment.AlpmSession.LoadPackage(Archive("pacpar-lifetime-dep", depend: "glibc"),
       full: true, SigLevel.UseDefault);
 
     var depends = pkg.Depends;
@@ -60,13 +60,13 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void HandOver_InvalidatesTheWrapperAndTheReturnedViewCarriesTheTransaction()
   {
-    var pkg = _environment.AlpmSession.LoadPackage(Archive("audit-lifetime-handoff"),
+    var pkg = _environment.AlpmSession.LoadPackage(Archive("pacpar-lifetime-handoff"),
       full: true, SigLevel.UseDefault);
 
     using var transaction = _environment.AlpmSession.BeginTransaction();
     var view = transaction.AddPackage(pkg);
 
-    Assert.Equal("audit-lifetime-handoff", view.Name);
+    Assert.Equal("pacpar-lifetime-handoff", view.Name);
 
     // The wrapper is inert with the hand-over's own reason...
     Assert.False(pkg.OwnsPackage);
@@ -101,16 +101,16 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void Commit_RetiresTheLocalDatabaseViewsHeldAcrossIt()
   {
-    Install("audit-lifetime-first");
+    Install("pacpar-lifetime-first");
 
     // A view obtained after the first commit, under the fresh token that commit issued.
     var localDb = _environment.AlpmSession.GetLocalDatabase();
-    var held = localDb.GetPackage("audit-lifetime-first");
+    var held = localDb.GetPackage("pacpar-lifetime-first");
     Assert.NotNull(held);
-    Assert.Equal("audit-lifetime-first", held!.Name);
+    Assert.Equal("pacpar-lifetime-first", held!.Name);
 
     // The second commit rewrites the local database caches again.
-    Install("audit-lifetime-second");
+    Install("pacpar-lifetime-second");
 
     // The view held across the commit now reports the commit as its executioner...
     var thrown = Assert.Throws<AlpmLifetimeException>(() => held.Name);
@@ -119,13 +119,13 @@ public sealed class LifetimeInvalidationTests : IDisposable
 
     // ...as does the Database wrapper issued before the commit (same retired token)...
     Assert.Throws<AlpmLifetimeException>(() => localDb.Name);
-    Assert.Throws<AlpmLifetimeException>(() => localDb.GetPackage("audit-lifetime-first"));
+    Assert.Throws<AlpmLifetimeException>(() => localDb.GetPackage("pacpar-lifetime-first"));
 
     // ...while a fresh GetLocalDatabase() starts over with a new token and answers normally.
     var fresh = _environment.AlpmSession.GetLocalDatabase();
-    var reissued = fresh.GetPackage("audit-lifetime-first");
+    var reissued = fresh.GetPackage("pacpar-lifetime-first");
     Assert.NotNull(reissued);
-    Assert.Equal("audit-lifetime-first", reissued.Name);
+    Assert.Equal("pacpar-lifetime-first", reissued.Name);
   }
 
   [Fact]
@@ -171,7 +171,7 @@ public sealed class LifetimeInvalidationTests : IDisposable
   [Fact]
   public void Enumerator_AdvancedPastInvalidation_ThrowsInsteadOfWalkingFreedNodes()
   {
-    Install("audit-lifetime-enumerator");
+    Install("pacpar-lifetime-enumerator");
 
     // Taken after the commit, so the cache view carries a live token.
     var cache = _environment.AlpmSession.GetLocalDatabase().LoadPackageCache();

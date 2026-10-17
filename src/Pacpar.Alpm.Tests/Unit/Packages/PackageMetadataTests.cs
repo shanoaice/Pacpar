@@ -15,7 +15,7 @@ public sealed class PackageMetadataTests : IDisposable
   [Fact]
   public void InstallReason_CanBeReadAndModified()
   {
-    var pkg = _environment.Install("test-reason-pkg");
+    var pkg = _environment.Install("pacpar-reason-pkg");
 
     Assert.Equal(PackageReason.Explicit, pkg.InstallReason);
 
@@ -30,7 +30,7 @@ public sealed class PackageMetadataTests : IDisposable
   public void FileList_ContainsAndFindFile_FindsPackagedFiles()
   {
     const string filePath = "usr/bin/tool-binary";
-    var pkg = _environment.Install("test-filelist-pkg", file: filePath);
+    var pkg = _environment.Install("pacpar-filelist-pkg", file: filePath);
 
     Assert.True(pkg.Files.Contains(filePath));
     Assert.False(pkg.Files.Contains("usr/bin/nonexistent-binary"));
@@ -49,7 +49,7 @@ public sealed class PackageMetadataTests : IDisposable
   [Fact]
   public void DownloadSize_IsZeroForAPackageTheLocalDatabaseOwns()
   {
-    var pkg = _environment.Install("test-download-size");
+    var pkg = _environment.Install("pacpar-download-size");
 
     Assert.Equal(0, pkg.DownloadSize);
   }
@@ -65,14 +65,14 @@ public sealed class PackageMetadataTests : IDisposable
   {
     const string body = "the changelog body";
 
-    var archive = PackageArchive.Create(_environment.PackageDirectory, "test-changelog", changelog: body);
+    var archive = PackageArchive.Create(_environment.PackageDirectory, "pacpar-changelog", changelog: body);
     using var loaded = _environment.AlpmSession.LoadPackage(archive, full: true, SigLevel.UseDefault);
 
     var changelog = loaded.ReadChangelog();
     Assert.NotNull(changelog);
     Assert.Contains(body, changelog);
 
-    var installed = _environment.Install("test-changelog-installed");
+    var installed = _environment.Install("pacpar-changelog-installed");
     Assert.Null(installed.OpenChangelogStream());
     Assert.Null(installed.ReadChangelog());
   }

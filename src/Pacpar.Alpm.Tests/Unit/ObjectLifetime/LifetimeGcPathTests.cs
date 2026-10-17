@@ -70,7 +70,7 @@ public sealed class LifetimeGcPathTests
 
     // Nothing holds the session, so its SafeAlpmHandle was finalized: ReleaseHandle retired the root
     // domain and then ran alpm_release. Reaching this line without an exception is part of the
-    // assertion - it means the release path ran to completion outside a test-thread call.
+    // assertion - it means the release path ran to completion outside a pacpar-thread call.
     Assert.False(session.IsAlive, "the session should have been collected");
 
     DeleteWorkspace(workspace);

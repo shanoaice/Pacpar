@@ -32,10 +32,10 @@ public sealed class CachedReadInvalidationTests : IDisposable
   [Fact]
   public void EveryCachedMember_ThrowsOnceTheSessionIsGone()
   {
-    Install("cached-read-pkg");
-    var pkg = _environment.AlpmSession.GetLocalDatabase().GetPackage("cached-read-pkg")!;
+    Install("pacpar-cached-read-pkg");
+    var pkg = _environment.AlpmSession.GetLocalDatabase().GetPackage("pacpar-cached-read-pkg")!;
 
-    Assert.Equal("cached-read-pkg", pkg.Name);
+    Assert.Equal("pacpar-cached-read-pkg", pkg.Name);
     _ = pkg.Filename;
     _ = pkg.Base;
     _ = pkg.Description;
