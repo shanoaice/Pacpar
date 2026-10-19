@@ -95,5 +95,68 @@ public sealed class PublicApiSurfaceTests
     Assert.Empty(offenders);
   }
 
+  /// <summary>
+  /// ADR 0016: the public surface does not expose native-sized integers. A count is an <c>int</c>
+  /// and a byte size is a <c>long</c>; <c>nuint</c> and <c>nint</c> surface as <see cref="UIntPtr"/>
+  /// and <see cref="IntPtr"/> in metadata.
+  /// </summary>
+  /// <remarks>
+  /// The check walks generic arguments because a native-sized integer can hide inside a delegate
+  /// type such as <c>Action&lt;ProgressType, string, int, nuint, nuint&gt;</c>, where no member type
+  /// is <see cref="UIntPtr"/> itself. It also unwraps arrays and by-ref types.
+  /// </remarks>
+  [Fact]
+  public void PublicApi_DoesNotExposeNativeSizedIntegers()
+  {
+    var offenders = new List<string>();
+
+    foreach (var type in ExportedTypes)
+    {
+      foreach (var member in type.GetMembers(
+                 BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+      {
+        switch (member)
+        {
+          case MethodBase method:
+            offenders.AddRange(method.GetParameters()
+              .Where(parameter => ContainsNativeSizedInteger(parameter.ParameterType))
+              .Select(parameter => $"{type.FullName}.{method.Name}({parameter.Name})"));
+            if (method is MethodInfo { ReturnType: var returnType } && ContainsNativeSizedInteger(returnType))
+            {
+              offenders.Add($"{type.FullName}.{method.Name} (return)");
+            }
+            break;
+          case FieldInfo field when ContainsNativeSizedInteger(field.FieldType):
+            offenders.Add($"{type.FullName}.{field.Name} (field)");
+            break;
+          case PropertyInfo property when ContainsNativeSizedInteger(property.PropertyType):
+            offenders.Add($"{type.FullName}.{property.Name} (property)");
+            break;
+          case EventInfo @event when ContainsNativeSizedInteger(@event.EventHandlerType!):
+            offenders.Add($"{type.FullName}.{@event.Name} (event)");
+            break;
+        }
+      }
+    }
+
+    Assert.Empty(offenders);
+  }
+
+  private static bool ContainsNativeSizedInteger(Type type)
+  {
+    if (type == typeof(IntPtr) || type == typeof(UIntPtr))
+    {
+      return true;
+    }
+
+    if (type.IsArray || type.IsByRef || type.IsPointer)
+    {
+      var element = type.GetElementType();
+      return element is not null && ContainsNativeSizedInteger(element);
+    }
+
+    return type.IsGenericType && type.GetGenericArguments().Any(ContainsNativeSizedInteger);
+  }
+
   private static IEnumerable<Type> ExportedTypes => typeof(AlpmSession).Assembly.GetExportedTypes();
 }

@@ -45,7 +45,7 @@ public sealed class CallbackRegistrationTests
     Assert.True(NativeMethods.alpm_option_get_questioncb(handle) == null);
 
     Assert.True(NativeMethods.alpm_option_get_progresscb(handle) == null);
-    cb.ProgressHandler = (_, _, _, _, _) => { };
+    cb.ProgressHandler = _ => { };
     Assert.True(NativeMethods.alpm_option_get_progresscb(handle) != null);
     cb.ProgressHandler = null;
     Assert.True(NativeMethods.alpm_option_get_progresscb(handle) == null);
@@ -91,7 +91,7 @@ public sealed class CallbackRegistrationTests
     Assert.Throws<ObjectDisposedException>(() => callback.FetchHandler = (_, _, _) => FetchResult.Success);
     Assert.Throws<ObjectDisposedException>(() => callback.QuestionHandler = _ => { });
     Assert.Throws<ObjectDisposedException>(() => callback.DownloadHandler = (_, _) => { });
-    Assert.Throws<ObjectDisposedException>(() => callback.ProgressHandler = (_, _, _, _, _) => { });
+    Assert.Throws<ObjectDisposedException>(() => callback.ProgressHandler = _ => { });
     Assert.Throws<ObjectDisposedException>(() => callback.LogHandler = (_, _) => { });
   }
 
@@ -109,7 +109,7 @@ public sealed class CallbackRegistrationTests
     Assert.Throws<AlpmLifetimeException>(() => callback.FetchHandler = (_, _, _) => FetchResult.Success);
     Assert.Throws<AlpmLifetimeException>(() => callback.QuestionHandler = _ => { });
     Assert.Throws<AlpmLifetimeException>(() => callback.DownloadHandler = (_, _) => { });
-    Assert.Throws<AlpmLifetimeException>(() => callback.ProgressHandler = (_, _, _, _, _) => { });
+    Assert.Throws<AlpmLifetimeException>(() => callback.ProgressHandler = _ => { });
     Assert.Throws<AlpmLifetimeException>(() => callback.LogHandler = (_, _) => { });
   }
 }

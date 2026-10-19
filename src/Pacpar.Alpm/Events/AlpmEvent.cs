@@ -388,8 +388,8 @@ public abstract class AlpmEvent
     {
       Name = NativeString.FromNative((nint)native->hook_run.name) ?? "";
       Description = NativeString.FromNative((nint)native->hook_run.desc) ?? "";
-      Position = native->hook_run.position;
-      Total = native->hook_run.total;
+      Position = (int)native->hook_run.position;
+      Total = (int)native->hook_run.total;
     }
 
     /// <summary>Gets the name of the hook.</summary>
@@ -397,9 +397,9 @@ public abstract class AlpmEvent
     /// <summary>Gets the description of the hook, if available.</summary>
     public string Description { get; }
     /// <summary>Gets the 1-based index of the running hook within the current stage.</summary>
-    public nuint Position { get; }
+    public int Position { get; }
     /// <summary>Gets the total number of hooks scheduled to run in the current stage.</summary>
-    public nuint Total { get; }
+    public int Total { get; }
   }
 
   /// <summary>Triggered when a specific hook finishes running.</summary>
@@ -409,8 +409,8 @@ public abstract class AlpmEvent
     {
       Name = NativeString.FromNative((nint)native->hook_run.name) ?? "";
       Description = NativeString.FromNative((nint)native->hook_run.desc) ?? "";
-      Position = native->hook_run.position;
-      Total = native->hook_run.total;
+      Position = (int)native->hook_run.position;
+      Total = (int)native->hook_run.total;
     }
 
     /// <summary>Gets the name of the hook.</summary>
@@ -418,9 +418,9 @@ public abstract class AlpmEvent
     /// <summary>Gets the description of the hook, if available.</summary>
     public string Description { get; }
     /// <summary>Gets the 1-based index of the completed hook within the current stage.</summary>
-    public nuint Position { get; }
+    public int Position { get; }
     /// <summary>Gets the total number of hooks scheduled to run in the current stage.</summary>
-    public nuint Total { get; }
+    public int Total { get; }
   }
 
   /// <summary>Triggered when package retrieval for a transaction begins.</summary>
@@ -428,12 +428,12 @@ public abstract class AlpmEvent
   {
     internal unsafe PackageRetrieveStart(_alpm_event_t* native)
     {
-      PackageCount = native->pkg_retrieve.num;
+      PackageCount = (int)native->pkg_retrieve.num;
       TotalSize = native->pkg_retrieve.total_size.Value;
     }
 
     /// <summary>Gets the number of packages to be retrieved.</summary>
-    public nuint PackageCount { get; }
+    public int PackageCount { get; }
     /// <summary>Gets the total download size in bytes across all packages to be retrieved.</summary>
     public long TotalSize { get; }
   }
@@ -443,12 +443,12 @@ public abstract class AlpmEvent
   {
     internal unsafe PackageRetrieveDone(_alpm_event_t* native)
     {
-      PackageCount = native->pkg_retrieve.num;
+      PackageCount = (int)native->pkg_retrieve.num;
       TotalSize = native->pkg_retrieve.total_size.Value;
     }
 
     /// <summary>Gets the number of packages retrieved.</summary>
-    public nuint PackageCount { get; }
+    public int PackageCount { get; }
     /// <summary>Gets the total download size in bytes across all retrieved packages.</summary>
     public long TotalSize { get; }
   }
@@ -458,12 +458,12 @@ public abstract class AlpmEvent
   {
     internal unsafe PackageRetrieveFailed(_alpm_event_t* native)
     {
-      PackageCount = native->pkg_retrieve.num;
+      PackageCount = (int)native->pkg_retrieve.num;
       TotalSize = native->pkg_retrieve.total_size.Value;
     }
 
     /// <summary>Gets the number of packages that were to be retrieved.</summary>
-    public nuint PackageCount { get; }
+    public int PackageCount { get; }
     /// <summary>Gets the total download size in bytes across all packages that were to be retrieved.</summary>
     public long TotalSize { get; }
   }

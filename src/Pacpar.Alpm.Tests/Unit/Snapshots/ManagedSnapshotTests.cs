@@ -309,8 +309,8 @@ public sealed unsafe class ManagedSnapshotTests
       *native = default;
 
       var hookRun = Assert.IsType<AlpmEvent.HookRunStart>(payload);
-      Assert.Equal((nuint)2, hookRun.Position);
-      Assert.Equal((nuint)5, hookRun.Total);
+      Assert.Equal(2, hookRun.Position);
+      Assert.Equal(5, hookRun.Total);
     }
     finally
     {

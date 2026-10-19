@@ -429,8 +429,8 @@ type ProgressInfo = {
     Type: ProgressType
     PackageName: string
     Percent: int
-    Current: int64
-    Total: int64
+    Current: int
+    Total: int
 }
 
 type EventSink = {

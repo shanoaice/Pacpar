@@ -251,8 +251,12 @@ public sealed class Callback
       try
       {
         SafeInvoke(
-        () => callback.ProgressHandler?.Invoke((ProgressType)(uint)progress, NativeString.FromNative((nint)pkg) ?? "", percent,
-          howmany, current), callback.HandlerException);
+          () => callback.ProgressHandler?.Invoke(new AlpmProgressEvent(
+            (ProgressType)(uint)progress,
+            NativeString.FromNative((nint)pkg) ?? "",
+            percent,
+            (int)current,
+            (int)howmany)), callback.HandlerException);
       }
       finally
       {
@@ -445,7 +449,12 @@ public sealed class Callback
   /// Receives progress alerts during database and transaction operations. Setting a non-null delegate
   /// registers the native progress callback; setting <see langword="null"/> unregisters it.
   /// </summary>
-  public unsafe Action<ProgressType, string, int, nuint, nuint>? ProgressHandler
+  /// <remarks>
+  /// This is the most frequent callback: libalpm reports once per file entry while it extracts or
+  /// removes a package. The payload is an <see cref="AlpmProgressEvent"/> value, so the handler call
+  /// allocates nothing for the payload itself.
+  /// </remarks>
+  public unsafe Action<AlpmProgressEvent>? ProgressHandler
   {
     get;
     set
