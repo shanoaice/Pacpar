@@ -252,7 +252,7 @@ public partial class AlpmSession
       {
         if (fetchedList != null)
         {
-          AlpmNativeList.Free(fetchedList, &MemoryManagement.CFreeExtern);
+          AlpmNativeList.Free(fetchedList, &Interop.MemoryManagement.CFreeExtern);
         }
 
         fetchedUrls = null;
@@ -260,7 +260,7 @@ public partial class AlpmSession
         return false;
       }
 
-      fetchedUrls = AlpmStringList.TakeOwned(fetchedList, &MemoryManagement.CFreeExtern);
+      fetchedUrls = AlpmStringList.TakeOwned(fetchedList, &Interop.MemoryManagement.CFreeExtern);
       failure = null;
       return true;
     }
@@ -302,7 +302,7 @@ public partial class AlpmSession
 
       var result = NativeMethods.alpm_checkdeps(Handle, pkgList, remList, upgList, reverseDependencies ? 1 : 0);
       missing = result != null
-        ? AlpmOwnedList<DepMissing>.Take(result, &DepMissing.Factory, &MemoryManagement.DepMissingFreeExtern)
+        ? AlpmOwnedList<DepMissing>.Take(result, &DepMissing.Factory, &Interop.MemoryManagement.DepMissingFreeExtern)
         : Array.Empty<DepMissing>();
       failure = null;
       return true;
@@ -332,7 +332,7 @@ public partial class AlpmSession
       pkgList = AlpmNativeList.BuildPointerList(packages.Select(p => (nint)p.BackingStruct));
       var result = NativeMethods.alpm_checkconflicts(Handle, pkgList);
       conflicts = result != null
-        ? AlpmOwnedList<Conflict>.Take(result, &Conflict.Factory, &MemoryManagement.ConflictFreeExtern)
+        ? AlpmOwnedList<Conflict>.Take(result, &Conflict.Factory, &Interop.MemoryManagement.ConflictFreeExtern)
         : Array.Empty<Conflict>();
       failure = null;
       return true;

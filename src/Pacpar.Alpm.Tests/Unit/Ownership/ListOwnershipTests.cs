@@ -72,7 +72,7 @@ public sealed unsafe class ListOwnershipTests
 
   [Fact]
   public void TakeOwned_NullList_IsAnEmptyCollection()
-    => Assert.Empty(AlpmStringList.TakeOwned(null, &MemoryManagement.CFreeExtern));
+    => Assert.Empty(AlpmStringList.TakeOwned(null, &Pacpar.Alpm.Interop.MemoryManagement.CFreeExtern));
 
   /// <summary>
   /// The P0 acceptance check: a caller-owned list must be freed, elements included. If
@@ -97,7 +97,7 @@ public sealed unsafe class ListOwnershipTests
   private static void TakeAndCheck()
   {
     var list = BuildStringList("glibc", "bash", "zsh");
-    var names = AlpmStringList.TakeOwned(list, &MemoryManagement.CFreeExtern);
+    var names = AlpmStringList.TakeOwned(list, &Pacpar.Alpm.Interop.MemoryManagement.CFreeExtern);
 
     Assert.Equal(3, names.Count);
   }
@@ -141,7 +141,7 @@ public sealed unsafe class ListOwnershipTests
   }
 
   private static void FreeNativeStringList(_alpm_list_t* list)
-    => AlpmNativeList.Free(list, &MemoryManagement.CFreeExtern);
+    => AlpmNativeList.Free(list, &Pacpar.Alpm.Interop.MemoryManagement.CFreeExtern);
 
   // The lifetime parameter matches the factory delegate shape; this test's strings are owned by the
   // test itself, so the views are borrowed with a null token and the factory never looks at it.

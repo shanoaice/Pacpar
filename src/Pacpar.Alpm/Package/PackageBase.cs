@@ -490,7 +490,7 @@ public abstract unsafe partial class PackageBase
   public IReadOnlyList<string> GetRequiredBy()
   {
     var list = AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_requiredby(BackingStruct),
-      &MemoryManagement.CFreeExtern);
+      &Interop.MemoryManagement.CFreeExtern);
     GC.KeepAlive(this);
     return list;
   }
@@ -501,7 +501,7 @@ public abstract unsafe partial class PackageBase
   public IReadOnlyList<string> GetOptionalFor()
   {
     var list = AlpmStringList.TakeOwned(NativeMethods.alpm_pkg_compute_optionalfor(BackingStruct),
-      &MemoryManagement.CFreeExtern);
+      &Interop.MemoryManagement.CFreeExtern);
     GC.KeepAlive(this);
     return list;
   }
@@ -567,7 +567,7 @@ public abstract unsafe partial class PackageBase
       if (buffer != null)
       {
         _signature = new Span<byte>(buffer, (int)len).ToArray();
-        MemoryManagement.CFree(buffer);
+        Interop.MemoryManagement.CFree(buffer);
       }
 
       _signatureLoaded = true;

@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Pacpar.Alpm.Bindings;
 
-namespace Pacpar.Alpm;
+namespace Pacpar.Alpm.Interop;
 
 internal static partial class MemoryManagement
 {
