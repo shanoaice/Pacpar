@@ -81,7 +81,7 @@ feature checklists.
 
 ### 3.1 Grammar
 
-```
+```bash
 pacpar <operation> [options] [targets]
 ```
 
@@ -102,7 +102,7 @@ to day one (the scripting surface is ecosystem law, per pacman(8)'s own `--nocon
 guidance):
 
 | Flag | Keep as | Note |
-|---|---|---|
+| --- | --- | --- |
 | `--noconfirm` | identical | bypasses the review surface entirely (auto-confirm) |
 | `-y` / `-u` / `-s` / `-i` / `-l` / `-o` / `-c` / `-d` / `-w` | identical | core sync/query verbs |
 | `-q`, `--noprogressbar` | identical | quiet/noisy-output control for scripts |

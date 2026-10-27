@@ -10,6 +10,7 @@
 During the test suite audit of `Pacpar.Alpm`, existing integration tests (`Integration/AlpmInitializationTests.cs` and `Integration/NativeMethodsSmokeTests.cs`) were identified as redundant with unit tests and purged. They performed zero privileged operations, verified no system state, and tested no package interactions that could not be run hermetically on a host machine using temporary directory redirection (`IsolatedAlpmEnvironment`).
 
 However, **genuine integration testing remains essential for libalpm wrappers**. Libalpm is not merely a file parser; it is a full package manager engine whose real-world correctness depends on:
+
 1. Complex dependency graph resolution (SAT solving across thousands of packages).
 2. PGP signature verification and trust chains using GnuPG.
 3. System file extraction, filesystem permissions, and file conflict resolution.
