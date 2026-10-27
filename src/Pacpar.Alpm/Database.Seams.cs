@@ -195,6 +195,8 @@ public sealed unsafe partial class Database
       return false;
     }
 
+    // libalpm assigns a new list head (alpm_list_add), so a retained view may walk the old one.
+    Lifetime.InvalidateFacet(LifetimeFacet.Servers, "Database.AddServer");
     GC.KeepAlive(this);
     failure = null;
     return true;
@@ -223,6 +225,14 @@ public sealed unsafe partial class Database
 
     GC.KeepAlive(this);
     removed = ret == 0;
+
+    // alpm_list_remove_str frees the matching node and may replace the head, so a retained view
+    // would walk freed memory. Finding nothing leaves the list, and its views, untouched.
+    if (removed)
+    {
+      Lifetime.InvalidateFacet(LifetimeFacet.Servers, "Database.RemoveServer");
+    }
+
     failure = null;
     return true;
   }
@@ -247,8 +257,7 @@ public sealed unsafe partial class Database
         return false;
       }
 
-      Lifetime.Invalidate("Database.SetServers");
-      _stamp = Lifetime.Capture();
+      Lifetime.InvalidateFacet(LifetimeFacet.Servers, "Database.SetServers");
       GC.KeepAlive(this);
       failure = null;
       return true;
@@ -279,6 +288,8 @@ public sealed unsafe partial class Database
       return false;
     }
 
+    // Same list re-link as the server list: the previous head may be gone.
+    Lifetime.InvalidateFacet(LifetimeFacet.CacheServers, "Database.AddCacheServer");
     GC.KeepAlive(this);
     failure = null;
     return true;
@@ -307,6 +318,12 @@ public sealed unsafe partial class Database
 
     GC.KeepAlive(this);
     removed = ret == 0;
+
+    if (removed)
+    {
+      Lifetime.InvalidateFacet(LifetimeFacet.CacheServers, "Database.RemoveCacheServer");
+    }
+
     failure = null;
     return true;
   }
@@ -331,8 +348,7 @@ public sealed unsafe partial class Database
         return false;
       }
 
-      Lifetime.Invalidate("Database.SetCacheServers");
-      _stamp = Lifetime.Capture();
+      Lifetime.InvalidateFacet(LifetimeFacet.CacheServers, "Database.SetCacheServers");
       GC.KeepAlive(this);
       failure = null;
       return true;

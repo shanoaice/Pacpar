@@ -29,9 +29,14 @@ namespace Pacpar.Alpm;
 /// the owner - and therefore its finalizer - out of reach while any view is alive.
 /// </para>
 /// <para>
-/// The hierarchy is exactly two levels deep, which is what libalpm itself offers: a view's validity
-/// depends on its own resource (a database, a transaction, a loaded package, or a callback frame) and on the session
-/// at the root. Nothing below a package can be released independently of that package.
+/// A stamp is two levels deep, which is what libalpm itself offers: a view's validity depends on its
+/// own resource (a database, a transaction, a loaded package, or a callback frame) and on the session
+/// at the root. Some resources also have parts that are released independently of the resource - a
+/// database's server list is replaced or shortened without touching the database - so a child domain
+/// can own facets (<see cref="LifetimeFacet"/>). A facet is not a third stamp level: its stamp
+/// records the facet and the root, and its parent's invalidation cascades into it. The facet is drawn
+/// below its parent because that is where its memory comes from, not because a check walks through
+/// the parent.
 /// </para>
 /// </remarks>
 internal abstract class Lifetime
@@ -83,9 +88,10 @@ internal abstract class Lifetime
   /// Safe on a finalizer thread: it writes one reference and increments one counter, and never
   /// enumerates views. Callers must invalidate <i>before</i> freeing the native memory, so no view
   /// can pass its check while libalpm is freeing underneath it. Invalidating too early only makes a
-  /// still-valid view report failure, which is the safe direction.
+  /// still-valid view report failure, which is the safe direction. A child domain overrides this to
+  /// retire its facets as well, which is a bounded loop over a fixed-size array.
   /// </remarks>
-  internal void Invalidate(string invalidatedBy)
+  internal virtual void Invalidate(string invalidatedBy)
   {
     if (Interlocked.CompareExchange(ref _reported, 1, 0) == 0)
     {
@@ -167,12 +173,51 @@ internal sealed class RootLifetime : Lifetime
 }
 
 /// <summary>
-/// A child lifetime domain: belongs to one database, transaction, loaded package, or callback frame.
-/// Cannot create further child domains (the lifetime hierarchy is exactly two levels deep).
+/// The parts of a child domain that are released independently of it, used as the index of that
+/// domain's facet array.
 /// </summary>
+/// <remarks>
+/// The numeric values are array indexes, not identities: keep them dense and zero-based, and keep
+/// <see cref="Count"/> last. Reordering is safe because every call site names its member. A value at
+/// or beyond <see cref="Count"/> fails with <see cref="IndexOutOfRangeException"/> instead of
+/// silently addressing another facet, so a mistake here is loud rather than silent.
+/// </remarks>
+internal enum LifetimeFacet
+{
+  /// <summary>
+  /// The database's server list (<c>alpm_db_get_servers</c>), released by adding, removing, or
+  /// replacing a server.
+  /// </summary>
+  Servers = 0,
+
+  /// <summary>
+  /// The database's cache-server list (<c>alpm_db_get_cache_servers</c>), released by the
+  /// cache-server operations.
+  /// </summary>
+  CacheServers = 1,
+
+  /// <summary>The number of facets. Not a facet itself.</summary>
+  Count = 2,
+}
+
+/// <summary>
+/// A child lifetime domain: belongs to one database, transaction, loaded package, or callback frame.
+/// Cannot create further child domains, and owns the facets its resource can release separately.
+/// </summary>
+/// <remarks>
+/// A facet (<see cref="LifetimeFacet"/>) is a domain in its own right, issued by <see cref="Facet"/>
+/// and retired by <see cref="InvalidateFacet"/>. It hangs below this domain for ownership only:
+/// invalidating this domain cascades into every facet, so no facet outlives the memory it describes.
+/// Its stamp still records the facet and the session root, never this domain, which keeps a check at
+/// two comparisons.
+/// </remarks>
 internal sealed class ChildLifetime : Lifetime
 {
   private readonly RootLifetime _root;
+
+  // Allocated on first use and indexed by LifetimeFacet. Null while the domain issues no facet: most
+  // domains never need one, and the slot costs eight bytes per domain rather than a dictionary.
+  private ChildLifetime?[]? _facets;
 
   internal ChildLifetime(object owner, string target, RootLifetime root) : base(owner, target)
   {
@@ -182,6 +227,54 @@ internal sealed class ChildLifetime : Lifetime
   internal override bool IsRoot => false;
 
   internal override bool IsAlive => Generation == 0 && _root.Generation == 0;
+
+  /// <summary>
+  /// The facet domain of this resource, created on first use and reissued once it has been retired.
+  /// </summary>
+  /// <remarks>
+  /// Must run on the session's thread. The operation that releases the facet retires it; the next
+  /// read starts a fresh domain, so views taken before the release keep reporting it.
+  /// </remarks>
+  internal ChildLifetime Facet(LifetimeFacet facet, string target)
+  {
+    if (!IsAlive)
+    {
+      throw new InvalidOperationException(
+        $"'{Target}' has been invalidated; it cannot issue a new '{target}' domain.");
+    }
+
+    var facets = _facets ??= new ChildLifetime[(int)LifetimeFacet.Count];
+    var current = facets[(int)facet];
+    if (current is { IsAlive: true }) return current;
+
+    return facets[(int)facet] = new ChildLifetime(_owner, target, _root);
+  }
+
+  /// <summary>Retires the views of one facet, leaving this domain and the other facets alive.</summary>
+  /// <remarks>
+  /// A no-op while this domain has never issued that facet: nothing is stamped against it, and
+  /// allocating it here would let a write path create a domain no read ever asked for.
+  /// </remarks>
+  internal void InvalidateFacet(LifetimeFacet facet, string invalidatedBy)
+  {
+    if (_facets is not { } facets) return;
+
+    facets[(int)facet]?.Invalidate(invalidatedBy);
+  }
+
+  internal override void Invalidate(string invalidatedBy)
+  {
+    base.Invalidate(invalidatedBy);
+
+    // This domain's own removal frees the memory behind every facet, and the parent is not part of a
+    // facet's stamp, so nothing else would retire one. Cascade before the caller frees the memory.
+    if (_facets is not { } facets) return;
+
+    foreach (var facet in facets)
+    {
+      facet?.Invalidate(invalidatedBy);
+    }
+  }
 
   private protected override LifetimeStamp CreateStamp() => new(this, _root);
 }

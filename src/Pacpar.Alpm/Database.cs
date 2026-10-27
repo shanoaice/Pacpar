@@ -224,26 +224,35 @@ public sealed unsafe partial class Database
   /// <summary>
   /// The servers configured for this database; empty when none are set.
   /// </summary>
-  /// <remarks>The list is borrowed from the database and is never freed by the view.</remarks>
+  /// <remarks>
+  /// The list is borrowed from the database and is never freed by the view. Adding, removing, or
+  /// replacing a server retires the view, because libalpm frees or re-links that list in place; the
+  /// database's package views are unaffected. The next read binds a fresh view to the rebuilt list.
+  /// </remarks>
   public AlpmStringList Servers
   {
     get
     {
       var servers = NativeMethods.alpm_db_get_servers(ValidatedPtr);
-      return new AlpmStringList(servers, Lifetime);
+      return new AlpmStringList(servers, Lifetime.Facet(LifetimeFacet.Servers, "the server list"));
     }
   }
 
   /// <summary>
   /// The cache servers configured for this database; empty when none are set.
   /// </summary>
-  /// <remarks>The list is borrowed from the database and is never freed by the view.</remarks>
+  /// <remarks>
+  /// The list is borrowed from the database and is never freed by the view. The cache-server
+  /// operations retire the view for the same reason the server operations retire
+  /// <see cref="Servers"/>, and the server list is unaffected by them.
+  /// </remarks>
   public AlpmStringList CacheServers
   {
     get
     {
       var servers = NativeMethods.alpm_db_get_cache_servers(ValidatedPtr);
-      return new AlpmStringList(servers, Lifetime);
+      return new AlpmStringList(servers,
+        Lifetime.Facet(LifetimeFacet.CacheServers, "the cache-server list"));
     }
   }
 

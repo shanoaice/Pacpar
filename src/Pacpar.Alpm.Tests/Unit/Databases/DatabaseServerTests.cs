@@ -118,4 +118,46 @@ public sealed class DatabaseServerTests
     Assert.Equal([Url], db.Servers);
     Assert.Equal([OtherUrl], db.CacheServers);
   }
+
+  /// <summary>
+  /// Removing a server frees the matching node, so a list read before the removal must report the
+  /// release instead of walking freed memory.
+  /// </summary>
+  [Fact]
+  public void RemoveServer_RetiresTheServerListReadBeforeIt()
+  {
+    using var environment = new IsolatedAlpmEnvironment();
+    var db = RegisterSync(environment.AlpmSession);
+    db.SetServers([Url, OtherUrl]);
+
+    var retained = db.Servers;
+    Assert.Equal([Url, OtherUrl], retained.ToArray());
+
+    db.RemoveServer(Url);
+
+    var thrown = Assert.Throws<AlpmLifetimeException>(() => retained.ToArray());
+    Assert.Equal("the server list", thrown.Target);
+    Assert.Equal("Database.RemoveServer", thrown.InvalidatedBy);
+
+    // The database itself is untouched: the next read binds a view to the rebuilt list.
+    Assert.Equal([OtherUrl], db.Servers);
+  }
+
+  /// <summary>
+  /// The server list is a separate part of the database, so writing the cache-server list must not
+  /// retire it.
+  /// </summary>
+  [Fact]
+  public void SetCacheServers_LeavesTheServerListReadBeforeItAlive()
+  {
+    using var environment = new IsolatedAlpmEnvironment();
+    var db = RegisterSync(environment.AlpmSession);
+    db.AddServer(Url);
+
+    var servers = db.Servers;
+    db.SetCacheServers([OtherUrl]);
+
+    Assert.Equal([Url], servers.ToArray());
+    Assert.Equal([Url], db.Servers.ToArray());
+  }
 }
