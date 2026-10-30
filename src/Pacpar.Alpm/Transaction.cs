@@ -246,8 +246,11 @@ public sealed partial class Transaction : IDisposable
   /// <summary>
   /// Searches registered sync databases for updates to installed packages and adds them to this transaction.
   /// </summary>
-  /// <param name="enableDowngrade">Whether to allow downgrading packages if the repository version is older.</param>
-  public void SystemUpgrade(bool enableDowngrade)
+  /// <param name="enableDowngrade">
+  /// Whether to allow downgrading packages if the repository version is older. The default,
+  /// <c>false</c>, matches <c>pacman -Su</c>; <c>true</c> matches <c>pacman -Suu</c>.
+  /// </param>
+  public void SystemUpgrade(bool enableDowngrade = false)
   {
     if (!TrySystemUpgrade(enableDowngrade, out var failure))
     {
