@@ -181,8 +181,10 @@ memory during construction.
 One gap is open. One trade was accepted, and it is written down here so that it is not re-litigated
 from memory.
 
-- **Open.** Callback payloads carry the session stamp rather than the stamp of the resource that owns
-  each package. That is safe because a commit retires the session, but it is coarse.
+- **Open.** Callback payloads carry the callback frame's stamp rather than the stamp of the resource
+  that owns each package. That is safe - the frame dies before the callback returns, and a session
+  retires the frame - but it is coarse: a payload refused after its frame ends cannot tell a
+  package that is gone from one that is still alive.
 
 ### 8.1 A dropped `LoadedPackage` is an accepted leak
 
