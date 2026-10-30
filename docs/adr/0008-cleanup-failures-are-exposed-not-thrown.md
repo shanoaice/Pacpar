@@ -15,7 +15,7 @@ the F# `withPrepared` bracket to inspect in its `finally` and report as a distin
 These reports do not go through the consumer's log callback. That callback is an inbound channel from
 libalpm, owned and registered by the consumer; synthesizing the wrapper's own diagnostics into it
 conflates two sources, it may never have been registered, and teardown is when it is least safe —
-`Callback.Dispose()` is already skipped once handle release has failed.
+`AlpmCallbacks.Dispose()` is already skipped once handle release has failed.
 
 **Consequences.** `Dispose` stays silent by contract, so "did the lock actually get released?" becomes
 an explicit question the caller (or bracket) has to ask rather than something inferred from the

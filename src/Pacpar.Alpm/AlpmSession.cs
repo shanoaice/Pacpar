@@ -36,8 +36,9 @@ public enum Capability : uint
 /// stated; the rest of the library assumes it. Concurrent work belongs on other threads that hand
 /// results back to the session's thread, and anything that must cross a thread boundary is copied
 /// out with <see cref="PackageBase.ToSnapshot"/> first. The two places where the thread model is
-/// spelled out again are where libalpm crosses back into consumer code: <see cref="Callback"/>
-/// handlers and the questions raised through <see cref="Callback.QuestionHandler"/>.
+/// spelled out again are where libalpm crosses back into consumer code:
+/// <see cref="AlpmCallbacks"/> handlers and the questions raised through
+/// <see cref="AlpmCallbacks.QuestionHandler"/>.
 /// </remarks>
 public partial class AlpmSession : IDisposable
 {
@@ -64,7 +65,7 @@ public partial class AlpmSession : IDisposable
     _lifetime = RootLifetime.Create(this, "the ALPM handle");
     _handle.OwnDomain(_lifetime);
     Options = new AlpmOptions(_handle, _lifetime);
-    Callback = new Callback(_handle, _lifetime);
+    Callback = new AlpmCallbacks(_handle, _lifetime);
   }
 
   private static SafeAlpmHandle InitializeOrThrow(string root, string dbpath)
@@ -157,7 +158,12 @@ public partial class AlpmSession : IDisposable
   /// <summary>
   /// Exposes properties to configure libalpm callbacks on demand.
   /// </summary>
-  public Callback Callback
+  /// <remarks>
+  /// The property stays singular because it holds one configuration object, the way
+  /// <see cref="Options"/> does; the type carries the <c>Alpm</c> prefix and the plural, since
+  /// what it groups is a set of callbacks.
+  /// </remarks>
+  public AlpmCallbacks Callback
   {
     get
     {

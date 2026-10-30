@@ -94,8 +94,8 @@ items:
 
 - name: Events & Callbacks
   items:
-  - name: Callback
-    uid: Pacpar.Alpm.Callback
+  - name: AlpmCallbacks
+    uid: Pacpar.Alpm.AlpmCallbacks
   - name: LogLevel
     uid: Pacpar.Alpm.LogLevel
   - name: FetchResult

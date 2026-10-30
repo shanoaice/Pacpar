@@ -35,7 +35,7 @@ The public surface has eight native-width members, all of them in the event laye
 
 | Member | Was | Now |
 |---|---|---|
-| `Callback.ProgressHandler` | `Action<ProgressType, string, int, nuint, nuint>?` | `Action<AlpmProgressEvent>?` |
+| `AlpmCallbacks.ProgressHandler` | `Action<ProgressType, string, int, nuint, nuint>?` | `Action<AlpmProgressEvent>?` |
 | `AlpmEvent.HookRunStart.Position` / `Total` | `nuint` | `int` |
 | `AlpmEvent.HookRunDone.Position` / `Total` | `nuint` | `int` |
 | `AlpmEvent.PackageRetrieve{Start,Done,Failed}.PackageCount` | `nuint` | `int` |

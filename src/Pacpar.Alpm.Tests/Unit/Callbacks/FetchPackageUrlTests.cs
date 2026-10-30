@@ -7,7 +7,7 @@ namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 /// </summary>
 /// <remarks>
 /// libalpm downloads through whatever <c>alpm_cb_fetch</c> is registered, which is
-/// <see cref="Callback.FetchHandler"/> here — so the failure path can be driven entirely offline,
+/// <see cref="AlpmCallbacks.FetchHandler"/> here — so the failure path can be driven entirely offline,
 /// and the test also proves the wrapper really calls the native function rather than short-circuiting.
 /// A success path needs a reachable URL, so it waits for a container test: see
 /// <c>docs/research/speculative-integration-tests.md</c>.

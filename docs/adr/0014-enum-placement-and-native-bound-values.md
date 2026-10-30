@@ -36,7 +36,7 @@ them all being enums, which is a property of the C# type system and not of the d
 | Enum | Home | Why |
 |---|---|---|
 | `TransactionFlags` | `Transaction.cs` | One consumer |
-| `ProgressType`, `LogLevel`, `FetchResult` | `Callback.cs` | Callback payloads only |
+| `ProgressType`, `LogLevel`, `FetchResult` | `AlpmCallbacks.cs` | Callback payloads only |
 | `DepMod` | `Dependencies.cs` | Ships with `Depend` |
 | `PackageOrigin`, `PackageReason`, `PackageValidation` | `Package/PackageEnums.cs` | Package-only |
 | `HookWhen`, `PackageOperation` | `Events/AlpmEvent.cs` | Event payloads only |

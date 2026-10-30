@@ -136,7 +136,7 @@ public enum FetchResult
 /// has returned successfully.
 /// </para>
 /// </remarks>
-public sealed class Callback
+public sealed class AlpmCallbacks
 {
   // The ALPM context, guarded behind a SafeHandle so it is not disposed while
   // callbacks are still active.
@@ -150,7 +150,7 @@ public sealed class Callback
 
   // do not Dispose this before the callback class has been disposed
   // otherwise it will screw up the callbacks
-  private WeakGCHandle<Callback> _ctxHandle;
+  private WeakGCHandle<AlpmCallbacks> _ctxHandle;
 
   [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
   private static unsafe void EventAgent(void* ctx, _alpm_event_t* eventT)
@@ -158,10 +158,10 @@ public sealed class Callback
     if (ctx == null) return;
     try
     {
-      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      var success = WeakGCHandle<AlpmCallbacks>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
       if (!success || callback == null) return;
       callback._invokeDepth++;
-      var callbackLifetime = callback._rootLifetime.CreateChild("Callback.EventAgent");
+      var callbackLifetime = callback._rootLifetime.CreateChild("AlpmCallbacks.EventAgent");
       try
       {
         SafeInvoke(() => callback.EventHandler?.Invoke(AlpmEvent.FromUnion(eventT, callbackLifetime)), callback.HandlerException);
@@ -185,7 +185,7 @@ public sealed class Callback
     if (ctx == null) return -1;
     try
     {
-      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      var success = WeakGCHandle<AlpmCallbacks>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
       if (!success || callback == null) return -1;
       callback._invokeDepth++;
       try
@@ -216,10 +216,10 @@ public sealed class Callback
     if (ctx == null) return;
     try
     {
-      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      var success = WeakGCHandle<AlpmCallbacks>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
       if (!success || callback == null) return;
       callback._invokeDepth++;
-      var questionLifetime = callback._rootLifetime.CreateChild("Callback.QuestionAgent");
+      var questionLifetime = callback._rootLifetime.CreateChild("AlpmCallbacks.QuestionAgent");
       try
       {
         var question = AlpmQuestion.FromUnion(questionT, questionLifetime);
@@ -245,7 +245,7 @@ public sealed class Callback
     if (ctx == null) return;
     try
     {
-      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      var success = WeakGCHandle<AlpmCallbacks>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
       if (!success || callback == null) return;
       callback._invokeDepth++;
       try
@@ -275,7 +275,7 @@ public sealed class Callback
     if (ctx == null) return;
     try
     {
-      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      var success = WeakGCHandle<AlpmCallbacks>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
       if (!success || callback == null) return;
       callback._invokeDepth++;
       try
@@ -306,7 +306,7 @@ public sealed class Callback
     if (ctx == null) return;
     try
     {
-      var success = WeakGCHandle<Callback>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
+      var success = WeakGCHandle<AlpmCallbacks>.FromIntPtr((nint)ctx).TryGetTarget(out var callback);
     if (!success || callback == null) return;
     callback._invokeDepth++;
     try
@@ -325,12 +325,12 @@ public sealed class Callback
     }
   }
 
-  internal Callback(SafeAlpmHandle alpmHandle, RootLifetime lifetime)
+  internal AlpmCallbacks(SafeAlpmHandle alpmHandle, RootLifetime lifetime)
   {
     _handle = alpmHandle;
     _rootLifetime = lifetime;
     _stamp = lifetime.Capture();
-    _ctxHandle = new WeakGCHandle<Callback>(this);
+    _ctxHandle = new WeakGCHandle<AlpmCallbacks>(this);
   }
 
   private void ConfigureGuard()
@@ -369,7 +369,7 @@ public sealed class Callback
       }
 
       field = value;
-      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      var ctx = (void*)WeakGCHandle<AlpmCallbacks>.ToIntPtr(_ctxHandle);
       ThrowIfError(NativeMethods.alpm_option_set_eventcb(_handle, &EventAgent, ctx));
     }
   }
@@ -392,7 +392,7 @@ public sealed class Callback
       }
 
       field = value;
-      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      var ctx = (void*)WeakGCHandle<AlpmCallbacks>.ToIntPtr(_ctxHandle);
       ThrowIfError(NativeMethods.alpm_option_set_fetchcb(_handle, &FetchAgent, ctx));
     }
   }
@@ -415,7 +415,7 @@ public sealed class Callback
       }
 
       field = value;
-      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      var ctx = (void*)WeakGCHandle<AlpmCallbacks>.ToIntPtr(_ctxHandle);
       ThrowIfError(NativeMethods.alpm_option_set_questioncb(_handle, &QuestionAgent, ctx));
     }
   }
@@ -440,7 +440,7 @@ public sealed class Callback
       }
 
       field = value;
-      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      var ctx = (void*)WeakGCHandle<AlpmCallbacks>.ToIntPtr(_ctxHandle);
       ThrowIfError(NativeMethods.alpm_option_set_dlcb(_handle, &DownloadAgent, ctx));
     }
   }
@@ -468,7 +468,7 @@ public sealed class Callback
       }
 
       field = value;
-      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      var ctx = (void*)WeakGCHandle<AlpmCallbacks>.ToIntPtr(_ctxHandle);
       ThrowIfError(NativeMethods.alpm_option_set_progresscb(_handle, &ProgressAgent, ctx));
       GC.KeepAlive(this);
     }
@@ -497,7 +497,7 @@ public sealed class Callback
       }
 
       field = value;
-      var ctx = (void*)WeakGCHandle<Callback>.ToIntPtr(_ctxHandle);
+      var ctx = (void*)WeakGCHandle<AlpmCallbacks>.ToIntPtr(_ctxHandle);
       ThrowIfError(NativeMethods.alpm_option_set_logcb(_handle, &LogAgent, ctx));
     }
   }

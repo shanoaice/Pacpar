@@ -7,7 +7,7 @@ using Pacpar.Alpm.Tests.Fixtures;
 namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 
 /// <summary>
-/// The ctx handle is how a native thunk finds its <see cref="Callback"/>: libalpm stores one value per
+/// The ctx handle is how a native thunk finds its <see cref="AlpmCallbacks"/>: libalpm stores one value per
 /// registered callback and hands it back on every invocation. These tests pin the lifetime of that
 /// value - weak enough that a dropped session is collected, persistent enough that a handle which
 /// could not be released never sees its slot reused.
@@ -16,7 +16,7 @@ namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 /// The slot is freed only when <c>alpm_release</c> destroyed the handle. A failed release leaves a
 /// native handle that still carries the value with its callbacks registered, so freeing the slot
 /// there would let the runtime hand it to a foreign object;
-/// <c>WeakGCHandle&lt;Callback&gt;.TryGetTarget</c> casts its result without a type check
+/// <c>WeakGCHandle&lt;AlpmCallbacks&gt;.TryGetTarget</c> casts its result without a type check
 /// (dotnet/runtime <c>WeakGCHandle.T.cs</c>: "Skip the type check"), which is memory corruption rather
 /// than a catchable exception. <see cref="LeakedHandle_LogCallbacksAfterCollection_AreSafeNoOps"/>
 /// drives that hazard end to end.
@@ -29,9 +29,9 @@ namespace Pacpar.Alpm.Tests.Unit.Callbacks;
 public sealed class CallbackContextLifetimeTests
 {
   /// <summary>
-  /// Dropping an <see cref="AlpmSession"/> without disposing it must not root the <see cref="Callback"/>:
+  /// Dropping an <see cref="AlpmSession"/> without disposing it must not root the <see cref="AlpmCallbacks"/>:
   /// the ctx handle is weak, so the handler delegates it keeps alive die with the instance. (The ctx
-  /// handle slot itself is not freed on this path - nothing runs <c>Callback.Dispose()</c> during
+  /// handle slot itself is not freed on this path - nothing runs <c>AlpmCallbacks.Dispose()</c> during
   /// finalization - which is the accepted leak of the weak-ctx contract; the end-to-end guarantee
   /// that a stale ctx is a safe no-op is pinned by
   /// <see cref="LeakedHandle_LogCallbacksAfterCollection_AreSafeNoOps"/>.)
@@ -64,9 +64,9 @@ public sealed class CallbackContextLifetimeTests
   /// when the native handle cannot be released it stays alive with its callbacks registered,
   /// carrying the ctx handle value, so the ctx handle slot must stay allocated - freeing it would
   /// let the runtime reuse the slot for a foreign object that
-  /// <c>WeakGCHandle&lt;Callback&gt;.TryGetTarget</c> would then read as a <see cref="Callback"/>
+  /// <c>WeakGCHandle&lt;AlpmCallbacks&gt;.TryGetTarget</c> would then read as a <see cref="AlpmCallbacks"/>
   /// (it casts without a type check). Only object liveness is observable here: holding the
-  /// <see cref="Callback"/> alive to inspect the slot would also root its
+  /// <see cref="AlpmCallbacks"/> alive to inspect the slot would also root its
   /// <see cref="SafeAlpmHandle"/> and suppress the finalizer this test is about. The slot
   /// mechanism itself is pinned deterministically by the <c>AlpmDispose_</c> tests below; the
   /// end-to-end stale-ctx behavior by
@@ -92,10 +92,10 @@ public sealed class CallbackContextLifetimeTests
   /// leaks - alive, with the callback registrations still in place and the ctx handle value still
   /// in <c>logcb_ctx</c> and friends. The ctx handle slot must therefore stay allocated: freeing it
   /// would let the runtime hand the slot to another GC handle allocation, and
-  /// <c>WeakGCHandle&lt;Callback&gt;.TryGetTarget</c> casts its result without a type check
+  /// <c>WeakGCHandle&lt;AlpmCallbacks&gt;.TryGetTarget</c> casts its result without a type check
   /// (dotnet/runtime <c>WeakGCHandle.T.cs</c>: "Skip the type check"), so the next callback entered
-  /// from the leaked handle would read a foreign object as a <see cref="Callback"/> - memory
-  /// corruption, not a catchable exception. The <see cref="Callback"/> object itself may be
+  /// from the leaked handle would read a foreign object as a <see cref="AlpmCallbacks"/> - memory
+  /// corruption, not a catchable exception. The <see cref="AlpmCallbacks"/> object itself may be
   /// collected; see <see cref="AlpmDispose_DoesNotRootTheCallback_WhenTheHandleCouldNotBeReleased"/>.
   /// </summary>
   [Fact]
@@ -110,9 +110,9 @@ public sealed class CallbackContextLifetimeTests
 
   /// <summary>
   /// The other half of the weak-ctx contract: the ctx handle being kept allocated must not keep the
-  /// <see cref="Callback"/> (and with it the user handler delegates) alive. This is what the
+  /// <see cref="AlpmCallbacks"/> (and with it the user handler delegates) alive. This is what the
   /// migration from a self-rooting <c>Normal</c> GC handle to
-  /// <c>WeakGCHandle&lt;Callback&gt;</c> bought; a regression to a rooting handle fails here.
+  /// <c>WeakGCHandle&lt;AlpmCallbacks&gt;</c> bought; a regression to a rooting handle fails here.
   /// </summary>
   [Fact]
   public void AlpmDispose_DoesNotRootTheCallback_WhenTheHandleCouldNotBeReleased()
@@ -152,10 +152,10 @@ public sealed class CallbackContextLifetimeTests
   /// The <see cref="AlpmSession.Dispose()"/> scenario where release must fail: the transaction it owns
   /// is hidden from the wrapper, which is the state a consumer's forgotten transaction leaves libalpm
   /// in. The native handle (and its lock) then leak for the life of the process. Returns the
-  /// <see cref="Callback"/> strongly so the ctx handle slot can be inspected; use
+  /// <see cref="AlpmCallbacks"/> strongly so the ctx handle slot can be inspected; use
   /// <see cref="DisposeAlpmWithAnUnreleasableHandleUnrooted"/> for GC-liveness checks.
   /// </summary>
-  private static Callback DisposeAlpmWithAnUnreleasableHandle(AlpmSession alpm)
+  private static AlpmCallbacks DisposeAlpmWithAnUnreleasableHandle(AlpmSession alpm)
   {
     var callback = alpm.Callback;
     // Registration is presence-driven: without a handler no thunk is registered and the leaked
@@ -204,10 +204,10 @@ public sealed class CallbackContextLifetimeTests
   /// <summary>
   /// End-to-end check of the hazard the ctx handle lifetime exists for. After a failed
   /// <c>alpm_release</c> the leaked native handle still has the log thunk registered with the stale
-  /// ctx value; this drives a real libalpm log message through it while the <see cref="Callback"/>
+  /// ctx value; this drives a real libalpm log message through it while the <see cref="AlpmCallbacks"/>
   /// is alive (proving the thunk really is entered through the leaked handle's registration) and
   /// again after it was collected. Had the slot been freed and reused, the second call would read a
-  /// foreign object as a <see cref="Callback"/> - <c>WeakGCHandle&lt;Callback&gt;.TryGetTarget</c>
+  /// foreign object as a <see cref="AlpmCallbacks"/> - <c>WeakGCHandle&lt;AlpmCallbacks&gt;.TryGetTarget</c>
   /// casts without a type check - and corrupt memory; the contract is a silent no-op instead.
   /// </summary>
   [Fact]
@@ -227,7 +227,7 @@ public sealed class CallbackContextLifetimeTests
 
   /// <summary>
   /// The <see cref="DisposeAlpmWithAnUnreleasableHandle"/> setup plus the behavioral probe: returns
-  /// the <see cref="Callback"/> weakly - the strong references die with this frame - along with the
+  /// the <see cref="AlpmCallbacks"/> weakly - the strong references die with this frame - along with the
   /// leaked native handle and the sink its log handler feeds. The probe inside proves the leaked
   /// handle still enters the thunk at this point, so the caller's post-collection probe is
   /// meaningful rather than a bare not-throw.
@@ -292,14 +292,14 @@ public sealed class CallbackContextLifetimeTests
   }
 
   /// <summary>
-  /// Test seam without production surface: <c>Callback._ctxHandle</c> is private, and its slot
-  /// state is exactly what the ctx lifetime contract is about - the <see cref="Callback"/> object
+  /// Test seam without production surface: <c>AlpmCallbacks._ctxHandle</c> is private, and its slot
+  /// state is exactly what the ctx lifetime contract is about - the <see cref="AlpmCallbacks"/> object
   /// being alive says nothing about it under a weak ctx handle.
   /// </summary>
   private static readonly FieldInfo CtxHandleField =
-    typeof(Callback).GetField("_ctxHandle", BindingFlags.Instance | BindingFlags.NonPublic)
-    ?? throw new InvalidOperationException("Callback._ctxHandle was renamed; update this test seam.");
+    typeof(AlpmCallbacks).GetField("_ctxHandle", BindingFlags.Instance | BindingFlags.NonPublic)
+    ?? throw new InvalidOperationException("AlpmCallbacks._ctxHandle was renamed; update this test seam.");
 
-  private static bool IsContextHandleAllocated(Callback callback)
-    => ((WeakGCHandle<Callback>)CtxHandleField.GetValue(callback)!).IsAllocated;
+  private static bool IsContextHandleAllocated(AlpmCallbacks callback)
+    => ((WeakGCHandle<AlpmCallbacks>)CtxHandleField.GetValue(callback)!).IsAllocated;
 }

@@ -41,7 +41,7 @@ public sealed class SafeBindingPairingTests
   /// to the indices of the parameters whose types intentionally differ. The log callback keeps its
   /// <c>va_list</c> argument opaque (<c>void*</c> instead of the generated <c>__va_list_tag*</c>)
   /// so that regenerating the bindings can never re-materialise a typed <c>va_list</c> in the
-  /// native thunk signature: <c>Callback.LogAgent</c> forwards it unchanged to the native
+  /// native thunk signature: <c>AlpmCallbacks.LogAgent</c> forwards it unchanged to the native
   /// <c>vasprintf</c> shim (see <c>LogMessageFormatter</c>). Everything else about the overload -
   /// entry point, arity, the other parameter types, the return type - is still paired and checked.
   /// </summary>

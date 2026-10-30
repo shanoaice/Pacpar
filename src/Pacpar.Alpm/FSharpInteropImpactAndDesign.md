@@ -83,7 +83,7 @@ Pure collection reads (`Count`, `Contains`, enumeration, `CopyTo`) do not need a
 
 ### 3.5 Callbacks
 
-`Events/Callback.cs` should add failure-returning registration/unregistration paths for the event, fetch, question, download, progress, and log callbacks. These are configuration operations and libalpm can reject them.
+`Events/AlpmCallbacks.cs` should add failure-returning registration/unregistration paths for the event, fetch, question, download, progress, and log callbacks. These are configuration operations and libalpm can reject them.
 
 Callback invocation is deliberately excluded. The existing `SafeInvoke` behavior already prevents user handler exceptions from crossing the FFI boundary; those exceptions are runtime/handler failures and must not be hidden inside `Result`.
 

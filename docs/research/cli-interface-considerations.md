@@ -238,7 +238,7 @@ built.
 
 The survey confirms the hard parts are done: transactions
 (`src/Pacpar.Alpm/Transaction.cs:20-335`), callbacks including question-answer mutation
-(`src/Pacpar.Alpm/Events/Callback.cs:115-440`, `AlpmQuestion.cs:89-296`), packages and
+(`src/Pacpar.Alpm/Events/AlpmCallbacks.cs:115-440`, `AlpmQuestion.cs:89-296`), packages and
 file lists. The gaps that directly gate the CLI's flows (fuller list in the repo survey
 and `reports/repo-audit-report-cycle1.md`):
 
