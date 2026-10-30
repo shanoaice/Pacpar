@@ -59,7 +59,7 @@ public sealed class PackageSnapshot
     Conflicts = [.. package.Conflicts];
     Provides = [.. package.Provides];
     Replaces = [.. package.Replaces];
-    Backup = [.. package.Backup];
+    BackupFiles = [.. package.BackupFiles];
 
     if (includeFiles) Files = [.. package.Files];
   }
@@ -117,7 +117,8 @@ public sealed class PackageSnapshot
 
   public IReadOnlyList<Depend> Replaces { get; }
 
-  public IReadOnlyList<Backup> Backup { get; }
+  /// <summary>The copied backup-file entries, frozen at the moment of the copy.</summary>
+  public IReadOnlyList<Backup> BackupFiles { get; }
 
   /// <summary>
   /// The copied file list, or <c>null</c> when the snapshot was taken without it.

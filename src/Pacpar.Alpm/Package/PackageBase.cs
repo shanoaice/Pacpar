@@ -482,7 +482,11 @@ public abstract unsafe partial class PackageBase
   /// <summary>
   /// The list of configuration files marked for backup.
   /// </summary>
-  public AlpmList<Backup> Backup => Pacpar.Alpm.Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(BackingStruct), Lifetime?.Domain);
+  /// <remarks>
+  /// Named for the files rather than for the <see cref="Backup"/> payload: the singular name would
+  /// shadow the type inside this class and force a fully qualified call.
+  /// </remarks>
+  public AlpmList<Backup> BackupFiles => Backup.ListFactory(NativeMethods.alpm_pkg_get_backup(BackingStruct), Lifetime?.Domain);
 
   /// <summary>
   /// Gets the names of packages that depend on this package.
